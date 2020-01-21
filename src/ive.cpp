@@ -22,6 +22,7 @@ struct TPU_HANDLE {
   IveTPUOr t_or;
   IveTPUSobelGradOnly t_sobel_gradonly;
   IveTPUSobel t_sobel;
+  IveTPUSubAbs t_sub_abs;
   IveTPUSub t_sub;
   IveTPUThreshold t_thresh;
   IveTPUThresholdHighLow t_thresh_hl;
@@ -367,6 +368,17 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 
     handle_ctx->t_h.t_sub.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
                                               &outputs);
+  } else if (ctrl->enMode == IVE_SUB_MODE_ABS) {
+    ret = 0;
+    handle_ctx->t_h.t_sub_abs.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+    CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
+    CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
+    CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+    std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+    std::vector<CviImg> outputs = {*cpp_dst};
+
+    handle_ctx->t_h.t_sub_abs.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
+                                                  &outputs);
   }
   return ret;
 }

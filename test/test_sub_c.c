@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 
   printf("Run TPU Sub.\n");
   IVE_SUB_CTRL_S iveSubCtrl;
-  iveSubCtrl.enMode = IVE_SUB_MODE_BUTT;
+  iveSubCtrl.enMode = IVE_SUB_MODE_ABS;
   CVI_IVE_Sub(handle, &src1, &src2, &dst, &iveSubCtrl, 0);
 
   // write result to disk

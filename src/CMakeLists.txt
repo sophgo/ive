@@ -16,6 +16,7 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_or.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sobel_gradonly.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sobel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sub_abs.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sub.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_threshold_high_low.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_threshold_slope.cpp
