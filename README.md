@@ -4,7 +4,9 @@ This is an Image Processing library using TPU on CVI1835.
 
 ## How to build
 
-**Cmodel library is required, you can get it from bmtap2. The compiled library should be placed under prebuilt/cmodel_bm1880v2**
+**Cmodel library, you can get it from bmtap2. The compiled library should be placed under ``prebuilt/cmodel_bm1880v2``. bmtap2 docker environment is recomended.**
+
+**Middleware headers are required. Put them under ``prebuilt/middleware``.**
 
 ```
 $ mkdir build
