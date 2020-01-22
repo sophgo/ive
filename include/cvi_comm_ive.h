@@ -1,15 +1,9 @@
 #ifndef _CVI_COMM_IVE_H_
 #define _CVI_COMM_IVE_H_
+#include "cvi_type.h"
 
-// FIXME: Replace with middleware stuffs
-typedef unsigned char CVI_U8;
-typedef char CVI_S8;
-typedef unsigned short CVI_U16;
-typedef short CVI_S16;
-typedef unsigned int CVI_U32;
-typedef signed int CVI_S32;
-typedef unsigned long int CVI_U64;
-typedef unsigned int CVI_S64;
+// FIXME: Put this into middleware cvi_type.h
+#define CVI_NOT_SUPPORTED 9
 
 typedef unsigned short CVI_U0Q16;
 

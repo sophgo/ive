@@ -36,9 +36,9 @@ int main(int argc, char **argv) {
   cvSaveImage("test_morph_thresh_c.png", img, 0);
 
   printf("Run TPU Dilate.\n");
-  CVI_U8 arr[] = {0, 1, 0, 1, 1, 1, 0, 1, 0};
+  CVI_U8 arr[] = {0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0};
   IVE_DILATE_CTRL_S iveDltCtrl;
-  memcpy(iveDltCtrl.au8Mask, arr, 9 * sizeof(CVI_U8));
+  memcpy(iveDltCtrl.au8Mask, arr, 25 * sizeof(CVI_U8));
   CVI_IVE_Dilate(handle, &dst, &dst2, &iveDltCtrl, 0);
 
   // write result to disk

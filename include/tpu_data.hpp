@@ -1,4 +1,6 @@
 #pragma once
+#include "cvi_type.h"
+
 #include <bmkernel/bm1880v2/bmkernel_1880v2.h>
 #include <libbmruntime/bmruntime_bmkernel.h>
 #include <string.h>
