@@ -52,6 +52,7 @@ int IveCore::freeTLMems(bmk1880v2_context_t *bk_ctx) {
   for (int i = m_tl_vec.size() - 1; i >= 0; i--) {
     bmk1880v2_lmem_free_tensor(bk_ctx, m_tl_vec[i]);
   }
+  m_tl_vec.clear();
   return BM_SUCCESS;
 }
 
