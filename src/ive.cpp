@@ -251,12 +251,12 @@ CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  CviImg cimg(&handle_ctx->ctx, cpp_src->m_tg.shape.c, 3, 3, FMT_U8);
+  CviImg cimg(&handle_ctx->ctx, cpp_src->m_tg.shape.c, 5, 5, FMT_U8);
   IveKernel kernel;
   kernel.img = cimg;
   kernel.img.GetVAddr();
   for (size_t i = 0; i < cpp_src->m_tg.shape.c; i++) {
-    memcpy(kernel.img.GetVAddr() + i * 9, pstErodeCtrl->au8Mask, 9);
+    memcpy(kernel.img.GetVAddr() + i * 25, pstErodeCtrl->au8Mask, 25);
   }
   kernel.multiplier.f = 1.f;
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
