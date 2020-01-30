@@ -1,4 +1,5 @@
 #pragma once
+#include "debug.hpp"
 #include "tpu_data.hpp"
 
 #include <bmkernel/bm1880v2/bmkernel_1880v2.h>
@@ -77,8 +78,8 @@ inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, u32 *quantiz
     *quantized_multiplier = (u32)q;
     *right_shift = s;
   }
-  printf("    QuantizeMultiplierSmallerThanOne: %f -> multiplier %d, rshift %d\n",
-         original_real_multiplier, *quantized_multiplier, *right_shift);
+  IVE_DEBUG("    QuantizeMultiplierSmallerThanOne: %f -> multiplier %d, rshift %d\n",
+            original_real_multiplier, *quantized_multiplier, *right_shift);
 }
 
 inline void pack_per_chan_cal_data(u32 channels, bool has_bias, s32 *bias, u32 *multiplier,
