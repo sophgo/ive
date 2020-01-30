@@ -2,6 +2,7 @@ project(test)
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${OpenCV_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/middleware/include
 )
 
 # Basic op
