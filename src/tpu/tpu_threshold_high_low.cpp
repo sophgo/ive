@@ -34,6 +34,8 @@ int IveTPUThresholdHighLow::runSetup(
   }
   extendValue2TL(ctx, bk_ctx, m_threshold - 1, tl_shape.n * tl_shape.c, tl_shape.h, tl_shape.w,
                  FMT_U8, tl_threshold);
+  extendValue2TL(ctx, bk_ctx, 0, tl_shape.n * tl_shape.c, tl_shape.h, tl_shape.w, FMT_U8,
+                 tl_high_bit);
 
   m_p_mac.res_high = tl_high_bit;
   m_p_mac.res_low = tl_input;
