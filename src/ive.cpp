@@ -51,6 +51,13 @@ CVI_S32 CVI_IVE_DestroyHandle(IVE_HANDLE pIveHandle) {
   return CVI_SUCCESS;
 }
 
+CVI_S32 CVI_IVE_Flush(IVE_HANDLE pIveHandle) {
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  printf("kernel ctx at ive lib %p\n", handle_ctx->bk_ctx);
+  bmruntime_bmkernel_submit(handle_ctx->ctx);
+  return CVI_SUCCESS;
+}
+
 CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
                             u16 u16Width, u16 u16Height) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);

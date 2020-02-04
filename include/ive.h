@@ -14,6 +14,8 @@ IVE_HANDLE CVI_IVE_CreateHandle();
 
 CVI_S32 CVI_IVE_DestroyHandle(IVE_HANDLE pIveHandle);
 
+CVI_S32 CVI_IVE_Flush(IVE_HANDLE pIveHandle);
+
 CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
                             CVI_U16 u16Width, CVI_U16 u16Height);
 
