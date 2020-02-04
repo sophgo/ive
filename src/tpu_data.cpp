@@ -47,7 +47,9 @@ int CviImg::AllocateDevice(bmctx_t *ctx) {
         bms = BM_TENSOR_BF16((int)m_tg.shape.n, (int)m_tg.shape.c, (int)m_tg.shape.h,
                              (int)m_tg.shape.w);
       } break;
-      default: { std::cerr << "Unsupported bmshape_t type" << std::endl; } break;
+      default: {
+        std::cerr << "Unsupported bmshape_t type" << std::endl;
+      } break;
     }
 
     this->m_bmmem = bmmem_device_alloc(*ctx, &bms);

@@ -87,7 +87,9 @@ static inline IveKernel createKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u32 k_w,
       case IVE_KERNEL::MORPH_ELLIPSE:
         filter = morph_ellipse_kernel_3x3;
         break;
-      default: { std::cerr << "Not supported kernel type." << std::endl; } break;
+      default: {
+        std::cerr << "Not supported kernel type." << std::endl;
+      } break;
     }
   } else if (k_h == 5 && k_w == 5) {
     switch (kernel_type) {
@@ -100,7 +102,9 @@ static inline IveKernel createKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u32 k_w,
       case IVE_KERNEL::MORPH_ELLIPSE:
         filter = morph_ellipse_kernel_5x5;
         break;
-      default: { std::cerr << "Not supported kernel type." << std::endl; } break;
+      default: {
+        std::cerr << "Not supported kernel type." << std::endl;
+      } break;
     }
   } else {
     std::cerr << "Not supported kernel shape. ( " << k_h << ", " << k_w << ")" << std::endl;

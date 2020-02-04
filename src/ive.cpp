@@ -53,7 +53,6 @@ CVI_S32 CVI_IVE_DestroyHandle(IVE_HANDLE pIveHandle) {
 
 CVI_S32 CVI_IVE_Flush(IVE_HANDLE pIveHandle) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  printf("kernel ctx at ive lib %p\n", handle_ctx->bk_ctx);
   bmruntime_bmkernel_submit(handle_ctx->ctx);
   return CVI_SUCCESS;
 }
