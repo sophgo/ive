@@ -4,6 +4,8 @@ set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/install")
 set(CMAKE_BUILD_TYPE "Release")
 set(BMTAP2_TARGET_BASENAME cmodel_bm1880v2)
 include(cmake/bmtap2.cmake)
+set(MIDDLEWARE_TARGET_BASENAME middleware)
+include(cmake/middleware.cmake)
 
 set(CMAKE_C_INIT "-fsigned-char -Werror=all -fdiagnostics-color=always -std=gnu++11")
 set(CMAKE_CXX_INIT "-fsigned-char -fPIC -Werror=all -fdiagnostics-color=always -Wno-unused-variable -std=gnu++11")
