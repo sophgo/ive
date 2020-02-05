@@ -100,7 +100,7 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
   for (size_t i = 0; i < cpp_img->m_tg.shape.c; i++) {
     pstImg->pu8VirAddr[i] = cpp_img->GetVAddr() + i * img_sz;
     pstImg->u64PhyAddr[i] = cpp_img->GetPAddr() + i * img_sz;
-    pstImg->u16Stride[i] = pstImg->u16Width * fmt_size;
+    pstImg->u16Stride[i] = cpp_img->m_tg.stride.h;
   }
 
   for (size_t i = cpp_img->m_tg.shape.c; i < 3; i++) {
