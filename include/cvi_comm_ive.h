@@ -2,11 +2,6 @@
 #define _CVI_COMM_IVE_H_
 #include "cvi_type.h"
 
-// FIXME: Put this into middleware cvi_type.h
-#define CVI_NOT_SUPPORTED 9
-
-typedef unsigned short CVI_U0Q16;
-
 typedef void *IVE_HANDLE;
 
 #ifdef __cplusplus
