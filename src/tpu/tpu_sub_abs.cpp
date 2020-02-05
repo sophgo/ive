@@ -26,6 +26,9 @@ int IveTPUSubAbs::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   auto *tl_min = allocTLMem(bk_ctx, tl_shape, FMT_U8, 1);
   auto *tl_high_bit = allocTLMem(bk_ctx, tl_shape, FMT_U8, 1);
 
+  extendValue2TL(ctx, bk_ctx, 0, tl_shape.n * tl_shape.c, tl_shape.h, tl_shape.w, FMT_U8,
+                 tl_high_bit);
+
   m_p_min.a = tl_input;
   m_p_min.b = tl_input2;
   m_p_min.b_is_const = 0;
