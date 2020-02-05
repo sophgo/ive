@@ -259,7 +259,7 @@ static void run_background_subtraction(GstCviIveBackground *cviivebackground, gu
   if (bk_handle->i_count > 0) {
     // Sub - threshold - dilate
     IVE_SUB_CTRL_S iveSubCtrl;
-    iveSubCtrl.enMode = IVE_SUB_MODE_BUTT;
+    iveSubCtrl.enMode = IVE_SUB_MODE_ABS;
     CVI_IVE_Sub(bk_handle->handle, &bk_handle->src[bk_handle->count],
                 &bk_handle->src[1 - bk_handle->count], &bk_handle->tmp, &iveSubCtrl, 0);
 
