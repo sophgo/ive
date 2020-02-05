@@ -127,7 +127,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   for (size_t k = 0; k < output->size(); k++) {
     u64 bm_des_addr = (*output)[k].GetPAddr();
     bm_dest_addr.push_back(
-        bm_des_addr + ((*output)[k].m_tg.shape.w * m_kernel_info.pad[2] + m_kernel_info.pad[0]) *
+        bm_des_addr + ((*output)[k].m_tg.stride.h * m_kernel_info.pad[2] + m_kernel_info.pad[0]) *
                           fmt_output_vec[k].getTGFmtSize());
   }
 
@@ -143,7 +143,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         tg_in.start_address = bm_src_addr_w[k];
         tg_in.shape = s_in_vec[k];
         tg_in.fmt = fmt_input_vec[k].getTGFmt();
-        tg_in.stride.h = input[k].m_tg.shape.w * fmt_input_vec[k].getTGFmtSize();
+        tg_in.stride.h = input[k].m_tg.stride.h * fmt_input_vec[k].getTGFmtSize();
         tg_in.stride.c = input[k].m_tg.shape.h * tg_in.stride.h;
         tg_in.stride.n = input[k].m_tg.shape.c * tg_in.stride.c;
         bmk1880v2_tdma_tg2l_tensor_copy_param_t p_copy_in;
@@ -170,7 +170,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         tg_out.shape.w = (j == m_slice_info.w.turn - 1 && m_slice_info.w.left != 0)
                              ? m_slice_info.w.left
                              : s_out_vec[k].w - (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
-        tg_out.stride.h = (*output)[k].m_tg.shape.w * fmt_output_vec[k].getTGFmtSize();
+        tg_out.stride.h = (*output)[k].m_tg.stride.h * fmt_output_vec[k].getTGFmtSize();
         tg_out.stride.c = (*output)[k].m_tg.shape.h * tg_out.stride.h;
         tg_out.stride.n = (*output)[k].m_tg.shape.c * tg_out.stride.c;
         bmk1880v2_tensor_lmem_t out_shape;
@@ -198,11 +198,11 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     // Change src/ dest head addr
     for (size_t k = 0; k < tl_in.size(); k++) {
       bm_src_addr[k] +=
-          1 * input[k].m_tg.shape.w * m_slice_info.h.skip * fmt_input_vec[k].getTGFmtSize();
+          1 * input[k].m_tg.stride.h * m_slice_info.h.skip * fmt_input_vec[k].getTGFmtSize();
     }
     for (size_t k = 0; k < tl_out.size(); k++) {
       bm_dest_addr[k] +=
-          1 * (*output)[k].m_tg.shape.w * m_slice_info.h.skip * fmt_output_vec[k].getTGFmtSize();
+          1 * (*output)[k].m_tg.stride.h * m_slice_info.h.skip * fmt_output_vec[k].getTGFmtSize();
     }
   }
 
