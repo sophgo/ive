@@ -5,6 +5,7 @@
 
 #include "tpu/tpu_add.hpp"
 #include "tpu/tpu_and.hpp"
+#include "tpu/tpu_copy.hpp"
 #include "tpu/tpu_filter.hpp"
 #include "tpu/tpu_morph.hpp"
 #include "tpu/tpu_or.hpp"
@@ -16,6 +17,7 @@
 struct TPU_HANDLE {
   IveTPUAdd t_add;
   IveTPUAnd t_and;
+  IveTPUCopyInterval t_copy_int;
   IveTPUErode t_erode;
   IveTPUFilter t_filter;
   IveTPUFilterBF16 t_filter_bf16;
@@ -119,13 +121,33 @@ CVI_S32 CVI_SYS_Free(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
   return CVI_SUCCESS;
 }
 
-CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_DATA_S *pstSrc, IVE_DST_DATA_S *pstDst,
+CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                     IVE_DMA_CTRL_S *pstDmaCtrl, bool bInstant) {
   int ret = CVI_NOT_SUPPORTED;
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   if (pstDmaCtrl->enMode == IVE_DMA_MODE_DIRECT_COPY) {
     ret = CVI_SUCCESS;
-    int size = pstSrc->u16Stride * pstSrc->u16Height * pstSrc->u16Reserved;
-    memcpy(pstDst->pu8VirAddr, pstSrc->pu8VirAddr, size);
+#ifdef USE_CPU_COPY
+    uint size = pstSrc->u16Stride[0] * pstSrc->u16Height;
+    memcpy(pstDst->pu8VirAddr[0], pstSrc->pu8VirAddr[0], size);
+#else
+    CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+    CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+    std::vector<CviImg> inputs = {*cpp_src};
+    std::vector<CviImg> outputs = {*cpp_dst};
+
+    IveTPUCopyDirect::run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+#endif
+  } else if (pstDmaCtrl->enMode == IVE_DMA_MODE_INTERVAL_COPY) {
+    handle_ctx->t_h.t_copy_int.setInvertal(pstDmaCtrl->u8HorSegSize, pstDmaCtrl->u8VerSegRows);
+    handle_ctx->t_h.t_copy_int.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+    CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+    CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+    std::vector<CviImg> inputs = {*cpp_src};
+    std::vector<CviImg> outputs = {*cpp_dst};
+
+    handle_ctx->t_h.t_copy_int.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
+                                                   &outputs);
   }
   return ret;
 }
