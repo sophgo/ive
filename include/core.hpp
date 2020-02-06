@@ -16,6 +16,7 @@ class IveCore {
   bmk1880v2_tensor_lmem_t *allocTLMem(bmk1880v2_context_t *bk_ctx,
                                       bmk1880v2_tensor_lmem_shape_t tl_shape, fmt_t fmt,
                                       int eu_align);
+  virtual int SliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res);
   virtual int runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,

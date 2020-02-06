@@ -47,6 +47,9 @@ struct SliceInfo {
   u32 nums_of_tl = 2;
   u32 fix_lmem_size = 0;
   u32 table_size_per_channel = 0;
+};
+
+struct SliceRes {
   sliceUnit h;
   sliceUnit w;
 };
