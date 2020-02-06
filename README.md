@@ -45,3 +45,10 @@ $make install
    2. atan2
    3. sqrt
    4. div
+4. ``cvi_type.h`` may miss some ``#define``
+
+```
+typedef unsigned short          CVI_U0Q16;
+
+#define CVI_NOT_SUPPORTED       9
+```
