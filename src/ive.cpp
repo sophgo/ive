@@ -5,6 +5,7 @@
 
 #include "tpu/tpu_add.hpp"
 #include "tpu/tpu_and.hpp"
+#include "tpu/tpu_block.hpp"
 #include "tpu/tpu_copy.hpp"
 #include "tpu/tpu_filter.hpp"
 #include "tpu/tpu_morph.hpp"
@@ -17,6 +18,8 @@
 struct TPU_HANDLE {
   IveTPUAdd t_add;
   IveTPUAnd t_and;
+  IveTPUBlock t_block;
+  IveTPUBlockBF16 t_block_bf16;
   IveTPUCopyInterval t_copy_int;
   IveTPUErode t_erode;
   IveTPUFilter t_filter;
@@ -241,6 +244,37 @@ CVI_S32 CVI_IVE_And(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   std::vector<CviImg> outputs = {*cpp_dst};
 
   handle_ctx->t_h.t_and.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                      IVE_BLOCK_CTRL_S *pstBlkCtrl, bool bInstant) {
+  CVI_U32 cell_size = pstBlkCtrl->cell_size;
+  if (pstDst->u16Width != (pstSrc->u16Width / cell_size)) {
+    return CVI_FAILURE;
+  }
+  if (pstDst->u16Height != (pstSrc->u16Height / cell_size)) {
+    return CVI_FAILURE;
+  }
+
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
+  if (cpp_dst->m_tg.fmt == FMT_U8) {
+    handle_ctx->t_h.t_block.setCellSize(cell_size, cpp_src->m_tg.shape.c);
+    handle_ctx->t_h.t_block.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+    handle_ctx->t_h.t_block.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
+                                                &outputs);
+  } else if (cpp_dst->m_tg.fmt == FMT_BF16) {
+    handle_ctx->t_h.t_block_bf16.setCellSize(cell_size, cpp_src->m_tg.shape.c);
+    handle_ctx->t_h.t_block_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+    handle_ctx->t_h.t_block_bf16.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
+                                                     &outputs);
+  } else {
+    return CVI_NOT_SUPPORTED;
+  }
   return CVI_SUCCESS;
 }
 

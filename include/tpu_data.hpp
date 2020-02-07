@@ -22,6 +22,9 @@ static int getFmtSize(fmt_t fmt) {
     case FMT_BF16:
       fmt_size = 2;
       break;
+    case FMT_F32:
+      fmt_size = 4;
+      break;
     default:
       std::cerr << "Unsupported fmt type: " << fmt << std::endl;
   }

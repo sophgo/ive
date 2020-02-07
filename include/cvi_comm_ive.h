@@ -108,6 +108,10 @@ typedef struct IVE_ADD_CTRL_S {
   CVI_U0Q16 u0q16Y; /*y of "xA+yB"*/
 } IVE_ADD_CTRL_S;
 
+typedef struct IVE_BLOCK_CTRL {
+  CVI_U32 cell_size;
+} IVE_BLOCK_CTRL_S;
+
 typedef struct IVE_ELEMENT_STRUCTURE_CTRL {
   CVI_U8 au8Mask[25]; /*The template parameter value must be 0 or 255.*/
 } IVE_ELEMENT_STRUCTURE_CTRL_S;

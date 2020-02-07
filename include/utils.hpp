@@ -49,6 +49,16 @@ inline void extendValue2TL(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, const int 
   thresh_img.Free(ctx);
 }
 
+inline void constantFillTL(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, const u16 value,
+                           bmk1880v2_tensor_lmem_t *lmem) {
+  bmk1880v2_tdma_tg2l_tensor_fill_constant_param_t p_fill;
+  p_fill.constant = value;
+  p_fill.dst = lmem;
+
+  bmk1880v2_tdma_tg2l_bf16_tensor_fill_constant(bk_ctx, &p_fill);
+  bmruntime_bmkernel_submit(*ctx);
+}
+
 inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, u32 *quantized_multiplier,
                                              int *right_shift) {
   float original_real_multiplier = real_multiplier;
@@ -128,8 +138,8 @@ inline void pack_per_chan_cal_data(u32 channels, bool has_bias, s32 *bias, u32 *
   }
 }
 
-inline u8 *getPackedMultiplierArray(const u32 c, const u32 &quantized_multiplier,
-                                    const int &right_shift) {
+inline void getPackedMultiplierArrayBuffer(const u32 c, const u32 &quantized_multiplier,
+                                           const int &right_shift, u8 *cal_data) {
   // Create tl_multiplier
   u32 *multiplier_data = new u32[c];
   s8 *shift_data = new s8[c];
@@ -149,13 +159,18 @@ inline u8 *getPackedMultiplierArray(const u32 c, const u32 &quantized_multiplier
 #endif
   }
 
+  pack_per_chan_cal_data(c, 0, NULL, multiplier_data, shift_data, cal_data);
+  delete[] multiplier_data;
+  delete[] shift_data;
+}
+
+inline u8 *getPackedMultiplierArray(const u32 c, const u32 &quantized_multiplier,
+                                    const int &right_shift) {
   const int per_chan_cal_data_size = MULTIPLIER_ONLY_PACKED_DATA_SIZE;  // p_param->has_bias ? 9 :
                                                                         // 5;  // bias(4) +
                                                                         // multiplier(4) + shift(1)
   const int cal_data_size = c * per_chan_cal_data_size;
   u8 *cal_data = (u8 *)malloc(cal_data_size);
-  pack_per_chan_cal_data(c, 0, NULL, multiplier_data, shift_data, cal_data);
-  delete[] multiplier_data;
-  delete[] shift_data;
+  getPackedMultiplierArrayBuffer(c, quantized_multiplier, right_shift, cal_data);
   return cal_data;
 }
