@@ -5,6 +5,16 @@
 
 #define BM1880V2_LMEM_SIZE 32768
 
+inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int kernel_sz, u32 pad_0,
+                                 u32 pad_1, sliceUnit *unit) {
+  unit->slice = slice > length ? length : slice;
+  unit->skip = unit->slice - kernel_sz + 1;
+
+  u32 &&pad_total = pad_0 + pad_1;
+  unit->turn = floor((float)(length - pad_1) / unit->skip);
+  unit->left = unit->turn == 1 ? 0 : length % unit->skip;
+}
+
 int IveCore::getSlice(const u32 nums_of_lmem, const u32 table_size_per_channel,
                       const u32 fixed_lmem_size, const u32 n, const u32 c, const u32 h, const u32 w,
                       const kernelInfo kernel_info, sliceUnit *unit_h, sliceUnit *unit_w) {
@@ -24,14 +34,16 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 table_size_per_channel,
     h_tmp_slice = available_lmem_per_tl / c / w_length;
     w_num++;
   }
-  unit_h->slice = h_tmp_slice;
-  unit_h->skip = unit_h->slice - kernel_info.size + 1;
-  unit_h->left = (h - kernel_info.pad[2] - kernel_info.pad[3]) % unit_h->skip;
-  unit_h->turn = ceil((float)(h - kernel_info.pad[2] - kernel_info.pad[3]) / unit_h->skip);
-  unit_w->slice = w_length;
-  unit_w->skip = unit_w->slice - kernel_info.size + 1;
-  unit_w->left = (w - kernel_info.pad[0] - kernel_info.pad[1]) % unit_w->skip;
-  unit_w->turn = ceil((float)(w - kernel_info.pad[0] - kernel_info.pad[1]) / unit_w->skip);
+
+  // FIXME: Logic error
+  GetSliceUnitProperty(h, h_tmp_slice, kernel_info.size, kernel_info.pad[2], kernel_info.pad[3],
+                       unit_h);
+  GetSliceUnitProperty(w, w_length, kernel_info.size, kernel_info.pad[0], kernel_info.pad[1],
+                       unit_w);
+  IVE_DEBUG("H slice %d skip %d turn %d left %d\n", unit_h->slice, unit_h->skip, unit_h->turn,
+            unit_h->left);
+  IVE_DEBUG("W slice %d skip %d turn %d left %d\n", unit_w->slice, unit_w->skip, unit_w->turn,
+            unit_w->left);
   return BM_SUCCESS;
 }
 
@@ -73,7 +85,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   SliceRes slice_res;
   getSlice(m_slice_info.nums_of_tl, m_slice_info.table_size_per_channel, m_slice_info.fix_lmem_size,
            batch, channel, height, width, m_kernel_info, &slice_res.h, &slice_res.w);
-  // TODO: Add a virtual function here if future need multi-size tls?
+
   SliceRes in_slice_res, out_slice_res;
   SliceSetup(slice_res, &in_slice_res, &out_slice_res);
   if (in_slice_res.h.turn != out_slice_res.h.turn) {
@@ -85,12 +97,20 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
               << out_slice_res.w.turn << std::endl;
   }
 
+  // Setup slice input/ output shapes and left shapes
   std::vector<bmk1880v2_tensor_tgmem_shape_t> s_in_vec, s_out_vec;
   for (size_t k = 0; k < input.size(); k++) {
     s_in_vec.push_back({1, channel, in_slice_res.h.slice, in_slice_res.w.slice});
   }
   for (size_t k = 0; k < output->size(); k++) {
     s_out_vec.push_back({1, channel, out_slice_res.h.slice, out_slice_res.w.slice});
+  }
+  std::vector<bmk1880v2_tensor_tgmem_shape_t> s_in_left_vec, s_out_left_vec;
+  for (size_t k = 0; k < input.size(); k++) {
+    s_in_left_vec.push_back({1, channel, in_slice_res.h.left, in_slice_res.w.left});
+  }
+  for (size_t k = 0; k < output->size(); k++) {
+    s_out_left_vec.push_back({1, channel, out_slice_res.h.left, out_slice_res.w.left});
   }
 
   // allocate tl shape and get input/ output indices.
@@ -108,6 +128,29 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
               << output->size() << std::endl;
   }
   // Dummy check end
+  // Category tl shapes
+  std::vector<std::pair<int, bmk1880v2_tensor_lmem_t *>> tl_in_shape_lmem_vec,
+      tl_out_shape_lmem_vec;
+  for (size_t i = 0; i < m_tl_vec.size(); i++) {
+    auto *lmem = m_tl_vec[i];
+    bool skip = false;
+    for (size_t k = 0; k < s_in_vec.size(); k++) {
+      if (tgTLShapeCompare(lmem->shape, s_in_vec[k])) {
+        tl_in_shape_lmem_vec.push_back({k, lmem});
+        skip = true;
+        break;
+      }
+    }
+    if (skip) {
+      continue;
+    }
+    for (size_t k = 0; k < s_out_vec.size(); k++) {
+      if (tgTLShapeCompare(lmem->shape, s_out_vec[k])) {
+        tl_out_shape_lmem_vec.push_back({k, lmem});
+        break;
+      }
+    }
+  }
 
   // Find and create input/ output fmt size pair.
   std::vector<FmtPair> fmt_input_vec, fmt_output_vec;
@@ -129,8 +172,6 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   }
 
   // Create tg block
-  // FIXME: Currently input/ output use same shape, skip, need a mechanism to auto calculate the
-  // correct value for each image.
   bmk1880v2_tensor_tgmem_t tg_in;
   tg_in.base_reg_index = 0;
   bmk1880v2_tensor_tgmem_t tg_out;
@@ -153,16 +194,72 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     // Re-assign head address to w.
     std::vector<u64> bm_src_addr_w = bm_src_addr;
     std::vector<u64> bm_dest_addr_w = bm_dest_addr;
+    // Change H TL size to fit left shape in last turn
+    for (size_t k = 0; k < tl_in_shape_lmem_vec.size(); k++) {
+      int &index = tl_in_shape_lmem_vec[k].first;
+      auto *lmem = tl_in_shape_lmem_vec[k].second;
+      if (s_in_left_vec[index].h != 0) {
+        if (i == 0) {
+          lmem->shape.h = s_in_vec[index].h;
+        } else if (in_slice_res.h.turn - 1) {
+          lmem->shape.h = s_in_left_vec[index].h;
+        }
+      }
+    }
+    for (size_t k = 0; k < tl_out_shape_lmem_vec.size(); k++) {
+      int &index = tl_out_shape_lmem_vec[k].first;
+      auto *lmem = tl_out_shape_lmem_vec[k].second;
+      if (s_out_left_vec[index].h != 0) {
+        if (i == 0) {
+          lmem->shape.h = s_out_vec[index].h;
+        } else if (i == out_slice_res.h.turn - 1) {
+          lmem->shape.h = s_out_left_vec[index].h;
+        }
+      }
+    }
 
     for (u32 j = 0; j < slice_res.w.turn; j++) {
+      // Change W TL size to fit left shape in last turn
+      for (size_t k = 0; k < tl_in_shape_lmem_vec.size(); k++) {
+        int &index = tl_in_shape_lmem_vec[k].first;
+        auto *lmem = tl_in_shape_lmem_vec[k].second;
+        if (s_in_left_vec[index].w != 0) {
+          if (j == 0) {
+            lmem->shape.w = s_in_vec[index].w;
+            lmem->stride =
+                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+          } else if (j == in_slice_res.w.turn - 1) {
+            lmem->shape.w = s_in_left_vec[index].w;
+            lmem->stride =
+                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+          }
+        }
+      }
+      for (size_t k = 0; k < tl_out_shape_lmem_vec.size(); k++) {
+        int &index = tl_out_shape_lmem_vec[k].first;
+        auto *lmem = tl_out_shape_lmem_vec[k].second;
+        if (s_out_left_vec[index].w != 0) {
+          if (j == 0) {
+            lmem->shape.w = s_out_vec[index].w;
+            lmem->stride =
+                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+          } else if (j == out_slice_res.w.turn - 1) {
+            lmem->shape.w = s_out_left_vec[index].w;
+            lmem->stride =
+                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+          }
+        }
+      }
+
       // tg2tl
       for (size_t k = 0; k < tl_in.size(); k++) {
         tg_in.start_address = bm_src_addr_w[k];
-        tg_in.shape = s_in_vec[k];
+        tg_in.shape.n = tl_in[k]->shape.n;
+        tg_in.shape.c = tl_in[k]->shape.c;
+        tg_in.shape.h = tl_in[k]->shape.h;
+        tg_in.shape.w = tl_in[k]->shape.w;
         tg_in.fmt = fmt_input_vec[k].getTGFmt();
-        tg_in.stride.h = input[k].m_tg.stride.h;
-        tg_in.stride.c = input[k].m_tg.shape.h * tg_in.stride.h;
-        tg_in.stride.n = input[k].m_tg.shape.c * tg_in.stride.c;
+        tg_in.stride = input[k].m_tg.stride;
         bmk1880v2_tdma_tg2l_tensor_copy_param_t p_copy_in;
         p_copy_in.src = &tg_in;
         p_copy_in.dst = tl_in[k];
@@ -179,17 +276,11 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
       for (size_t k = 0; k < tl_out.size(); k++) {
         tg_out.start_address = bm_dest_addr_w[k];
         tg_out.fmt = fmt_output_vec[k].getTGFmt();
-        tg_out.shape.n = s_out_vec[k].n;
-        tg_out.shape.c = s_out_vec[k].c;
-        tg_out.shape.h = (i == out_slice_res.h.turn - 1 && out_slice_res.h.left != 0)
-                             ? out_slice_res.h.left
-                             : s_out_vec[k].h - (m_kernel_info.pad[2] + m_kernel_info.pad[3]);
-        tg_out.shape.w = (j == out_slice_res.w.turn - 1 && out_slice_res.w.left != 0)
-                             ? out_slice_res.w.left
-                             : s_out_vec[k].w - (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
-        tg_out.stride.h = (*output)[k].m_tg.stride.h;
-        tg_out.stride.c = (*output)[k].m_tg.shape.h * tg_out.stride.h;
-        tg_out.stride.n = (*output)[k].m_tg.shape.c * tg_out.stride.c;
+        tg_out.shape.n = tl_out[k]->shape.n;
+        tg_out.shape.c = tl_out[k]->shape.c;
+        tg_out.shape.h = tl_out[k]->shape.h - (m_kernel_info.pad[2] + m_kernel_info.pad[3]);
+        tg_out.shape.w = tl_out[k]->shape.w - (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
+        tg_out.stride = (*output)[k].m_tg.stride;
         bmk1880v2_tensor_lmem_t out_shape;
         // printf("st addr%d, tg st addr %lu\n", tl_out[k]->start_address, bm_dest_addr_w[k]);
         out_shape.start_address = tl_out[k]->start_address +

@@ -27,6 +27,15 @@ inline void destroyHandle(bmctx_t *ctx) {
   bm_exit(*ctx);
 }
 
+inline bool tgTLShapeCompare(bmk1880v2_tensor_lmem_shape_t &tl_shape,
+                             bmk1880v2_tensor_tgmem_shape_t &tg_shape) {
+  if (tg_shape.n == tl_shape.n && tg_shape.c == tl_shape.c && tg_shape.h == tl_shape.h &&
+      tg_shape.w == tl_shape.w) {
+    return true;
+  }
+  return false;
+}
+
 inline void extendValue2TL(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, const int value, const int c,
                            const int h, const int w, const fmt_t fmt,
                            bmk1880v2_tensor_lmem_t *lmem) {
