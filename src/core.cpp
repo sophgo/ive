@@ -11,8 +11,14 @@ inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int ke
   unit->skip = unit->slice - kernel_sz + 1;
 
   u32 &&pad_total = pad_0 + pad_1;
-  unit->turn = floor((float)(length - pad_1) / unit->skip);
-  unit->left = unit->turn == 1 ? 0 : length % unit->skip;
+  unit->turn = ((int64_t)length - unit->slice - pad_1) / (unit->slice - pad_total) + 1;
+  int64_t result = (int64_t)length - (int64_t)((unit->turn) * (unit->slice - pad_total));
+  if (result >= kernel_sz) {
+    unit->left = result;
+    unit->turn++;
+  } else {
+    unit->left = 0;
+  }
 }
 
 int IveCore::getSlice(const u32 nums_of_lmem, const u32 table_size_per_channel,
@@ -41,9 +47,9 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 table_size_per_channel,
   GetSliceUnitProperty(w, w_length, kernel_info.size, kernel_info.pad[0], kernel_info.pad[1],
                        unit_w);
   IVE_DEBUG("H slice %d skip %d turn %d left %d\n", unit_h->slice, unit_h->skip, unit_h->turn,
-            unit_h->left);
+             unit_h->left);
   IVE_DEBUG("W slice %d skip %d turn %d left %d\n", unit_w->slice, unit_w->skip, unit_w->turn,
-            unit_w->left);
+             unit_w->left);
   return BM_SUCCESS;
 }
 
@@ -201,8 +207,12 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
       if (s_in_left_vec[index].h != 0) {
         if (i == 0) {
           lmem->shape.h = s_in_vec[index].h;
-        } else if (in_slice_res.h.turn - 1) {
+          lmem->stride =
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+        } else if (i == in_slice_res.h.turn - 1) {
           lmem->shape.h = s_in_left_vec[index].h;
+          lmem->stride =
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
         }
       }
     }
@@ -212,8 +222,12 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
       if (s_out_left_vec[index].h != 0) {
         if (i == 0) {
           lmem->shape.h = s_out_vec[index].h;
+          lmem->stride =
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
         } else if (i == out_slice_res.h.turn - 1) {
           lmem->shape.h = s_out_left_vec[index].h;
+          lmem->stride =
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
         }
       }
     }
