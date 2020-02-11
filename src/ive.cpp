@@ -8,6 +8,7 @@
 #include "tpu/tpu_block.hpp"
 #include "tpu/tpu_copy.hpp"
 #include "tpu/tpu_filter.hpp"
+#include "tpu/tpu_magandang.hpp"
 #include "tpu/tpu_morph.hpp"
 #include "tpu/tpu_or.hpp"
 #include "tpu/tpu_sobel.hpp"
@@ -24,6 +25,7 @@ struct TPU_HANDLE {
   IveTPUErode t_erode;
   IveTPUFilter t_filter;
   IveTPUFilterBF16 t_filter_bf16;
+  IveTPUMadAndAng t_magandang;
   IveTPUOr t_or;
   IveTPUSobelGradOnly t_sobel_gradonly;
   IveTPUSobel t_sobel;
@@ -353,6 +355,22 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   handle_ctx->t_h.t_filter.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
                                                &outputs);
   kernel.img.Free(&handle_ctx->ctx);
+  return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_SRC_IMAGE_S *pstSrcV,
+                          IVE_DST_IMAGE_S *pstDstMag, IVE_DST_IMAGE_S *pstDstAng, bool bInstant) {
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  handle_ctx->t_h.t_magandang.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+  CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrcH->tpu_block);
+  CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrcV->tpu_block);
+  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDstMag->tpu_block);
+  CviImg *cpp_dst2 = reinterpret_cast<CviImg *>(pstDstAng->tpu_block);
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+  std::vector<CviImg> outputs = {*cpp_dst, *cpp_dst2};
+
+  handle_ctx->t_h.t_magandang.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
+                                                  &outputs);
   return CVI_SUCCESS;
 }
 

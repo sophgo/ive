@@ -17,6 +17,7 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_copy_direct.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_copy_interval.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_filter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_magandang.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_morph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_or.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sobel_gradonly.cpp
