@@ -8,6 +8,7 @@
 
 class IveCore {
  public:
+  IveCore();
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) = 0;
   int runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
                           std::vector<CviImg> *output);
@@ -30,8 +31,11 @@ class IveCore {
   std::vector<bmk1880v2_tensor_lmem_t *> m_tl_vec;
 
  private:
-  int getSlice(const u32 nums_of_lmem, const u32 table_size_per_channel, const u32 fixed_lmem_size,
+  int getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32 fixed_lmem_size,
                const u32 n, const u32 c, const u32 h, const u32 w, const kernelInfo kernel_info,
                sliceUnit *unit_h, sliceUnit *unit_w);
   int freeTLMems(bmk1880v2_context_t *bk_ctx);
+
+  cvi_chip_info_s m_chip_info;
+  u32 m_table_per_channel_size = 0;
 };

@@ -6,6 +6,15 @@
 #include <string.h>
 #include <iostream>
 
+typedef struct cvi_chip_info {
+  u32 version;
+  u32 npu_num;
+  u32 eu_num;
+  u32 lmem_size;
+  u32 lmem_banks;
+  u32 lmem_bank_size;
+} cvi_chip_info_s;
+
 /**
  * @brief Convert fmt_t to actual data type size.
  *
@@ -49,7 +58,7 @@ struct sliceUnit {
 struct SliceInfo {
   u32 nums_of_tl = 2;
   u32 fix_lmem_size = 0;
-  u32 table_size_per_channel = 0;
+  u32 nums_of_table = 0;
 };
 
 struct SliceRes {

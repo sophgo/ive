@@ -3,7 +3,15 @@
 #include <iostream>
 #include "debug.hpp"
 
-#define BM1880V2_LMEM_SIZE 32768
+IveCore::IveCore() {
+  auto chip_info = bmk1880v2_chip_info();
+  m_chip_info.eu_num = chip_info.eu_num;
+  m_chip_info.lmem_bank_size = chip_info.lmem_bank_size;
+  m_chip_info.lmem_banks = chip_info.lmem_banks;
+  m_chip_info.lmem_size = chip_info.lmem_size;
+  m_chip_info.npu_num = chip_info.npu_num;
+  m_chip_info.version = chip_info.version;
+}
 
 inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int kernel_sz, u32 pad_0,
                                  u32 pad_1, sliceUnit *unit) {
@@ -21,14 +29,15 @@ inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int ke
   }
 }
 
-int IveCore::getSlice(const u32 nums_of_lmem, const u32 table_size_per_channel,
-                      const u32 fixed_lmem_size, const u32 n, const u32 c, const u32 h, const u32 w,
+int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32 fixed_lmem_size,
+                      const u32 n, const u32 c, const u32 h, const u32 w,
                       const kernelInfo kernel_info, sliceUnit *unit_h, sliceUnit *unit_w) {
   // Calculate fixed kernel size
   u32 kernel_sz = (m_kernel_info.nums_of_kernel * m_kernel_info.size * m_kernel_info.size +
                    MULTIPLIER_ONLY_PACKED_DATA_SIZE * m_kernel_info.use_multiplier);
   // Find max available mem for one tl.
-  int64_t result = BM1880V2_LMEM_SIZE - (int64_t)((kernel_sz + table_size_per_channel) * c) -
+  int64_t result = m_chip_info.lmem_size -
+                   (int64_t)(kernel_sz + m_table_per_channel_size * nums_of_table) -
                    (int64_t)fixed_lmem_size;
   if (result < 0) {
     std::cerr << "Insufficient memory: " << result << std::endl;
@@ -41,7 +50,7 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 table_size_per_channel,
   // Here the default value for kernel size is 1. The h_slice should never smaller than kernel size.
   while (h_tmp_slice < m_kernel_info.size) {
     w_length = w / w_num;
-    h_tmp_slice = available_lmem_per_tl / c / w_length;
+    h_tmp_slice = available_lmem_per_tl / w_length;
     w_num++;
   }
 
@@ -90,12 +99,14 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   u32 channel = input[0].m_tg.shape.c;
   u32 height = input[0].m_tg.shape.h;
   u32 width = input[0].m_tg.shape.w;
-  // FIXME: Currently only supports same input / ouput size
-  // Get slice and create block shape size
+  // FIXME: Move to constructor if possible.
+  bmk1880v2_tensor_lmem_shape_t tl_table_s;
+  u64 result = bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_U8);
+  m_table_per_channel_size = result / m_chip_info.npu_num;  // 32 * 8 for bm1880v2
   SliceRes slice_res;
-  int ret = getSlice(m_slice_info.nums_of_tl, m_slice_info.table_size_per_channel,
-                     m_slice_info.fix_lmem_size, batch, channel, height, width, m_kernel_info,
-                     &slice_res.h, &slice_res.w);
+  int ret =
+      getSlice(m_slice_info.nums_of_tl, m_slice_info.nums_of_table, m_slice_info.fix_lmem_size,
+               batch, channel, height, width, m_kernel_info, &slice_res.h, &slice_res.w);
   if (ret != BM_SUCCESS) {
     return BM_ERR_FAILURE;
   }

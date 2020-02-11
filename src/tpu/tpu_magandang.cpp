@@ -5,11 +5,11 @@
 
 int IveTPUMadAndAng::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   // 2 input tl
-  //  tmp buf
+  // 6 tmp buf
   // 1 atan & 1 final sqrt result
-  m_slice_info.nums_of_tl = 10 * 2;                // in bf16
-  m_slice_info.table_size_per_channel = 512 * 9;  // 8 table in bf16
-  m_kernel_info.nums_of_kernel = 0;               // 2 BF16 kernels
+  m_slice_info.nums_of_tl = 10 * 2;  // in bf16
+  m_slice_info.nums_of_table = 9 * 2;
+  m_kernel_info.nums_of_kernel = 0;  // 2 BF16 kernels
   return BM_SUCCESS;
 }
 

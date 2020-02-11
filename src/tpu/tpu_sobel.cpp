@@ -18,9 +18,9 @@ int IveTPUSobel::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   // 2 conv result
   // 0 a^2 + b^2 result (reuse input tl)
   // 1 buf & 1 final sqrt result
-  m_slice_info.nums_of_tl = 4 * 2;             // in bf16
-  m_slice_info.table_size_per_channel = 1024;  // sqrt 2 table 256 * 2 in bf16
-  m_kernel_info.nums_of_kernel = 4;            // 2 BF16 kernels
+  m_slice_info.nums_of_tl = 4 * 2;     // in bf16
+  m_slice_info.nums_of_table = 2 * 2;  // sqrt 2 table 256 * 2 in bf16
+  m_kernel_info.nums_of_kernel = 4;    // 2 BF16 kernels
   return BM_SUCCESS;
 }
 
@@ -56,7 +56,8 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
     bmruntime_bmkernel_submit(*ctx);
   }
-  bmk1880v2_tensor_lmem_shape_t tl_table_s = {1, 32, 32, 8};
+  bmk1880v2_tensor_lmem_shape_t tl_table_s;
+  bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_BF16);
   auto *tl_table_data = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1);
   auto *tl_table_data_mantissa = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1);
   {
