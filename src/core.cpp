@@ -28,9 +28,13 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 table_size_per_channel,
   u32 kernel_sz = (m_kernel_info.nums_of_kernel * m_kernel_info.size * m_kernel_info.size +
                    MULTIPLIER_ONLY_PACKED_DATA_SIZE * m_kernel_info.use_multiplier);
   // Find max available mem for one tl.
-  const u32 available_lmem_per_tl =
-      (BM1880V2_LMEM_SIZE - ((kernel_sz + table_size_per_channel) * c) - fixed_lmem_size) /
-      nums_of_lmem;
+  int64_t result = BM1880V2_LMEM_SIZE - (int64_t)((kernel_sz + table_size_per_channel) * c) -
+                   (int64_t)fixed_lmem_size;
+  if (result < 0) {
+    std::cerr << "Insufficient memory: " << result << std::endl;
+    return BM_ERR_FAILURE;
+  }
+  const u32 available_lmem_per_tl = (u32)result / nums_of_lmem;
   u32 w_length = w;
   u32 h_tmp_slice = 0;
   int w_num = 1;
@@ -47,9 +51,9 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 table_size_per_channel,
   GetSliceUnitProperty(w, w_length, kernel_info.size, kernel_info.pad[0], kernel_info.pad[1],
                        unit_w);
   IVE_DEBUG("H slice %d skip %d turn %d left %d\n", unit_h->slice, unit_h->skip, unit_h->turn,
-             unit_h->left);
+            unit_h->left);
   IVE_DEBUG("W slice %d skip %d turn %d left %d\n", unit_w->slice, unit_w->skip, unit_w->turn,
-             unit_w->left);
+            unit_w->left);
   return BM_SUCCESS;
 }
 
@@ -89,8 +93,12 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   // FIXME: Currently only supports same input / ouput size
   // Get slice and create block shape size
   SliceRes slice_res;
-  getSlice(m_slice_info.nums_of_tl, m_slice_info.table_size_per_channel, m_slice_info.fix_lmem_size,
-           batch, channel, height, width, m_kernel_info, &slice_res.h, &slice_res.w);
+  int ret = getSlice(m_slice_info.nums_of_tl, m_slice_info.table_size_per_channel,
+                     m_slice_info.fix_lmem_size, batch, channel, height, width, m_kernel_info,
+                     &slice_res.h, &slice_res.w);
+  if (ret != BM_SUCCESS) {
+    return BM_ERR_FAILURE;
+  }
 
   SliceRes in_slice_res, out_slice_res;
   SliceSetup(slice_res, &in_slice_res, &out_slice_res);
