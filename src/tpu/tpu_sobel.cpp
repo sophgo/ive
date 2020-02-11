@@ -1,5 +1,4 @@
 #include "tpu/tpu_sobel.hpp"
-#include "../tpu_math/sqrt.hpp"
 
 #include <string.h>
 
@@ -19,9 +18,9 @@ int IveTPUSobel::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   // 2 conv result
   // 0 a^2 + b^2 result (reuse input tl)
   // 1 buf & 1 final sqrt result
-  m_slice_info.nums_of_tl = 4 * 2;            // in bf16
-  m_slice_info.table_size_per_channel = 512;  // sqrt 2 table 256 * 2 in u8
-  m_kernel_info.nums_of_kernel = 4;           // 2 BF16 kernels
+  m_slice_info.nums_of_tl = 4 * 2;             // in bf16
+  m_slice_info.table_size_per_channel = 1024;  // sqrt 2 table 256 * 2 in bf16
+  m_kernel_info.nums_of_kernel = 4;            // 2 BF16 kernels
   return BM_SUCCESS;
 }
 
@@ -56,6 +55,24 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     p.dst = tl_kernel_gy;
     bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
     bmruntime_bmkernel_submit(*ctx);
+  }
+  bmk1880v2_tensor_lmem_shape_t tl_table_s = {1, 32, 32, 8};
+  auto *tl_table_data = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1);
+  auto *tl_table_data_mantissa = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1);
+  {
+    CviImg table_data(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
+    CviImg table_data_mantissa(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
+    bf16_sqrt_tbl((u16 *)table_data.GetVAddr(), (u16 *)table_data_mantissa.GetVAddr(), &tl_table_s);
+    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
+    p.src = &table_data.m_tg;
+    p.dst = tl_table_data;
+    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
+    p.src = &table_data_mantissa.m_tg;
+    p.dst = tl_table_data_mantissa;
+    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
+    bmruntime_bmkernel_submit(*ctx);
+    table_data.Free(ctx);
+    table_data_mantissa.Free(ctx);
   }
 
   m_p_conv.pad_top = m_kernel_info.pad[2];
@@ -97,6 +114,12 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_mac.b_is_const = 0;
   m_p_mac.b = tl_gy;
 
+  m_p_sqrt.a = tl_res;
+  m_p_sqrt.res = tl_gx;
+  m_p_sqrt.buf = tl_input;
+  m_p_sqrt.sqrt_table_answer = tl_table_data;
+  m_p_sqrt.sqrt_table_answer_mantissa = tl_table_data_mantissa;
+
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(1);
   return BM_SUCCESS;
@@ -112,5 +135,6 @@ void IveTPUSobel::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   bmk1880v2_tiu_bf16_depthwise_convolution(bk_ctx, &m_p_conv);
   bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul);
   bmk1880v2_tiu_bf16_element_wise_mac(bk_ctx, &m_p_mac);
-  bf16_emit_sqrt(ctx, bk_ctx, m_tl_vec[3], m_tl_vec[2], m_tl_vec[1], NULL);
+  bf16_emit_sqrt(bk_ctx, m_p_sqrt.a, m_p_sqrt.buf, m_p_sqrt.sqrt_table_answer,
+                 m_p_sqrt.sqrt_table_answer_mantissa, m_p_sqrt.res);
 }

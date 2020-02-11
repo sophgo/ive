@@ -1,6 +1,8 @@
 #pragma once
 #include "core.hpp"
 
+#include "bmkernel_non_atomic.h"
+
 class IveTPUSobel : public IveCore {
  public:
   void setKernel(const IveKernel &kernel_x, const IveKernel &kernel_y);
@@ -17,6 +19,7 @@ class IveTPUSobel : public IveCore {
   bmk1880v2_tiu_depthwise_convolution_param_t m_p_conv;
   bmk1880v2_tiu_element_wise_mul_param_t m_p_mul;
   bmk1880v2_tiu_element_wise_mac_param_t m_p_mac;
+  bmk1880v2_tiu_non_atomic_sqrt_param_t m_p_sqrt;
 };
 
 class IveTPUSobelGradOnly : public IveCore {
