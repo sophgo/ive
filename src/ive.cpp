@@ -398,6 +398,51 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   return CVI_SUCCESS;
 }
 
+CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDstH,
+                    IVE_DST_IMAGE_S *pstDstV, IVE_DST_IMAGE_S *pstDstMag,
+                    IVE_DST_IMAGE_S *pstDstAng, IVE_DST_IMAGE_S *pstDstBlk,
+                    IVE_DST_IMAGE_S *pstDstHist, IVE_HOG_CTRL_S *pstHogCtrl, bool bInstant) {
+  if (pstDstHist->enType != IVE_IMAGE_TYPE_U32C1 && pstDstHist->tpu_block != NULL) {
+    std::cerr << "Histogram enType only supports IVE_IMAGE_TYPE_U32C1." << std::endl;
+    return CVI_FAILURE;
+  }
+  if (pstDstHist->u16Height != 1 || pstDstHist->u16Width != pstHogCtrl->bin_num) {
+    std::cerr << "Histogram shape size not match the bin num! " << std::endl;
+    return CVI_FAILURE;
+  }
+  IVE_SOBEL_CTRL_S iveSblCtrl;
+  iveSblCtrl.enOutCtrl = IVE_SOBEL_OUT_CTRL_BOTH;
+  if (CVI_IVE_Sobel(pIveHandle, pstSrc, pstDstH, pstDstV, &iveSblCtrl, 0) != CVI_SUCCESS) {
+    return CVI_FAILURE;
+  }
+  if (CVI_IVE_MagAndAng(pIveHandle, pstDstH, pstDstV, pstDstMag, pstDstAng, 0) != CVI_SUCCESS) {
+    return CVI_FAILURE;
+  }
+
+  // Create Block
+  IVE_BLOCK_CTRL_S iveBlkCtrl;
+  iveBlkCtrl.bin_num = 1;
+  iveBlkCtrl.cell_size = pstHogCtrl->cell_size;
+  if (CVI_IVE_BLOCK(pIveHandle, pstDstAng, pstDstBlk, &iveBlkCtrl, 0) != CVI_SUCCESS) {
+    return CVI_FAILURE;
+  }
+  // Get Histogram
+  u16 *blk_ptr = (u16 *)pstDstBlk->pu8VirAddr[0];
+  u32 *hog_ptr = (u32 *)pstDstHist->pu8VirAddr[0];
+  memset(hog_ptr, 0, pstDstHist->u16Width * pstDstHist->u16Height * sizeof(u32));
+  u16 div = 360 / pstHogCtrl->bin_num;
+  for (u64 i = 0; i < pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
+    float degree = convert_bf16_fp32(blk_ptr[i]);
+    u32 index = degree < 0 ? (u32)((360 + degree) / div) : (u32)(degree / div);
+    if (index > pstHogCtrl->bin_num) {
+      std::cout << "Histogram index out of range. Original degree " << degree << std::endl;
+      return CVI_FAILURE;
+    }
+    hog_ptr[index]++;
+  }
+  return CVI_SUCCESS;
+}
+
 CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_SRC_IMAGE_S *pstSrcV,
                           IVE_DST_IMAGE_S *pstDstMag, IVE_DST_IMAGE_S *pstDstAng, bool bInstant) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);

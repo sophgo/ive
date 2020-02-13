@@ -125,6 +125,11 @@ typedef struct IVE_FILTER_CTRL {
   CVI_S8 u8Norm;
 } IVE_FILTER_CTRL_S;
 
+typedef struct IVE_HOG_CTRL {
+  CVI_U8 bin_num;
+  CVI_U32 cell_size;
+} IVE_HOG_CTRL_S;
+
 typedef enum IVE_SOBEL_OUT_CTRL {
   IVE_SOBEL_OUT_CTRL_BOTH = 0x0, /*Output horizontal and vertical*/
   IVE_SOBEL_OUT_CTRL_HOR = 0x1,  /*Output horizontal*/
