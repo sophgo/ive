@@ -264,18 +264,23 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
-  if (cpp_dst->m_tg.fmt == FMT_U8) {
+  if ((cpp_src->m_tg.fmt != FMT_U8 && cpp_src->m_tg.fmt != FMT_BF16) &&
+      (cpp_dst->m_tg.fmt != FMT_U8 && cpp_dst->m_tg.fmt != FMT_BF16)) {
+    std::cerr << "CVI Block only supports U8/ BF16." << std::endl;
+    return CVI_NOT_SUPPORTED;
+  }
+  if (cpp_src->m_tg.fmt == FMT_U8 && cpp_dst->m_tg.fmt == FMT_U8) {
+    handle_ctx->t_h.t_block.setBinNum(pstBlkCtrl->bin_num);
     handle_ctx->t_h.t_block.setCellSize(cell_size, cpp_src->m_tg.shape.c);
     handle_ctx->t_h.t_block.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_block.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
                                                 &outputs);
-  } else if (cpp_dst->m_tg.fmt == FMT_BF16) {
+  } else {
+    handle_ctx->t_h.t_block_bf16.setBinNum(pstBlkCtrl->bin_num);
     handle_ctx->t_h.t_block_bf16.setCellSize(cell_size, cpp_src->m_tg.shape.c);
     handle_ctx->t_h.t_block_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_block_bf16.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
                                                      &outputs);
-  } else {
-    return CVI_NOT_SUPPORTED;
   }
   return CVI_SUCCESS;
 }

@@ -109,6 +109,7 @@ typedef struct IVE_ADD_CTRL_S {
 } IVE_ADD_CTRL_S;
 
 typedef struct IVE_BLOCK_CTRL {
+  CVI_FLOAT bin_num;
   CVI_U32 cell_size;
 } IVE_BLOCK_CTRL_S;
 

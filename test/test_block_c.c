@@ -33,7 +33,7 @@ static char test_array[] = {
 #define TEST_H 20
 #define CELL_SZ 5
 
-int cpu_ref(const int res_w, const int res_h, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dst_u8, IVE_DST_IMAGE_S *dst_fp32);
+int cpu_ref(const int res_w, const int res_h, const CVI_U32 bin_size, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dst_u8, IVE_DST_IMAGE_S *dst_fp32);
 
 int main(int argc, char **argv) {
   CVI_SYS_LOGGING(argv[0]);
@@ -54,6 +54,7 @@ int main(int argc, char **argv) {
 
   printf("Run TPU Block.\n");
   IVE_BLOCK_CTRL_S iveBlkCtrl;
+  iveBlkCtrl.bin_num = 2;
   iveBlkCtrl.cell_size = CELL_SZ;
   CVI_IVE_BLOCK(handle, &src, &dst, &iveBlkCtrl, 0);
   CVI_IVE_BLOCK(handle, &src, &dst_bf16, &iveBlkCtrl, 0);
@@ -62,7 +63,7 @@ int main(int argc, char **argv) {
   iveItcCtrl.enType = IVE_ITC_SATURATE;
   CVI_IVE_ImageTypeConvert(handle, &dst_bf16, &dst_fp32, &iveItcCtrl, 0);
 
-  int ret = cpu_ref(res_w, res_h, &src, &dst, &dst_fp32);
+  int ret = cpu_ref(res_w, res_h, iveBlkCtrl.bin_num, &src, &dst, &dst_fp32);
 
   // Free memory, instance
   CVI_SYS_Free(handle, &src);
@@ -74,7 +75,7 @@ int main(int argc, char **argv) {
   return ret;
 }
 
-int cpu_ref(const int res_w, const int res_h, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dst_u8, IVE_DST_IMAGE_S *dst_fp32) {
+int cpu_ref(const int res_w, const int res_h, const CVI_U32 bin_size, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dst_u8, IVE_DST_IMAGE_S *dst_fp32) {
   int ret = CVI_SUCCESS;
   float *cpu_result = malloc(res_h * res_w * sizeof(float));
   memset(cpu_result, 0, res_h * res_w * sizeof(float));
@@ -86,14 +87,20 @@ int cpu_ref(const int res_w, const int res_h, IVE_SRC_IMAGE_S *src, IVE_DST_IMAG
   }
   for (size_t i = 0; i < res_h; i++) {
     for (size_t j = 0; j < res_w; j++) {
-      cpu_result[i * res_w + j] /= CELL_SZ * CELL_SZ;
+      cpu_result[i * res_w + j] /= CELL_SZ * CELL_SZ * bin_size;
     }
   }
 
   for (size_t i = 0; i < res_h; i++) {
     for (size_t j = 0; j < res_w; j++) {
-      if (cpu_result[i * res_w + j] != (float)dst_u8->pu8VirAddr[0][i * res_w + j]) {
-        printf("%d ", dst_u8->pu8VirAddr[0][i * res_w + j]);
+      float f_res = cpu_result[i * res_w + j];
+      int int_result = f_res;
+      // FIXME: Need check
+      if ((int)int_result != f_res) {
+        int_result++;
+      }
+      if (int_result != dst_u8->pu8VirAddr[0][i * res_w + j]) {
+        printf("%d %d \n", int_result, dst_u8->pu8VirAddr[0][i * res_w + j]);
         ret = CVI_FAILURE;
         break;
       }
@@ -102,7 +109,7 @@ int cpu_ref(const int res_w, const int res_h, IVE_SRC_IMAGE_S *src, IVE_DST_IMAG
   for (size_t i = 0; i < res_h; i++) {
     for (size_t j = 0; j < res_w; j++) {
       if (cpu_result[i * res_w + j] != ((float*)dst_fp32->pu8VirAddr[0])[i * res_w + j]) {
-        printf("%f ", ((float*)dst_fp32->pu8VirAddr[0])[i * res_w + j]);
+        printf("%f %f \n", cpu_result[i * res_w + j], ((float*)dst_fp32->pu8VirAddr[0])[i * res_w + j]);
         ret = CVI_FAILURE;
         break;
       }

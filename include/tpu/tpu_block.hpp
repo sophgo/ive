@@ -3,6 +3,7 @@
 
 class IveTPUBlock : public IveCore {
  public:
+  void setBinNum(const float bin_num);
   void setCellSize(const int cell_size, const int channel = 3);
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) override;
 
@@ -15,12 +16,14 @@ class IveTPUBlock : public IveCore {
   virtual void operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) override;
 
  private:
+  float m_bin_num = 1;
   u32 m_channel = 3;
   bmk1880v2_tiu_depthwise_convolution_qdm_param_t m_p_conv;
 };
 
 class IveTPUBlockBF16 : public IveCore {
  public:
+  void setBinNum(const float bin_num);
   void setCellSize(const int cell_size, const int channel = 3);
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) override;
 
@@ -33,6 +36,7 @@ class IveTPUBlockBF16 : public IveCore {
   virtual void operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) override;
 
  private:
+  float m_bin_num = 1;
   u32 m_channel = 3;
   bmk1880v2_tiu_depthwise_convolution_param_t m_p_conv;
   bmk1880v2_tiu_element_wise_mul_param_t m_p_mul;

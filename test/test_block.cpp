@@ -53,6 +53,7 @@ int main(int argc, char** argv) {
   printf("Run TPU Block.\n");
   // Run TPU Add
   IveTPUBlock tpu_block;
+  tpu_block.setBinNum(1);
   tpu_block.setCellSize(5, 1);
   tpu_block.init(&ctx, bk_ctx);
   tpu_block.runSingleSizeKernel(&ctx, bk_ctx, inputs, &outputs);
@@ -68,6 +69,7 @@ int main(int argc, char** argv) {
   outputs.clear();
   outputs.emplace_back(result2);
   IveTPUBlockBF16 tpu_block_bf16;
+  tpu_block_bf16.setBinNum(1);
   tpu_block_bf16.setCellSize(5, 1);
   tpu_block_bf16.init(&ctx, bk_ctx);
   tpu_block_bf16.runSingleSizeKernel(&ctx, bk_ctx, inputs, &outputs);

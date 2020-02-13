@@ -3,6 +3,8 @@
 #include <string.h>
 #include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 
+void IveTPUBlockBF16::setBinNum(const float bin_num) { m_bin_num = bin_num; }
+
 void IveTPUBlockBF16::setCellSize(const int cell_size, const int channel) {
   m_kernel_info.size = cell_size;
   int pad = 0;
@@ -58,7 +60,7 @@ int IveTPUBlockBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_block_shape.w = m_kernel_info.size;
   auto *block_kernel = allocTLMem(bk_ctx, tl_block_shape, FMT_BF16, 1);
   constantFillTL(ctx, bk_ctx, convert_fp32_bf16(1.f), block_kernel);
-  float real_multiplier = 1.f / (m_kernel_info.size * m_kernel_info.size);
+  float real_multiplier = 1.f / (m_kernel_info.size * m_kernel_info.size * m_bin_num);
 
   m_p_conv.pad_top = m_kernel_info.pad[2];
   m_p_conv.pad_bottom = m_kernel_info.pad[3];
