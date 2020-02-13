@@ -20,8 +20,7 @@ int CviImg::Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt) {
   this->m_tg.fmt = fmt;
   this->m_size = this->m_tg.shape.n * this->m_tg.shape.c * this->m_tg.shape.h * this->m_tg.shape.w *
                  getFmtSize(m_tg.fmt);
-  AllocateDevice(ctx);
-  return 0;
+  return AllocateDevice(ctx);
 }
 
 const bool CviImg::IsInit() { return this->m_bmmem == NULL ? false : true; }
@@ -42,6 +41,10 @@ int CviImg::AllocateDevice(bmctx_t *ctx) {
       case FMT_I8: {
         bms = BM_TENSOR_INT8((int)m_tg.shape.n, (int)m_tg.shape.c, (int)m_tg.shape.h,
                              (int)m_tg.shape.w);
+      } break;
+      case FMT_I16: {
+        bms = BM_TENSOR_INT16((int)m_tg.shape.n, (int)m_tg.shape.c, (int)m_tg.shape.h,
+                              (int)m_tg.shape.w);
       } break;
       case FMT_BF16: {
         bms = BM_TENSOR_BF16((int)m_tg.shape.n, (int)m_tg.shape.c, (int)m_tg.shape.h,

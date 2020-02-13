@@ -84,19 +84,50 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
       fmt_size = 2;
       fmt = FMT_BF16;
       break;
+    case IVE_IMAGE_TYPE_S16C1:
+      fmt_size = 2;
+      fmt = FMT_I16;
+      break;
+    case IVE_IMAGE_TYPE_U32C1:
+      fmt_size = 4;
+      fmt = FMT_INVALID;
+      break;
     case IVE_IMAGE_TYPE_FP32C1:
       fmt_size = 4;
       fmt = FMT_F32;
       break;
     default:
       std::cerr << "Not supported enType " << enType << std::endl;
-      return 1;
+      return CVI_FAILURE;
       break;
   }
   int total_size = c * u16Width * u16Height * fmt_size;
-  pstImg->tpu_block =
-      reinterpret_cast<CVI_IMG *>(new CviImg(&handle_ctx->ctx, c, u16Height, u16Width, fmt));
-  auto *cpp_img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
+  // Special case for unsupported I32/U32 images
+  // FIXME: Put thosinto bmkernel, bmruntime
+  if (fmt == FMT_INVALID) {
+    pstImg->tpu_block = NULL;
+    pstImg->enType = enType;
+    pstImg->u16Width = u16Width;
+    pstImg->u16Height = u16Height;
+    pstImg->u16Reserved = fmt_size;
+    int img_sz = pstImg->u16Width * pstImg->u16Height * fmt_size * c;
+    uint8_t *arr = new uint8_t[img_sz];
+    for (size_t i = 0; i < (size_t)c; i++) {
+      pstImg->pu8VirAddr[i] = arr + i * img_sz;
+      pstImg->u64PhyAddr[i] = i * img_sz;
+      pstImg->u16Stride[i] = pstImg->u16Width;
+    }
+
+    for (size_t i = c; i < 3; i++) {
+      pstImg->pu8VirAddr[i] = NULL;
+      pstImg->u64PhyAddr[i] = -1;
+      pstImg->u16Stride[i] = 0;
+    }
+    return CVI_SUCCESS;
+  }
+
+  auto *cpp_img = new CviImg(&handle_ctx->ctx, c, u16Height, u16Width, fmt);
+  pstImg->tpu_block = reinterpret_cast<CVI_IMG *>(cpp_img);
 
   pstImg->enType = enType;
   pstImg->u16Width = cpp_img->m_tg.shape.w;
@@ -120,9 +151,13 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
 
 CVI_S32 CVI_SYS_Free(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  auto *cpp_img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
-  cpp_img->Free(&handle_ctx->ctx);
-  delete cpp_img;
+  if (pstImg->tpu_block == NULL) {
+    delete[] pstImg->pu8VirAddr[0];
+  } else {
+    auto *cpp_img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
+    cpp_img->Free(&handle_ctx->ctx);
+    delete cpp_img;
+  }
   return CVI_SUCCESS;
 }
 
