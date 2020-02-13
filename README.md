@@ -2,11 +2,11 @@
 
 This is an Image Processing library using TPU on CVI1835.
 
+**bmtap2 docker environment is recomended.**
+
 ## How to build
 
-**Cmodel library, you can get it from bmtap2. The compiled library should be placed under ``prebuilt/cmodel_bm1880v2``. bmtap2 docker environment is recomended.**
-
-**Middleware headers are required. Put them under ``prebuilt/middleware``.**
+You'll need Middleware headers and bmtap2 library to build this project. You can let CMake get it for you from FTP server with the following command.
 
 ```
 $ mkdir build
@@ -14,6 +14,17 @@ $ cd build
 $ cmake ..
 $ make -j8
 ```
+
+Or you can manually assign the root folder of the prebuilt libraries.
+
+```
+$ mkdir build
+$ cd build
+$ cmake .. -DLIBDEP_MIDDLEWARE_DIR=<middleware root folder> -DLIBDEP_BMTAP2_DIR=<bmtap2 root folder>
+$ make -j8
+```
+
+**Note: You'll need to connect to VPN to get prebuilt files from FTP.**
 
 You may install the library with the following command.
 
@@ -31,6 +42,7 @@ $make install
 6. Sobel X/ Y Gradient
 7. Sub
    1. a - b
+   2. abs(a - b)
 8. Threshold
    1. Binary threshold w/o high low value
    2. Slope
@@ -42,10 +54,8 @@ $make install
 2. Currently TPU API does not support TL(BF16) to TG(FP32).
 3. Some required API is missing,
    1. auto channel expansion
-   2. atan2
-   3. sqrt
-   4. div
-4. ``cvi_type.h`` may miss some ``#define``
+   2. div
+4. Middleware include header ``cvi_type.h`` may miss some ``#define``
 
 ```
 typedef unsigned short          CVI_U0Q16;

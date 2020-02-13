@@ -5,6 +5,20 @@
 
 if("${LIBDEP_BMTAP2_DIR}" STREQUAL "")
     set(LIBDEP_BMTAP2_DIR ${CMAKE_SOURCE_DIR}/prebuilt/${BMTAP2_TARGET_BASENAME})
+    if(EXISTS "${LIBDEP_BMTAP2_DIR}")
+      message("Middleware dolder found.")
+    else()
+      message("Folder not found, downloading...")
+      set(MD5_HASH 0c62d0043d6a27924697b7c72e2c2d62)
+      set(FILE_NAME cmodel_bm1880v2-20200213.7z)
+      set(WORK_DIR ${CMAKE_SOURCE_DIR}/prebuilt)
+      include(${CMAKE_SOURCE_DIR}/cmake/downanddecompress.cmake)
+      download_and_decompress(ftp://10.34.33.5/ai/prebuilt/ive/${FILE_NAME}
+                              ${FILE_NAME}
+                              ${WORK_DIR}
+                              MD5
+                              ${MD5_HASH})
+    endif()
 endif()
 
 include_directories(
