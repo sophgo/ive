@@ -171,6 +171,30 @@ int IveTPUMadAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_mul_const.b_is_const = 1;
   m_p_mul_const.b_val = convert_fp32_bf16(180.f / M_PI);
 
+  // // abs
+  // m_p_fill.constant = convert_fp32_bf16(0.f);
+  // m_p_fill.dst = tl_buf;
+
+  // m_p_min.a = tl_angle;
+  // m_p_min.b = tl_buf;
+  // m_p_min.b_is_const = 0;
+  // m_p_min.bf16_enable = 1;
+  // m_p_min.min = tl_buf2;
+
+  // m_p_max.a = tl_angle;
+  // m_p_max.b = tl_buf;
+  // m_p_max.b_is_const = 0;
+  // m_p_max.bf16_enable = 1;
+  // m_p_max.max = tl_buf3;
+
+  // m_p_sub.a_high = NULL;
+  // m_p_sub.a_low = tl_buf3;
+  // m_p_sub.b_high = NULL;
+  // m_p_sub.b_low = tl_buf2;
+  // m_p_sub.res_high = NULL;
+  // m_p_sub.res_low = tl_angle;
+  // m_p_sub.bf16_enable = 1;
+
   tl_in_idx->push_back(0);
   tl_in_idx->push_back(1);
   tl_out_idx->push_back(2);
@@ -191,4 +215,8 @@ void IveTPUMadAndAng::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
                   m_p_atan2.sqrt_table_answer_mantissa, m_p_atan2.idx_0_table, m_p_atan2.res,
                   m_p_atan2.fmt);
   bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_const);
+  // bmk1880v2_tdma_tg2l_bf16_tensor_fill_constant(bk_ctx, &m_p_fill);
+  // bmk1880v2_tiu_bf16_element_wise_min(bk_ctx, &m_p_min);
+  // bmk1880v2_tiu_bf16_element_wise_max(bk_ctx, &m_p_max);
+  // bmk1880v2_tiu_bf16_element_wise_sub(bk_ctx, &m_p_sub);
 }

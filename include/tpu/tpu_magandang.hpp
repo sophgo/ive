@@ -18,4 +18,10 @@ class IveTPUMadAndAng : public IveCore {
   bmk1880v2_tiu_non_atomic_sqrt_param_t m_p_sqrt;
   bmk1880v2_tiu_non_atomic_atan2_param_t m_p_atan2;
   bmk1880v2_tiu_element_wise_mul_param_t m_p_mul_const;
+
+  // TODO: Temporarily disable abs
+  // bmk1880v2_tdma_tg2l_tensor_fill_constant_param_t m_p_fill;
+  // bmk1880v2_tiu_element_wise_max_param_t m_p_max;
+  // bmk1880v2_tiu_element_wise_min_param_t m_p_min;
+  // bmk1880v2_tiu_element_wise_sub_param_t m_p_sub;
 };
