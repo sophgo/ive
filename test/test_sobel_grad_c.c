@@ -43,7 +43,10 @@ int main(int argc, char **argv) {
   iveSblCtrl.enOutCtrl = IVE_SOBEL_OUT_CTRL_BOTH;
   CVI_IVE_Sobel(handle, &src, &dstH, &dstV, &iveSblCtrl, 0);
   printf("Run TPU Mag and Ang.\n");
-  CVI_IVE_MagAndAng(handle, &dstH, &dstV, &dstMag, &dstAng, 0);
+  IVE_MAG_AND_ANG_CTRL_S pstMaaCtrl;
+  pstMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG;
+  pstMaaCtrl.no_negative = true;
+  CVI_IVE_MagAndAng(handle, &dstH, &dstV, &dstMag, &dstAng, &pstMaaCtrl, 0);
 
   printf("Normalize result to 0-255.\n");
   IVE_ITC_CRTL_S iveItcCtrl;

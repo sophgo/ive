@@ -130,6 +130,23 @@ typedef struct IVE_HOG_CTRL {
   CVI_U32 cell_size;
 } IVE_HOG_CTRL_S;
 
+typedef enum IVE_MAG_AND_ANG_OUT_CTRL {
+  IVE_MAG_AND_ANG_OUT_CTRL_MAG = 0x0, /*Only the magnitude is output.*/
+  IVE_MAG_AND_ANG_OUT_CTRL_ANG = 0x1,
+  IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG = 0x2, /*The magnitude and angle are output.*/
+  IVE_MAG_AND_ANG_OUT_CTRL_BUTT
+} IVE_MAG_AND_ANG_OUT_CTRL_E;
+
+/*
+ *Magnitude and angle control parameter
+ */
+typedef struct IVE_MAG_AND_ANG_CTRL {
+  IVE_MAG_AND_ANG_OUT_CTRL_E enOutCtrl;
+  CVI_U16 u16Thr;
+  CVI_S8 as8Mask[25]; /*Template parameter.*/
+  CVI_BOOL no_negative;
+} IVE_MAG_AND_ANG_CTRL_S;
+
 typedef enum IVE_SOBEL_OUT_CTRL {
   IVE_SOBEL_OUT_CTRL_BOTH = 0x0, /*Output horizontal and vertical*/
   IVE_SOBEL_OUT_CTRL_HOR = 0x1,  /*Output horizontal*/

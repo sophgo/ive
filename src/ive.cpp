@@ -25,7 +25,7 @@ struct TPU_HANDLE {
   IveTPUErode t_erode;
   IveTPUFilter t_filter;
   IveTPUFilterBF16 t_filter_bf16;
-  IveTPUMadAndAng t_magandang;
+  IveTPUMagAndAng t_magandang;
   IveTPUOr t_or;
   IveTPUSobelGradOnly t_sobel_gradonly;
   IveTPUSobel t_sobel;
@@ -415,7 +415,11 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   if (CVI_IVE_Sobel(pIveHandle, pstSrc, pstDstH, pstDstV, &iveSblCtrl, 0) != CVI_SUCCESS) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_MagAndAng(pIveHandle, pstDstH, pstDstV, pstDstMag, pstDstAng, 0) != CVI_SUCCESS) {
+  IVE_MAG_AND_ANG_CTRL iveMaaCtrl;
+  iveMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_ANG;
+  iveMaaCtrl.no_negative = true;
+  if (CVI_IVE_MagAndAng(pIveHandle, pstDstH, pstDstV, pstDstMag, pstDstAng, &iveMaaCtrl, 0) !=
+      CVI_SUCCESS) {
     return CVI_FAILURE;
   }
 
@@ -431,28 +435,78 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   u32 *hog_ptr = (u32 *)pstDstHist->pu8VirAddr[0];
   memset(hog_ptr, 0, pstDstHist->u16Width * pstDstHist->u16Height * sizeof(u32));
   u16 div = 360 / pstHogCtrl->bin_num;
-  for (u64 i = 0; i < pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
-    float degree = convert_bf16_fp32(blk_ptr[i]);
-    u32 index = degree < 0 ? (u32)((360 + degree) / div) : (u32)(degree / div);
-    if (index > pstHogCtrl->bin_num) {
-      std::cout << "Histogram index out of range. Original degree " << degree << std::endl;
-      return CVI_FAILURE;
+  if (iveMaaCtrl.no_negative) {
+    for (u64 i = 0; i < pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
+      float degree = convert_bf16_fp32(blk_ptr[i]);
+      u32 index = (u32)(degree / div);
+      if (index > pstHogCtrl->bin_num) {
+        std::cout << "Histogram index out of range. Original degree " << degree << std::endl;
+        return CVI_FAILURE;
+      }
+      hog_ptr[index]++;
     }
-    hog_ptr[index]++;
+  } else {
+    for (u64 i = 0; i < pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
+      float degree = convert_bf16_fp32(blk_ptr[i]);
+      u32 index = degree < 0 ? (u32)((360 + degree) / div) : (u32)(degree / div);
+      if (index > pstHogCtrl->bin_num) {
+        std::cout << "Histogram index out of range. Original degree " << degree << std::endl;
+        return CVI_FAILURE;
+      }
+      hog_ptr[index]++;
+    }
   }
   return CVI_SUCCESS;
 }
 
 CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_SRC_IMAGE_S *pstSrcV,
-                          IVE_DST_IMAGE_S *pstDstMag, IVE_DST_IMAGE_S *pstDstAng, bool bInstant) {
+                          IVE_DST_IMAGE_S *pstDstMag, IVE_DST_IMAGE_S *pstDstAng,
+                          IVE_MAG_AND_ANG_CTRL_S *pstMaaCtrl, bool bInstant) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  handle_ctx->t_h.t_magandang.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrcH->tpu_block);
   CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrcV->tpu_block);
-  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDstMag->tpu_block);
-  CviImg *cpp_dst2 = reinterpret_cast<CviImg *>(pstDstAng->tpu_block);
+  CviImg *cpp_dst =
+      (pstDstMag != NULL) ? reinterpret_cast<CviImg *>(pstDstMag->tpu_block) : nullptr;
+  CviImg *cpp_dst2 =
+      (pstDstAng != NULL) ? reinterpret_cast<CviImg *>(pstDstAng->tpu_block) : nullptr;
   std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
-  std::vector<CviImg> outputs = {*cpp_dst, *cpp_dst2};
+  std::vector<CviImg> outputs;
+  switch (pstMaaCtrl->enOutCtrl) {
+    case IVE_MAG_AND_ANG_OUT_CTRL_MAG: {
+      if (pstDstMag == NULL) {
+        std::cerr << "Under mode IVE_MAG_AND_ANG_OUT_CTRL_MAG Magnitude image cannot be NULL."
+                  << std::endl;
+        return CVI_FAILURE;
+      }
+      handle_ctx->t_h.t_magandang.exportOption(true, false);
+      outputs.emplace_back(*cpp_dst);
+    } break;
+    case IVE_MAG_AND_ANG_OUT_CTRL_ANG: {
+      if (pstDstAng == NULL) {
+        std::cerr << "Under mode IVE_MAG_AND_ANG_OUT_CTRL_ANG angle image cannot be NULL."
+                  << std::endl;
+        return CVI_FAILURE;
+      }
+      handle_ctx->t_h.t_magandang.exportOption(false, true);
+      outputs.emplace_back(*cpp_dst2);
+    } break;
+    case IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG: {
+      if (pstDstMag == NULL || pstDstAng == NULL) {
+        std::cerr << "Under mode IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG both outputs cannot be NULL."
+                  << std::endl;
+        return CVI_FAILURE;
+      }
+      handle_ctx->t_h.t_magandang.exportOption(true, true);
+      outputs.emplace_back(*cpp_dst);
+      outputs.emplace_back(*cpp_dst2);
+    } break;
+    default:
+      std::cerr << "Not supported Mag and Angle type." << std::endl;
+      return CVI_FAILURE;
+      break;
+  }
+  handle_ctx->t_h.t_magandang.noNegative(pstMaaCtrl->no_negative);
+  handle_ctx->t_h.t_magandang.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
 
   handle_ctx->t_h.t_magandang.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
                                                   &outputs);
