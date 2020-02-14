@@ -125,6 +125,24 @@ typedef struct IVE_FILTER_CTRL {
   CVI_S8 u8Norm;
 } IVE_FILTER_CTRL_S;
 
+typedef enum IVE_NORM_GRAD_OUT_CTRL {
+  IVE_NORM_GRAD_OUT_CTRL_HOR_AND_VER = 0x0,
+  IVE_NORM_GRAD_OUT_CTRL_HOR = 0x1,
+  IVE_NORM_GRAD_OUT_CTRL_VER = 0x2,
+  IVE_NORM_GRAD_OUT_CTRL_COMBINE = 0x3,
+
+  IVE_NORM_GRAD_OUT_CTRL_BUTT
+} IVE_NORM_GRAD_OUT_CTRL_E;
+
+/*
+ *GradientFilter control parameters
+ */
+typedef struct IVE_NORM_GRAD_CTRL {
+  IVE_NORM_GRAD_OUT_CTRL_E enOutCtrl;
+  CVI_S8 as8Mask[25];
+  CVI_U8 u8Norm;
+} IVE_NORM_GRAD_CTRL_S;
+
 typedef struct IVE_HOG_CTRL {
   CVI_U8 bin_num;
   CVI_U32 cell_size;
