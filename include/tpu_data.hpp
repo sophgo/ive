@@ -113,6 +113,14 @@ class CviImg {
   CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt);
 
   /**
+   * @brief Construct a new Cvi Img object
+   *
+   * @param ctx bm context
+   * @param img cvi_img
+   */
+  CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2);
+
+  /**
    * @brief Construct a new CviImg object
    *
    * @param ctx bm context

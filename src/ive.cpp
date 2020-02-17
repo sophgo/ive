@@ -136,7 +136,7 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
   pstImg->u16Height = cpp_img->m_tg.shape.h;
   pstImg->u16Reserved = fmt_size;
 
-  int img_sz = pstImg->u16Width * pstImg->u16Height * fmt_size;
+  int img_sz = cpp_img->m_tg.stride.h * pstImg->u16Height * fmt_size;
   for (size_t i = 0; i < cpp_img->m_tg.shape.c; i++) {
     pstImg->pu8VirAddr[i] = cpp_img->GetVAddr() + i * img_sz;
     pstImg->u64PhyAddr[i] = cpp_img->GetPAddr() + i * img_sz;
@@ -147,6 +147,44 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
     pstImg->pu8VirAddr[i] = NULL;
     pstImg->u64PhyAddr[i] = -1;
     pstImg->u16Stride[i] = 0;
+  }
+  return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                         CVI_U16 u16X1, CVI_U16 u16Y1, CVI_U16 u16X2, CVI_U16 u16Y2) {
+  if (pstSrc->tpu_block == NULL) {
+    std::cerr << "Currently not support I32/ U32 sub image." << std::endl;
+    return CVI_FAILURE;
+  }
+  if (u16X1 >= u16X2 || u16Y1 >= u16Y2) {
+    std::cerr << "(X1, Y1) must smaller than (X2, Y2)." << std::endl;
+    return CVI_FAILURE;
+  }
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  auto *src_img = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+  auto *cpp_img = new CviImg(&handle_ctx->ctx, *src_img, u16X1, u16Y1, u16X2, u16Y2);
+  if (cpp_img == nullptr) {
+    return CVI_FAILURE;
+  }
+  pstDst->tpu_block = reinterpret_cast<CVI_IMG *>(cpp_img);
+
+  pstDst->enType = pstSrc->enType;
+  pstDst->u16Width = cpp_img->m_tg.shape.w;
+  pstDst->u16Height = cpp_img->m_tg.shape.h;
+  pstDst->u16Reserved = pstSrc->u16Reserved;
+
+  int img_sz = cpp_img->m_tg.stride.h * pstDst->u16Height * pstSrc->u16Reserved;
+  for (size_t i = 0; i < cpp_img->m_tg.shape.c; i++) {
+    pstDst->pu8VirAddr[i] = cpp_img->GetVAddr() + i * img_sz;
+    pstDst->u64PhyAddr[i] = cpp_img->GetPAddr() + i * img_sz;
+    pstDst->u16Stride[i] = cpp_img->m_tg.stride.h;
+  }
+
+  for (size_t i = cpp_img->m_tg.shape.c; i < 3; i++) {
+    pstDst->pu8VirAddr[i] = NULL;
+    pstDst->u64PhyAddr[i] = -1;
+    pstDst->u16Stride[i] = 0;
   }
   return CVI_SUCCESS;
 }
