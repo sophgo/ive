@@ -58,7 +58,7 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     bmruntime_bmkernel_submit(*ctx);
     cvi_multi.Free(ctx);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
-    tl_multiplier->stride = bmk1880v2_tensor_lmem_default_stride(bk_ctx, m_tl_vec[3]->shape, 0);
+    tl_multiplier->stride = bmk1880v2_tensor_lmem_default_stride(bk_ctx, tl_multiplier->shape, 0);
   }
 
   m_p_conv.pad_top = m_kernel_info.pad[2];

@@ -290,9 +290,13 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
                       IVE_BLOCK_CTRL_S *pstBlkCtrl, bool bInstant) {
   CVI_U32 cell_size = pstBlkCtrl->cell_size;
   if (pstDst->u16Width != (pstSrc->u16Width / cell_size)) {
+    std::cerr << "Dst block width not match! Src: " << pstSrc->u16Width
+              << ", dst: " << pstDst->u16Width << ", cell size: " << cell_size << std::endl;
     return CVI_FAILURE;
   }
   if (pstDst->u16Height != (pstSrc->u16Height / cell_size)) {
+    std::cerr << "Dst block height not match! Src: " << pstSrc->u16Height
+              << ", dst: " << pstDst->u16Height << ", cell size: " << cell_size << std::endl;
     return CVI_FAILURE;
   }
 
@@ -662,7 +666,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
                                                       &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
   } else {
-    return 1;
+    return CVI_NOT_SUPPORTED;
   }
   return CVI_SUCCESS;
 }
@@ -671,7 +675,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
                     IVE_DST_IMAGE_S *pstDst, IVE_SUB_CTRL_S *ctrl, bool bInstant) {
   int ret = CVI_NOT_SUPPORTED;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  if (ctrl->enMode == IVE_SUB_MODE_BUTT) {
+  if (ctrl->enMode == IVE_SUB_MODE_NORMAL) {
     ret = CVI_SUCCESS;
     handle_ctx->t_h.t_sub.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
