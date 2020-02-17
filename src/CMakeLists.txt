@@ -35,6 +35,9 @@ target_link_libraries(cvi_ive_tpu cvi_tpu_math ${BM_LIBS})
 set_target_properties(${FEXT_NAME} PROPERTIES
                      VERSION ${QNN_VERSION_STRING}
                      SOVERSION ${QNN_VERSION_MAJOR})
+add_library(cvi_ive_tpu-static ${SRC})
+target_link_libraries(cvi_ive_tpu-static cvi_tpu_math ${BM_LIBS})
 install(TARGETS cvi_ive_tpu DESTINATION lib)
+install(TARGETS cvi_ive_tpu-static DESTINATION lib)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/cvi_comm_ive.h DESTINATION include/ive)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/ive.h DESTINATION include/ive)
