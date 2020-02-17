@@ -95,14 +95,6 @@ int IveTPUBlockBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return BM_SUCCESS;
 }
 
-static inline float convert_bf16_fp32_2(u16 bf16) {
-  float fp32;
-  u16 *fparr = (u16 *)&fp32;
-  fparr[1] = bf16;
-  fparr[0] = 0;
-  return fp32;
-}
-
 void IveTPUBlockBF16::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   bmk1880v2_tiu_bf16_depthwise_convolution(bk_ctx, &m_p_conv);
   bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul);

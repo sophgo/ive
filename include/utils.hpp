@@ -2,6 +2,7 @@
 #include "debug.hpp"
 #include "tpu_data.hpp"
 
+#include <bmkernel/bm1880v2/1880v2_fp_convert.h>
 #include <bmkernel/bm1880v2/bmkernel_1880v2.h>
 #include <libbmruntime/bmruntime_bmkernel.h>
 
@@ -25,6 +26,28 @@ inline void createHandle(bmctx_t *ctx, bmk1880v2_context_t **bmk) {
 inline void destroyHandle(bmctx_t *ctx) {
   bmruntime_bmkernel_destroy(*ctx);
   bm_exit(*ctx);
+}
+
+inline void genTableBF16(u16 *table_pos_neg, bmk1880v2_tensor_lmem_shape_t *table_shape,
+                         float min_value, float max_value) {
+  u32 half = table_shape->h * table_shape->w / 2;
+  int table_hw = table_shape->h * table_shape->w;
+
+  // data >= 0
+  for (u32 i = 0; i < half; i++) {
+    table_pos_neg[i] = convert_fp32_bf16(max_value);
+  }
+
+  // data < 0
+  for (u32 i = half; i < half * 2; i++) {
+    table_pos_neg[i] = convert_fp32_bf16(min_value);
+  }
+
+  // duplicate channel #1 to #31
+  // TODO: tensor copy
+  for (u64 i = 1; i < table_shape->c; i++) {
+    memcpy(&table_pos_neg[table_hw * i], &table_pos_neg[0], sizeof(u16) * table_hw);
+  }
 }
 
 inline bool tgTLShapeCompare(bmk1880v2_tensor_lmem_shape_t &tl_shape,

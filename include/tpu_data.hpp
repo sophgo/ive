@@ -28,6 +28,7 @@ static int getFmtSize(fmt_t fmt) {
     case FMT_U8:
       fmt_size = 1;
       break;
+    case FMT_U16:
     case FMT_I16:
       fmt_size = 2;
       break;

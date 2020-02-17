@@ -20,6 +20,7 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_magandang.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_morph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_or.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sad.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sobel_gradonly.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sobel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sub_abs.cpp

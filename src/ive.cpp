@@ -11,6 +11,7 @@
 #include "tpu/tpu_magandang.hpp"
 #include "tpu/tpu_morph.hpp"
 #include "tpu/tpu_or.hpp"
+#include "tpu/tpu_sad.hpp"
 #include "tpu/tpu_sobel.hpp"
 #include "tpu/tpu_sub.hpp"
 #include "tpu/tpu_threshold.hpp"
@@ -29,6 +30,7 @@ struct TPU_HANDLE {
   IveTPUFilterBF16 t_filter_bf16;
   IveTPUMagAndAng t_magandang;
   IveTPUOr t_or;
+  IveTPUSAD t_sad;
   IveTPUSobelGradOnly t_sobel_gradonly;
   IveTPUSobel t_sobel;
   IveTPUSubAbs t_sub_abs;
@@ -85,6 +87,10 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
     case IVE_IMAGE_TYPE_BF16C1:
       fmt_size = 2;
       fmt = FMT_BF16;
+      break;
+    case IVE_IMAGE_TYPE_U16C1:
+      fmt_size = 2;
+      fmt = FMT_U16;
       break;
     case IVE_IMAGE_TYPE_S16C1:
       fmt_size = 2;
@@ -232,14 +238,6 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   return ret;
 }
 
-static inline float convert_bf16_fp32(u16 bf16) {
-  float fp32;
-  u16 *fparr = (u16 *)&fp32;
-  fparr[1] = bf16;
-  fparr[0] = 0;
-  return fp32;
-}
-
 CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                                  IVE_DST_IMAGE_S *pstDst, IVE_ITC_CRTL_S *pstItcCtrl,
                                  bool bInstant) {
@@ -249,8 +247,43 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
     u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
     float *dst_ptr = (float *)cpp_dst->GetVAddr();
 
-    for (u64 i = 0; i < cpp_src->GetImgSize(); i++) {
+    for (u64 i = 0; i < cpp_src->GetImgSize() / 2; i++) {
       dst_ptr[i] = convert_bf16_fp32(src_ptr[i]);
+    }
+  } else if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_U16) {
+    u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
+    u16 *dst_ptr = (u16 *)cpp_dst->GetVAddr();
+
+    for (u64 i = 0; i < cpp_src->GetImgSize() / 2; i++) {
+      dst_ptr[i] = std::round(convert_bf16_fp32(src_ptr[i]));
+    }
+  } else if (cpp_src->m_tg.fmt == FMT_U16 &&
+             (cpp_dst->m_tg.fmt == FMT_U8 || cpp_dst->m_tg.fmt == FMT_I8)) {
+    u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
+    u8 *dst_ptr = (u8 *)cpp_dst->GetVAddr();
+    if (pstItcCtrl->enType == IVE_ITC_NORMALIZE) {
+      u16 *tmp_arr = new u16[cpp_src->GetImgSize()];
+      u16 min = 65535, max = 0;
+      u64 img_size = cpp_src->m_tg.shape.c * cpp_src->m_tg.shape.h * cpp_src->m_tg.shape.w;
+      for (u64 i = 0; i < img_size; i++) {
+        tmp_arr[i] = src_ptr[i];
+        if (tmp_arr[i] < min) {
+          min = tmp_arr[i];
+        }
+        if (tmp_arr[i] > max) {
+          max = tmp_arr[i];
+        }
+      }
+      float multiplier = 255.f / (float)(max - min);
+      short s8_offset = cpp_dst->m_tg.fmt == FMT_U8 ? 0 : 128;
+      for (u64 i = 0; i < img_size; i++) {
+        dst_ptr[i] = std::round((u8)(multiplier * (tmp_arr[i] - min)) - s8_offset);
+      }
+      delete[] tmp_arr;
+    } else if (pstItcCtrl->enType == IVE_ITC_SATURATE) {
+      for (u64 i = 0; i < cpp_src->GetImgSize() / 2; i++) {
+        dst_ptr[i] = src_ptr[i] > 255 ? 255 : src_ptr[i];
+      }
     }
   } else if (cpp_src->m_tg.fmt == FMT_BF16 &&
              (cpp_dst->m_tg.fmt == FMT_U8 || cpp_dst->m_tg.fmt == FMT_I8)) {
@@ -280,10 +313,10 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
         dst_ptr[i] = std::round(convert_bf16_fp32(src_ptr[i]));
       }
     } else {
-      return 1;
+      return CVI_FAILURE;
     }
   } else {
-    return 1;
+    return CVI_FAILURE;
   }
   return CVI_SUCCESS;
 }
@@ -662,6 +695,95 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
 
   handle_ctx->t_h.t_or.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_SAD(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
+                    IVE_DST_IMAGE_S *pstSad, IVE_DST_IMAGE_S *pstThr, IVE_SAD_CTRL_S *pstSadCtrl,
+                    bool bInstant) {
+  if (pstSrc1->u16Width != pstSrc2->u16Width || pstSrc1->u16Height != pstSrc2->u16Height) {
+    std::cerr << "Two input size must be the same!" << std::endl;
+    return CVI_FAILURE;
+  }
+  CVI_U32 cell_size = 1;
+  switch (pstSadCtrl->enMode) {
+    case IVE_SAD_MODE_MB_4X4:
+      cell_size = 4;
+      break;
+    case IVE_SAD_MODE_MB_8X8:
+      cell_size = 8;
+      break;
+    case IVE_SAD_MODE_MB_16X16:
+      cell_size = 16;
+      break;
+    default:
+      std::cerr << "Unsupported SAD mode " << pstSadCtrl->enMode << std::endl;
+      return CVI_FAILURE;
+      break;
+  }
+  if (pstSad->u16Width != (pstSrc1->u16Width / cell_size)) {
+    std::cerr << "Dst block width not match! Src: " << pstSrc1->u16Width
+              << ", dst: " << pstSad->u16Width << ", cell size: " << cell_size << std::endl;
+    return CVI_FAILURE;
+  }
+  if (pstSad->u16Height != (pstSrc1->u16Height / cell_size)) {
+    std::cerr << "Dst block height not match! Src: " << pstSrc1->u16Height
+              << ", dst: " << pstSad->u16Height << ", cell size: " << cell_size << std::endl;
+    return CVI_FAILURE;
+  }
+  int ret = CVI_SUCCESS;
+  bool do_threshold = (pstSadCtrl->enOutCtrl == IVE_SAD_OUT_CTRL_16BIT_BOTH ||
+                       pstSadCtrl->enOutCtrl == IVE_SAD_OUT_CTRL_8BIT_BOTH ||
+                       pstSadCtrl->enOutCtrl == IVE_SAD_OUT_CTRL_THRESH)
+                          ? true
+                          : false;
+  bool is_output_u8 = (pstSadCtrl->enOutCtrl == IVE_SAD_OUT_CTRL_8BIT_SAD ||
+                       pstSadCtrl->enOutCtrl == IVE_SAD_OUT_CTRL_8BIT_BOTH ||
+                       pstSadCtrl->enOutCtrl == IVE_SAD_OUT_CTRL_THRESH)
+                          ? true
+                          : false;
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
+  CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
+  CviImg *cpp_dst = nullptr;
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+  std::vector<CviImg> outputs;
+  IVE_IMAGE_S dst_BF16;
+  if (!is_output_u8) {
+    ret = CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSad->u16Width,
+                              pstSad->u16Height);
+    cpp_dst = reinterpret_cast<CviImg *>(dst_BF16.tpu_block);
+  } else {
+    cpp_dst = reinterpret_cast<CviImg *>(pstSad->tpu_block);
+  }
+  if (do_threshold) {
+    if (pstSad->u16Width != pstThr->u16Width || pstSad->u16Height != pstThr->u16Height) {
+      std::cerr << "Threshold output size must be the same as SAD output!" << std::endl;
+      return CVI_FAILURE;
+    }
+    CviImg *thresh_dst = reinterpret_cast<CviImg *>(pstThr->tpu_block);
+    if (pstSadCtrl->enOutCtrl == IVE_SAD_OUT_CTRL_THRESH) {
+      outputs.emplace_back(*thresh_dst);
+      handle_ctx->t_h.t_sad.outputThresholdOnly(true);
+    } else {
+      outputs.emplace_back(*cpp_dst);
+      outputs.emplace_back(*thresh_dst);
+    }
+  } else {
+    outputs.emplace_back(*cpp_dst);
+  }
+  handle_ctx->t_h.t_sad.doThreshold(do_threshold);
+  handle_ctx->t_h.t_sad.setThreshold(pstSadCtrl->u16Thr, pstSadCtrl->u8MinVal,
+                                     pstSadCtrl->u8MaxVal);
+  handle_ctx->t_h.t_sad.setCellSize(cell_size, cpp_src1->m_tg.shape.c);
+  handle_ctx->t_h.t_sad.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+  handle_ctx->t_h.t_sad.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  if (!is_output_u8) {
+    IVE_ITC_CRTL_S iveItcCtrl;
+    iveItcCtrl.enType = IVE_ITC_SATURATE;
+    ret = CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstSad, &iveItcCtrl, 0);
+    CVI_SYS_Free(pIveHandle, &dst_BF16);
+  }
+  return ret;
 }
 
 CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDstH,

@@ -60,6 +60,7 @@ int CviImg::AllocateDevice(bmctx_t *ctx) {
         bms = BM_TENSOR_INT8((int)m_tg.shape.n, (int)m_tg.shape.c, (int)m_tg.shape.h,
                              (int)m_tg.shape.w);
       } break;
+      case FMT_U16:
       case FMT_I16: {
         bms = BM_TENSOR_INT16((int)m_tg.shape.n, (int)m_tg.shape.c, (int)m_tg.shape.h,
                               (int)m_tg.shape.w);

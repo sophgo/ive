@@ -165,6 +165,39 @@ typedef struct IVE_MAG_AND_ANG_CTRL {
   CVI_BOOL no_negative;
 } IVE_MAG_AND_ANG_CTRL_S;
 
+/*
+ * Sad mode
+ */
+typedef enum IVE_SAD_MODE {
+  IVE_SAD_MODE_MB_4X4 = 0x0,   /*4x4*/
+  IVE_SAD_MODE_MB_8X8 = 0x1,   /*8x8*/
+  IVE_SAD_MODE_MB_16X16 = 0x2, /*16x16*/
+
+  IVE_SAD_MODE_BUTT
+} IVE_SAD_MODE_E;
+/*
+ *Sad output ctrl
+ */
+typedef enum IVE_SAD_OUT_CTRL {
+  IVE_SAD_OUT_CTRL_16BIT_BOTH = 0x0, /*Output 16 bit sad and thresh*/
+  IVE_SAD_OUT_CTRL_8BIT_BOTH = 0x1,  /*Output 8 bit sad and thresh*/
+  IVE_SAD_OUT_CTRL_16BIT_SAD = 0x2,  /*Output 16 bit sad*/
+  IVE_SAD_OUT_CTRL_8BIT_SAD = 0x3,   /*Output 8 bit sad*/
+  IVE_SAD_OUT_CTRL_THRESH = 0x4,     /*Output thresh,16 bits sad */
+
+  IVE_SAD_OUT_CTRL_BUTT
+} IVE_SAD_OUT_CTRL_E;
+/*
+ * Sad ctrl param
+ */
+typedef struct IVE_SAD_CTRL {
+  IVE_SAD_MODE_E enMode;
+  IVE_SAD_OUT_CTRL_E enOutCtrl;
+  CVI_U16 u16Thr;  /*srcVal <= u16Thr, dstVal = minVal; srcVal > u16Thr, dstVal = maxVal.*/
+  CVI_U8 u8MinVal; /*Min value*/
+  CVI_U8 u8MaxVal; /*Max value*/
+} IVE_SAD_CTRL_S;
+
 typedef enum IVE_SOBEL_OUT_CTRL {
   IVE_SOBEL_OUT_CTRL_BOTH = 0x0, /*Output horizontal and vertical*/
   IVE_SOBEL_OUT_CTRL_HOR = 0x1,  /*Output horizontal*/
@@ -178,8 +211,9 @@ typedef struct IVE_SOBEL_CTRL {
 } IVE_SOBEL_CTRL_S;
 
 typedef enum hiIVE_SUB_MODE_E {
-  IVE_SUB_MODE_ABS = 0x0,   /*Absolute value of the difference*/
-  IVE_SUB_MODE_SHIFT = 0x1, /*The output result is obtained by shifting the result one digit right
+  IVE_SUB_MODE_NORMAL = 0x0,
+  IVE_SUB_MODE_ABS = 0x1,   /*Absolute value of the difference*/
+  IVE_SUB_MODE_SHIFT = 0x2, /*The output result is obtained by shifting the result one digit right
                                to reserve the signed bit.*/
   IVE_SUB_MODE_BUTT
 } IVE_SUB_MODE_E;
