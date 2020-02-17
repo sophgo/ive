@@ -16,6 +16,8 @@
 #include "tpu/tpu_threshold.hpp"
 #include "tpu/tpu_xor.hpp"
 
+#include <cmath>
+
 struct TPU_HANDLE {
   IveTPUAdd t_add;
   IveTPUAnd t_and;
@@ -232,12 +234,12 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       float multiplier = 255.f / (max - min);
       short s8_offset = cpp_dst->m_tg.fmt == FMT_U8 ? 0 : 128;
       for (u64 i = 0; i < img_size; i++) {
-        dst_ptr[i] = (u8)(multiplier * (tmp_arr[i] - min)) - s8_offset;
+        dst_ptr[i] = std::round((u8)(multiplier * (tmp_arr[i] - min)) - s8_offset);
       }
       delete[] tmp_arr;
     } else if (pstItcCtrl->enType == IVE_ITC_SATURATE) {
       for (u64 i = 0; i < cpp_src->GetImgSize(); i++) {
-        dst_ptr[i] = convert_bf16_fp32(src_ptr[i]);
+        dst_ptr[i] = std::round(convert_bf16_fp32(src_ptr[i]));
       }
     } else {
       return 1;
