@@ -704,30 +704,30 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IM
     std::cerr << "Two input size must be the same!" << std::endl;
     return CVI_FAILURE;
   }
-  CVI_U32 cell_size = 1;
+  CVI_U32 window_size = 1;
   switch (pstSadCtrl->enMode) {
     case IVE_SAD_MODE_MB_4X4:
-      cell_size = 4;
+      window_size = 4;
       break;
     case IVE_SAD_MODE_MB_8X8:
-      cell_size = 8;
+      window_size = 8;
       break;
     case IVE_SAD_MODE_MB_16X16:
-      cell_size = 16;
+      window_size = 16;
       break;
     default:
       std::cerr << "Unsupported SAD mode " << pstSadCtrl->enMode << std::endl;
       return CVI_FAILURE;
       break;
   }
-  if (pstSad->u16Width != (pstSrc1->u16Width / cell_size)) {
-    std::cerr << "Dst block width not match! Src: " << pstSrc1->u16Width
-              << ", dst: " << pstSad->u16Width << ", cell size: " << cell_size << std::endl;
+  if (pstSad->u16Width != pstSrc1->u16Width) {
+    std::cerr << "Dst width not match with src! Src: " << pstSrc1->u16Width
+              << ", dst: " << pstSad->u16Width << std::endl;
     return CVI_FAILURE;
   }
-  if (pstSad->u16Height != (pstSrc1->u16Height / cell_size)) {
-    std::cerr << "Dst block height not match! Src: " << pstSrc1->u16Height
-              << ", dst: " << pstSad->u16Height << ", cell size: " << cell_size << std::endl;
+  if (pstSad->u16Height != pstSrc1->u16Height) {
+    std::cerr << "Dst height not match with src! Src: " << pstSrc1->u16Height
+              << ", dst: " << pstSad->u16Height << std::endl;
     return CVI_FAILURE;
   }
   int ret = CVI_SUCCESS;
@@ -774,7 +774,7 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IM
   handle_ctx->t_h.t_sad.doThreshold(do_threshold);
   handle_ctx->t_h.t_sad.setThreshold(pstSadCtrl->u16Thr, pstSadCtrl->u8MinVal,
                                      pstSadCtrl->u8MaxVal);
-  handle_ctx->t_h.t_sad.setCellSize(cell_size, cpp_src1->m_tg.shape.c);
+  handle_ctx->t_h.t_sad.setWindowSize(window_size, cpp_src1->m_tg.shape.c);
   handle_ctx->t_h.t_sad.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   handle_ctx->t_h.t_sad.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   if (!is_output_u8) {

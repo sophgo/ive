@@ -12,15 +12,15 @@ void IveTPUSAD::setThreshold(const u16 threshold, const u8 min_val, const u8 max
   m_max_value = max_val;
 }
 
-void IveTPUSAD::setCellSize(const int cell_size, const int channel) {
-  m_kernel_info.size = cell_size;
-  m_kernel_info.default_stride_x = cell_size;
-  m_kernel_info.default_stride_y = cell_size;
-  int pad = 0;
+void IveTPUSAD::setWindowSize(const int window_size, const int channel) {
+  m_kernel_info.size = window_size;
+  m_kernel_info.default_stride_x = 1;
+  m_kernel_info.default_stride_y = 1;
+  int pad = (window_size - 1) / 2;
   m_kernel_info.pad[0] = pad;
-  m_kernel_info.pad[1] = pad;
+  m_kernel_info.pad[1] = pad + 1;
   m_kernel_info.pad[2] = pad;
-  m_kernel_info.pad[3] = pad;
+  m_kernel_info.pad[3] = pad + 1;
   m_channel = channel;
 }
 
@@ -34,16 +34,6 @@ int IveTPUSAD::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   }
   m_kernel_info.nums_of_kernel = 1;
 
-  return BM_SUCCESS;
-}
-
-int IveTPUSAD::SliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res) {
-  *tg_in_res = slice_res;
-  *tg_out_res = slice_res;
-  tg_out_res->h.skip = tg_out_res->h.skip / m_kernel_info.size;
-  tg_out_res->w.skip = tg_out_res->w.skip / m_kernel_info.size;
-  tg_out_res->h.slice = tg_out_res->h.slice / m_kernel_info.size;
-  tg_out_res->w.slice = tg_out_res->w.slice / m_kernel_info.size;
   return BM_SUCCESS;
 }
 
@@ -104,8 +94,8 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_conv.pad_bottom = m_kernel_info.pad[3];
   m_p_conv.pad_left = m_kernel_info.pad[0];
   m_p_conv.pad_right = m_kernel_info.pad[1];
-  m_p_conv.stride_w = m_kernel_info.size;
-  m_p_conv.stride_h = m_kernel_info.size;
+  m_p_conv.stride_w = 1;
+  m_p_conv.stride_h = 1;
   m_p_conv.relu_enable = 0;
   m_p_conv.ins_h = 0;
   m_p_conv.ins_w = 0;
