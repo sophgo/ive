@@ -13,10 +13,12 @@ IveCore::IveCore() {
   m_chip_info.version = chip_info.version;
 }
 
-inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int kernel_sz, u32 pad_0,
-                                 u32 pad_1, sliceUnit *unit) {
+inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int kernel_sz,
+                                 const int default_stride, u32 pad_0, u32 pad_1, sliceUnit *unit) {
   unit->slice = slice > length ? length : slice;
-  unit->skip = unit->slice - kernel_sz + 1;
+  unit->slice = default_stride * (int)(unit->slice / default_stride);
+  unit->skip = unit->slice - kernel_sz + default_stride;
+  unit->skip = (u32)default_stride > unit->skip ? default_stride : unit->skip;
 
   u32 &&pad_total = pad_0 + pad_1;
   unit->turn = ((int64_t)length - unit->slice - pad_1) / (unit->slice - pad_total) + 1;
@@ -48,17 +50,17 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32
   u32 h_tmp_slice = 0;
   int w_num = 1;
   // Here the default value for kernel size is 1. The h_slice should never smaller than kernel size.
-  while (h_tmp_slice < m_kernel_info.size) {
+  while (h_tmp_slice < kernel_info.size) {
     w_length = w / w_num;
     h_tmp_slice = available_lmem_per_tl / w_length;
     w_num++;
   }
 
   // FIXME: Logic error
-  GetSliceUnitProperty(h, h_tmp_slice, kernel_info.size, kernel_info.pad[2], kernel_info.pad[3],
-                       unit_h);
-  GetSliceUnitProperty(w, w_length, kernel_info.size, kernel_info.pad[0], kernel_info.pad[1],
-                       unit_w);
+  GetSliceUnitProperty(h, h_tmp_slice, kernel_info.size, kernel_info.default_stride_y,
+                       kernel_info.pad[2], kernel_info.pad[3], unit_h);
+  GetSliceUnitProperty(w, w_length, kernel_info.size, kernel_info.default_stride_x,
+                       kernel_info.pad[0], kernel_info.pad[1], unit_w);
   IVE_DEBUG("H slice %d skip %d turn %d left %d\n", unit_h->slice, unit_h->skip, unit_h->turn,
             unit_h->left);
   IVE_DEBUG("W slice %d skip %d turn %d left %d\n", unit_w->slice, unit_w->skip, unit_w->turn,

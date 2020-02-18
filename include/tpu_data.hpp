@@ -79,6 +79,8 @@ struct kernelInfo {
   bool use_multiplier = 0;
   u32 pad[4] = {0};  // L R T B
   u32 size = 1;
+  u32 default_stride_x = 1;
+  u32 default_stride_y = 1;
 };
 
 /**

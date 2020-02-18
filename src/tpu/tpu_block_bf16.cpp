@@ -7,6 +7,8 @@ void IveTPUBlockBF16::setBinNum(const float bin_num) { m_bin_num = bin_num; }
 
 void IveTPUBlockBF16::setCellSize(const int cell_size, const int channel) {
   m_kernel_info.size = cell_size;
+  m_kernel_info.default_stride_x = cell_size;
+  m_kernel_info.default_stride_y = cell_size;
   int pad = 0;
   m_kernel_info.pad[0] = pad;
   m_kernel_info.pad[1] = pad;
