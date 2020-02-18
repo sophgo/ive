@@ -21,11 +21,13 @@ inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int ke
   unit->skip = (u32)default_stride > unit->skip ? default_stride : unit->skip;
 
   u32 &&pad_total = pad_0 + pad_1;
-  unit->turn = ((int64_t)length - unit->slice - pad_1) / (unit->slice - pad_total) + 1;
+  unit->turn = ((int64_t)length - unit->slice - pad_1) / unit->skip + 1;
   int64_t result = (int64_t)length - (int64_t)((unit->turn) * (unit->slice - pad_total));
   if (result >= kernel_sz) {
     unit->left = result;
     unit->turn++;
+  } else if (result < 0 && unit->slice > std::abs(result)) {
+    unit->left = unit->slice + result;
   } else {
     unit->left = 0;
   }
