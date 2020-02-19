@@ -91,7 +91,7 @@ int IveCore::freeTLMems(bmk1880v2_context_t *bk_ctx) {
   return BM_SUCCESS;
 }
 
-int IveCore::SliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res) {
+int IveCore::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res) {
   *tg_in_res = slice_res;
   *tg_out_res = slice_res;
   return BM_SUCCESS;
@@ -116,7 +116,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   }
 
   SliceRes in_slice_res, out_slice_res;
-  SliceSetup(slice_res, &in_slice_res, &out_slice_res);
+  sliceSetup(slice_res, &in_slice_res, &out_slice_res);
   if (in_slice_res.h.turn != out_slice_res.h.turn) {
     std::cerr << "Input/ output h slice turn are not the same " << in_slice_res.h.turn << ", "
               << out_slice_res.h.turn << std::endl;

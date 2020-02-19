@@ -24,7 +24,7 @@ int IveTPUBlock::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   return BM_SUCCESS;
 }
 
-int IveTPUBlock::SliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res) {
+int IveTPUBlock::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res) {
   *tg_in_res = slice_res;
   *tg_out_res = slice_res;
   tg_out_res->h.skip = tg_out_res->h.skip / m_kernel_info.size;
