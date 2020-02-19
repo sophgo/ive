@@ -31,6 +31,15 @@ typedef struct IVE_DMA_CTRL {
   CVI_U8 u8VerSegRows; /*Used in interval-copy mode, copy one row in every u8VerSegRows*/
 } IVE_DMA_CTRL_S;
 
+typedef struct IVE_MEM_INFO {
+  CVI_U32 u32PhyAddr; /*Physical address of the data*/
+  CVI_U8 *pu8VirAddr;
+  CVI_U32 u32Size; /*Data stride*/
+} IVE_MEM_INFO_S;
+
+typedef IVE_MEM_INFO_S IVE_SRC_MEM_INFO_S;
+typedef IVE_MEM_INFO_S IVE_DST_MEM_INFO_S;
+
 typedef struct IVE_DATA {
   CVI_U32 u32PhyAddr; /*Physical address of the data*/
   CVI_U8 *pu8VirAddr;

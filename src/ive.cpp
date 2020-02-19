@@ -68,6 +68,13 @@ CVI_S32 CVI_IVE_Flush(IVE_HANDLE pIveHandle) {
   return CVI_SUCCESS;
 }
 
+CVI_S32 CVI_IVE_CreateMemInfo(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo, CVI_U32 u32Size) {
+  pstMemInfo->u32PhyAddr = 0;
+  pstMemInfo->pu8VirAddr = new CVI_U8[u32Size];
+  pstMemInfo->u32Size = u32Size;
+  return CVI_SUCCESS;
+}
+
 CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
                             u16 u16Width, u16 u16Height) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
@@ -192,6 +199,12 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
     pstDst->u64PhyAddr[i] = -1;
     pstDst->u16Stride[i] = 0;
   }
+  return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_Free(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo) {
+  delete[] pstMemInfo->pu8VirAddr;
+  pstMemInfo->u32Size = 0;
   return CVI_SUCCESS;
 }
 
