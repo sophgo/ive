@@ -256,25 +256,39 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                                  bool bInstant) {
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_F32) {
-    u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
-    float *dst_ptr = (float *)cpp_dst->GetVAddr();
+  if (pstItcCtrl->enType == IVE_ITC_NORMALIZE) {
+    if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_F32) {
+      u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
+      float *dst_ptr = (float *)cpp_dst->GetVAddr();
 
-    for (u64 i = 0; i < cpp_src->GetImgSize() / 2; i++) {
-      dst_ptr[i] = convert_bf16_fp32(src_ptr[i]);
-    }
-  } else if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_U16) {
-    u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
-    u16 *dst_ptr = (u16 *)cpp_dst->GetVAddr();
-
-    for (u64 i = 0; i < cpp_src->GetImgSize() / 2; i++) {
-      dst_ptr[i] = std::round(convert_bf16_fp32(src_ptr[i]));
-    }
-  } else if (cpp_src->m_tg.fmt == FMT_U16 &&
-             (cpp_dst->m_tg.fmt == FMT_U8 || cpp_dst->m_tg.fmt == FMT_I8)) {
-    u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
-    u8 *dst_ptr = (u8 *)cpp_dst->GetVAddr();
-    if (pstItcCtrl->enType == IVE_ITC_NORMALIZE) {
+      for (u64 i = 0; i < cpp_src->GetImgSize() / 2; i++) {
+        dst_ptr[i] = convert_bf16_fp32(src_ptr[i]);
+      }
+    } else if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_U16) {
+      u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
+      u16 *dst_ptr = (u16 *)cpp_dst->GetVAddr();
+      u16 *tmp_arr = new u16[cpp_src->GetImgSize()];
+      u16 min = 65535, max = 0;
+      u64 img_size = cpp_src->m_tg.shape.c * cpp_src->m_tg.shape.h * cpp_src->m_tg.shape.w;
+      for (u64 i = 0; i < img_size; i++) {
+        tmp_arr[i] = src_ptr[i];
+        if (tmp_arr[i] < min) {
+          min = tmp_arr[i];
+        }
+        if (tmp_arr[i] > max) {
+          max = tmp_arr[i];
+        }
+      }
+      float multiplier = 65535.f / (float)(max - min);
+      int s8_offset = cpp_dst->m_tg.fmt == FMT_U16 ? 0 : 32768;
+      for (u64 i = 0; i < img_size; i++) {
+        dst_ptr[i] = std::round((int)(multiplier * (tmp_arr[i] - min)) - s8_offset);
+      }
+      delete[] tmp_arr;
+    } else if (cpp_src->m_tg.fmt == FMT_U16 &&
+               (cpp_dst->m_tg.fmt == FMT_U8 || cpp_dst->m_tg.fmt == FMT_I8)) {
+      u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
+      u8 *dst_ptr = (u8 *)cpp_dst->GetVAddr();
       u16 *tmp_arr = new u16[cpp_src->GetImgSize()];
       u16 min = 65535, max = 0;
       u64 img_size = cpp_src->m_tg.shape.c * cpp_src->m_tg.shape.h * cpp_src->m_tg.shape.w;
@@ -290,19 +304,13 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       float multiplier = 255.f / (float)(max - min);
       short s8_offset = cpp_dst->m_tg.fmt == FMT_U8 ? 0 : 128;
       for (u64 i = 0; i < img_size; i++) {
-        dst_ptr[i] = std::round((u8)(multiplier * (tmp_arr[i] - min)) - s8_offset);
+        dst_ptr[i] = std::round((int)(multiplier * (tmp_arr[i] - min)) - s8_offset);
       }
       delete[] tmp_arr;
-    } else if (pstItcCtrl->enType == IVE_ITC_SATURATE) {
-      for (u64 i = 0; i < cpp_src->GetImgSize() / 2; i++) {
-        dst_ptr[i] = src_ptr[i] > 255 ? 255 : src_ptr[i];
-      }
-    }
-  } else if (cpp_src->m_tg.fmt == FMT_BF16 &&
-             (cpp_dst->m_tg.fmt == FMT_U8 || cpp_dst->m_tg.fmt == FMT_I8)) {
-    u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
-    u8 *dst_ptr = (u8 *)cpp_dst->GetVAddr();
-    if (pstItcCtrl->enType == IVE_ITC_NORMALIZE) {
+    } else if (cpp_src->m_tg.fmt == FMT_BF16 &&
+               (cpp_dst->m_tg.fmt == FMT_U8 || cpp_dst->m_tg.fmt == FMT_I8)) {
+      u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
+      u8 *dst_ptr = (u8 *)cpp_dst->GetVAddr();
       float *tmp_arr = new float[cpp_src->GetImgSize()];
       float min = 10000000.f, max = -100000000.f;
       u64 img_size = cpp_src->m_tg.shape.c * cpp_src->m_tg.shape.h * cpp_src->m_tg.shape.w;
@@ -321,15 +329,41 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
         dst_ptr[i] = std::round((u8)(multiplier * (tmp_arr[i] - min)) - s8_offset);
       }
       delete[] tmp_arr;
-    } else if (pstItcCtrl->enType == IVE_ITC_SATURATE) {
-      for (u64 i = 0; i < cpp_src->GetImgSize(); i++) {
+    }
+  } else if (pstItcCtrl->enType == IVE_ITC_SATURATE) {
+    if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_F32) {
+      u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
+      float *dst_ptr = (float *)cpp_dst->GetVAddr();
+
+      for (u64 i = 0; i < cpp_src->GetImgSize() / 2; i++) {
+        dst_ptr[i] = convert_bf16_fp32(src_ptr[i]);
+      }
+    } else if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_U16) {
+      u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
+      u16 *dst_ptr = (u16 *)cpp_dst->GetVAddr();
+
+      for (u64 i = 0; i < cpp_src->GetImgSize() / 2; i++) {
         dst_ptr[i] = std::round(convert_bf16_fp32(src_ptr[i]));
       }
+    } else if ((cpp_src->m_tg.fmt == FMT_BF16 || cpp_src->m_tg.fmt == FMT_U8 ||
+                cpp_src->m_tg.fmt == FMT_I8) &&
+               (cpp_dst->m_tg.fmt == FMT_BF16 || cpp_dst->m_tg.fmt == FMT_U8 ||
+                cpp_dst->m_tg.fmt == FMT_I8)) {
+      IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+      CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+      CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+      std::vector<CviImg> inputs = {*cpp_src};
+      std::vector<CviImg> outputs = {*cpp_dst};
+
+      IveTPUCopyDirect::run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     } else {
-      return CVI_FAILURE;
+      std::cerr << "Unsupported input output image type ( " << cpp_src->m_tg.fmt << ", "
+                << cpp_dst->m_tg.fmt << ")." << std::endl;
+      return CVI_NOT_SUPPORTED;
     }
   } else {
-    return CVI_FAILURE;
+    std::cerr << "Unsupported enType " << pstItcCtrl->enType << std::endl;
+    return CVI_NOT_SUPPORTED;
   }
   return CVI_SUCCESS;
 }
