@@ -107,10 +107,10 @@ int main(int argc, char **argv) {
                     iveSadCtrl.u8MaxVal, &src, &src2, &dst, &dst_thresh);
 
   // Free memory, instance
-  CVI_SYS_Free(handle, &src);
-  CVI_SYS_Free(handle, &src2);
-  CVI_SYS_Free(handle, &dst);
-  CVI_SYS_Free(handle, &dst_thresh);
+  CVI_SYS_FreeI(handle, &src);
+  CVI_SYS_FreeI(handle, &src2);
+  CVI_SYS_FreeI(handle, &dst);
+  CVI_SYS_FreeI(handle, &dst_thresh);
   CVI_IVE_DestroyHandle(handle);
 
   return ret;

@@ -169,12 +169,12 @@ gst_cvi_ive_background_dispose (GObject * object)
   /* clean up as possible.  may be called multiple times */
   if (cviivebackground->bk_handle != NULL) {
     GST_CVI_IVE_BACKGROUND_HANDLE_S *bk_handle = cviivebackground->bk_handle;
-    CVI_SYS_Free(bk_handle->handle, &bk_handle->src[0]);
-    CVI_SYS_Free(bk_handle->handle, &bk_handle->src[1]);
-    CVI_SYS_Free(bk_handle->handle, &bk_handle->tmp);
-    CVI_SYS_Free(bk_handle->handle, &bk_handle->andframe[0]);
-    CVI_SYS_Free(bk_handle->handle, &bk_handle->andframe[1]);
-    CVI_SYS_Free(bk_handle->handle, &bk_handle->dst);
+    CVI_SYS_FreeI(bk_handle->handle, &bk_handle->src[0]);
+    CVI_SYS_FreeI(bk_handle->handle, &bk_handle->src[1]);
+    CVI_SYS_FreeI(bk_handle->handle, &bk_handle->tmp);
+    CVI_SYS_FreeI(bk_handle->handle, &bk_handle->andframe[0]);
+    CVI_SYS_FreeI(bk_handle->handle, &bk_handle->andframe[1]);
+    CVI_SYS_FreeI(bk_handle->handle, &bk_handle->dst);
     CVI_IVE_DestroyHandle(bk_handle->handle);
 
     free(cviivebackground->bk_handle);
@@ -194,12 +194,12 @@ gst_cvi_ive_background_finalize (GObject * object)
   /* clean up object here */
   if (cviivebackground->bk_handle != NULL) {
     GST_CVI_IVE_BACKGROUND_HANDLE_S *bk_handle = cviivebackground->bk_handle;
-    CVI_SYS_Free(bk_handle->handle, &bk_handle->src[0]);
-    CVI_SYS_Free(bk_handle->handle, &bk_handle->src[1]);
-    CVI_SYS_Free(bk_handle->handle, &bk_handle->tmp);
-    CVI_SYS_Free(bk_handle->handle, &bk_handle->andframe[0]);
-    CVI_SYS_Free(bk_handle->handle, &bk_handle->andframe[1]);
-    CVI_SYS_Free(bk_handle->handle, &bk_handle->dst);
+    CVI_SYS_FreeI(bk_handle->handle, &bk_handle->src[0]);
+    CVI_SYS_FreeI(bk_handle->handle, &bk_handle->src[1]);
+    CVI_SYS_FreeI(bk_handle->handle, &bk_handle->tmp);
+    CVI_SYS_FreeI(bk_handle->handle, &bk_handle->andframe[0]);
+    CVI_SYS_FreeI(bk_handle->handle, &bk_handle->andframe[1]);
+    CVI_SYS_FreeI(bk_handle->handle, &bk_handle->dst);
     CVI_IVE_DestroyHandle(bk_handle->handle);
 
     free(cviivebackground->bk_handle);

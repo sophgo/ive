@@ -70,12 +70,12 @@ int main(int argc, char **argv) {
   }
 
   // Free memory, instance
-  CVI_SYS_Free(handle, &src[0]);
-  CVI_SYS_Free(handle, &src[1]);
-  CVI_SYS_Free(handle, &tmp);
-  CVI_SYS_Free(handle, &andframe[0]);
-  CVI_SYS_Free(handle, &andframe[1]);
-  CVI_SYS_Free(handle, &dst);
+  CVI_SYS_FreeI(handle, &src[0]);
+  CVI_SYS_FreeI(handle, &src[1]);
+  CVI_SYS_FreeI(handle, &tmp);
+  CVI_SYS_FreeI(handle, &andframe[0]);
+  CVI_SYS_FreeI(handle, &andframe[1]);
+  CVI_SYS_FreeI(handle, &dst);
   CVI_IVE_DestroyHandle(handle);
 
   return CVI_SUCCESS;

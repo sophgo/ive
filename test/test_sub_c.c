@@ -38,9 +38,9 @@ int main(int argc, char **argv) {
   cvReleaseImage(&img);
 
   // Free memory, instance
-  CVI_SYS_Free(handle, &src1);
-  CVI_SYS_Free(handle, &src2);
-  CVI_SYS_Free(handle, &dst);
+  CVI_SYS_FreeI(handle, &src1);
+  CVI_SYS_FreeI(handle, &src2);
+  CVI_SYS_FreeI(handle, &dst);
   CVI_IVE_DestroyHandle(handle);
 
   return 0;

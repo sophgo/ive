@@ -202,13 +202,13 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   return CVI_SUCCESS;
 }
 
-CVI_S32 CVI_IVE_Free(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo) {
+CVI_S32 CVI_SYS_FreeM(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo) {
   delete[] pstMemInfo->pu8VirAddr;
   pstMemInfo->u32Size = 0;
   return CVI_SUCCESS;
 }
 
-CVI_S32 CVI_SYS_Free(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
+CVI_S32 CVI_SYS_FreeI(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   if (pstImg->tpu_block == NULL) {
     delete[] pstImg->pu8VirAddr[0];
@@ -668,8 +668,8 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DS
     iveItcCtrl.enType = IVE_ITC_NORMALIZE;
     CVI_IVE_ImageTypeConvert(pIveHandle, &dstV_BF16, pstDstV, &iveItcCtrl, 0);
     CVI_IVE_ImageTypeConvert(pIveHandle, &dstH_BF16, pstDstH, &iveItcCtrl, 0);
-    CVI_SYS_Free(pIveHandle, &dstV_BF16);
-    CVI_SYS_Free(pIveHandle, &dstH_BF16);
+    CVI_SYS_FreeI(pIveHandle, &dstV_BF16);
+    CVI_SYS_FreeI(pIveHandle, &dstH_BF16);
   } else if (pstNormGradCtrl->enOutCtrl == IVE_NORM_GRAD_OUT_CTRL_HOR) {
     IVE_IMAGE_S dst_BF16;
     CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
@@ -686,7 +686,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DS
     IVE_ITC_CRTL_S iveItcCtrl;
     iveItcCtrl.enType = IVE_ITC_NORMALIZE;
     CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstH, &iveItcCtrl, 0);
-    CVI_SYS_Free(pIveHandle, &dst_BF16);
+    CVI_SYS_FreeI(pIveHandle, &dst_BF16);
   } else if (pstNormGradCtrl->enOutCtrl == IVE_NORM_GRAD_OUT_CTRL_VER) {
     IVE_IMAGE_S dst_BF16;
     CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
@@ -703,7 +703,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DS
     IVE_ITC_CRTL_S iveItcCtrl;
     iveItcCtrl.enType = IVE_ITC_NORMALIZE;
     CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstV, &iveItcCtrl, 0);
-    CVI_SYS_Free(pIveHandle, &dst_BF16);
+    CVI_SYS_FreeI(pIveHandle, &dst_BF16);
   } else if (pstNormGradCtrl->enOutCtrl == IVE_NORM_GRAD_OUT_CTRL_COMBINE) {
     IVE_IMAGE_S dst_BF16;
     CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
@@ -723,7 +723,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DS
     IVE_ITC_CRTL_S iveItcCtrl;
     iveItcCtrl.enType = IVE_ITC_NORMALIZE;
     CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstHV, &iveItcCtrl, 0);
-    CVI_SYS_Free(pIveHandle, &dst_BF16);
+    CVI_SYS_FreeI(pIveHandle, &dst_BF16);
   } else {
     return CVI_NOT_SUPPORTED;
   }
@@ -828,7 +828,7 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IM
     IVE_ITC_CRTL_S iveItcCtrl;
     iveItcCtrl.enType = IVE_ITC_SATURATE;
     ret = CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstSad, &iveItcCtrl, 0);
-    CVI_SYS_Free(pIveHandle, &dst_BF16);
+    CVI_SYS_FreeI(pIveHandle, &dst_BF16);
   }
   return ret;
 }

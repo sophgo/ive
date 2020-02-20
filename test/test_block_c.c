@@ -68,10 +68,10 @@ int main(int argc, char **argv) {
   int ret = cpu_ref(res_w, res_h, iveBlkCtrl.bin_num, &src, &dst, &dst_fp32);
 
   // Free memory, instance
-  CVI_SYS_Free(handle, &src);
-  CVI_SYS_Free(handle, &dst);
-  CVI_SYS_Free(handle, &dst_bf16);
-  CVI_SYS_Free(handle, &dst_fp32);
+  CVI_SYS_FreeI(handle, &src);
+  CVI_SYS_FreeI(handle, &dst);
+  CVI_SYS_FreeI(handle, &dst_bf16);
+  CVI_SYS_FreeI(handle, &dst_fp32);
   CVI_IVE_DestroyHandle(handle);
 
   return ret;
