@@ -904,13 +904,13 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   return ret;
 }
 
-CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_DST_IMAGE_S *pstDst,
+CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_THRESH_CTRL_S *ctrl, bool bInstant) {
   int ret = CVI_NOT_SUPPORTED;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
+  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg> inputs = {*cpp_src1};
+  std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
 
   if (ctrl->enMode == IVE_THRESH_MODE_BINARY) {
