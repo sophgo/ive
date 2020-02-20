@@ -43,8 +43,8 @@ int main(int argc, char **argv) {
   CVI_IVE_CreateImage(handle, &dstBlk, IVE_IMAGE_TYPE_BF16C1, img->width / CELL_SIZE,
                       img->height / CELL_SIZE);
 
-  IVE_DST_IMAGE_S dstHist;
-  CVI_IVE_CreateImage(handle, &dstHist, IVE_IMAGE_TYPE_U32C1, BIN_NUM, 1);
+  IVE_DST_MEM_INFO_S dstHist;
+  CVI_IVE_CreateMemInfo(handle, &dstHist, BIN_NUM * sizeof(int));
 
   printf("Run TPU HOG.\n");
   IVE_HOG_CTRL_S pstHogCtrl;
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
   CVI_SYS_FreeI(handle, &dstAng);
   CVI_SYS_FreeI(handle, &dstAng_u8);
   CVI_SYS_FreeI(handle, &dstBlk);
-  CVI_SYS_FreeI(handle, &dstHist);
+  CVI_SYS_FreeM(handle, &dstHist);
   CVI_IVE_DestroyHandle(handle);
 
   return ret;

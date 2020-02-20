@@ -525,12 +525,8 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
 CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDstH,
                     IVE_DST_IMAGE_S *pstDstV, IVE_DST_IMAGE_S *pstDstMag,
                     IVE_DST_IMAGE_S *pstDstAng, IVE_DST_IMAGE_S *pstDstBlk,
-                    IVE_DST_IMAGE_S *pstDstHist, IVE_HOG_CTRL_S *pstHogCtrl, bool bInstant) {
-  if (pstDstHist->enType != IVE_IMAGE_TYPE_U32C1 && pstDstHist->tpu_block != NULL) {
-    std::cerr << "Histogram enType only supports IVE_IMAGE_TYPE_U32C1." << std::endl;
-    return CVI_FAILURE;
-  }
-  if (pstDstHist->u16Height != 1 || pstDstHist->u16Width != pstHogCtrl->bin_num) {
+                    IVE_DST_MEM_INFO_S *pstDstHist, IVE_HOG_CTRL_S *pstHogCtrl, bool bInstant) {
+  if (pstDstHist->u32Size != pstHogCtrl->bin_num * 4) {
     std::cerr << "Histogram shape size not match the bin num! " << std::endl;
     return CVI_FAILURE;
   }
@@ -556,8 +552,8 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   }
   // Get Histogram
   u16 *blk_ptr = (u16 *)pstDstBlk->pu8VirAddr[0];
-  u32 *hog_ptr = (u32 *)pstDstHist->pu8VirAddr[0];
-  memset(hog_ptr, 0, pstDstHist->u16Width * pstDstHist->u16Height * sizeof(u32));
+  u32 *hog_ptr = (u32 *)pstDstHist->pu8VirAddr;
+  memset(hog_ptr, 0, pstDstHist->u32Size);
   u16 div = 360 / pstHogCtrl->bin_num;
   if (iveMaaCtrl.no_negative) {
     for (u64 i = 0; i < pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
