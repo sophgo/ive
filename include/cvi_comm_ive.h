@@ -22,31 +22,29 @@ typedef enum IVE_DMA_MODE {
 
 typedef struct IVE_DMA_CTRL {
   IVE_DMA_MODE_E enMode;
-  CVI_U64 u64Val; /*Used in memset mode*/
+  CVI_U64 u64Val;
   CVI_U8
-  u8HorSegSize;      /*Used in interval-copy mode, every row was segmented by u8HorSegSize bytes,
-                        restricted in values of 2,3,4,8,16*/
-  CVI_U8 u8ElemSize; /*Used in interval-copy mode, the valid bytes copied in front of every segment
-                        in a valid row, which 0<u8ElemSize<u8HorSegSize*/
-  CVI_U8 u8VerSegRows; /*Used in interval-copy mode, copy one row in every u8VerSegRows*/
+  u8HorSegSize;
+  CVI_U8 u8ElemSize;
+  CVI_U8 u8VerSegRows;
 } IVE_DMA_CTRL_S;
 
 typedef struct IVE_MEM_INFO {
-  CVI_U32 u32PhyAddr; /*Physical address of the data*/
+  CVI_U32 u32PhyAddr;
   CVI_U8 *pu8VirAddr;
-  CVI_U32 u32Size; /*Data stride*/
+  CVI_U32 u32Size;
 } IVE_MEM_INFO_S;
 
 typedef IVE_MEM_INFO_S IVE_SRC_MEM_INFO_S;
 typedef IVE_MEM_INFO_S IVE_DST_MEM_INFO_S;
 
 typedef struct IVE_DATA {
-  CVI_U32 u32PhyAddr; /*Physical address of the data*/
+  CVI_U32 u32PhyAddr;
   CVI_U8 *pu8VirAddr;
 
-  CVI_U16 u16Stride; /*2D data stride by byte*/
-  CVI_U16 u16Width;  /*2D data width by byte*/
-  CVI_U16 u16Height; /*2D data height*/
+  CVI_U16 u16Stride;
+  CVI_U16 u16Width;
+  CVI_U16 u16Height;
 
   CVI_U16 u16Reserved;
   CVI_IMG_S *tpu_block;
@@ -59,10 +57,10 @@ typedef enum IVE_IMAGE_TYPE {
   IVE_IMAGE_TYPE_U8C1 = 0x0,
   IVE_IMAGE_TYPE_S8C1 = 0x1,
 
-  IVE_IMAGE_TYPE_YUV420SP = 0x2, /*YUV420 SemiPlanar*/
-  IVE_IMAGE_TYPE_YUV422SP = 0x3, /*YUV422 SemiPlanar*/
-  IVE_IMAGE_TYPE_YUV420P = 0x4,  /*YUV420 Planar */
-  IVE_IMAGE_TYPE_YUV422P = 0x5,  /*YUV422 planar */
+  IVE_IMAGE_TYPE_YUV420SP = 0x2,
+  IVE_IMAGE_TYPE_YUV422SP = 0x3,
+  IVE_IMAGE_TYPE_YUV420P = 0x4,
+  IVE_IMAGE_TYPE_YUV422P = 0x5,
 
   IVE_IMAGE_TYPE_S8C2_PACKAGE = 0x6,
   IVE_IMAGE_TYPE_S8C2_PLANAR = 0x7,
@@ -96,7 +94,7 @@ typedef struct IVE_IMAGE {
   CVI_U16 u16Width;
   CVI_U16 u16Height;
 
-  CVI_U16 u16Reserved; /*Can be used such as elemSize*/
+  CVI_U16 u16Reserved;
   CVI_IMG_S *tpu_block;
 } IVE_IMAGE_S;
 
@@ -113,8 +111,8 @@ typedef struct IVE_ITC_CRTL {
 } IVE_ITC_CRTL_S;
 
 typedef struct IVE_ADD_CTRL_S {
-  CVI_U0Q16 u0q16X; /*x of "xA+yB"*/
-  CVI_U0Q16 u0q16Y; /*y of "xA+yB"*/
+  CVI_U0Q16 u0q16X;
+  CVI_U0Q16 u0q16Y;
 } IVE_ADD_CTRL_S;
 
 typedef struct IVE_BLOCK_CTRL {
@@ -123,7 +121,7 @@ typedef struct IVE_BLOCK_CTRL {
 } IVE_BLOCK_CTRL_S;
 
 typedef struct IVE_ELEMENT_STRUCTURE_CTRL {
-  CVI_U8 au8Mask[25]; /*The template parameter value must be 0 or 255.*/
+  CVI_U8 au8Mask[25];
 } IVE_ELEMENT_STRUCTURE_CTRL_S;
 
 typedef IVE_ELEMENT_STRUCTURE_CTRL_S IVE_DILATE_CTRL_S;
@@ -143,9 +141,6 @@ typedef enum IVE_NORM_GRAD_OUT_CTRL {
   IVE_NORM_GRAD_OUT_CTRL_BUTT
 } IVE_NORM_GRAD_OUT_CTRL_E;
 
-/*
- *GradientFilter control parameters
- */
 typedef struct IVE_NORM_GRAD_CTRL {
   IVE_NORM_GRAD_OUT_CTRL_E enOutCtrl;
   CVI_S8 as8Mask[25];
@@ -158,9 +153,9 @@ typedef struct IVE_HOG_CTRL {
 } IVE_HOG_CTRL_S;
 
 typedef enum IVE_MAG_AND_ANG_OUT_CTRL {
-  IVE_MAG_AND_ANG_OUT_CTRL_MAG = 0x0, /*Only the magnitude is output.*/
+  IVE_MAG_AND_ANG_OUT_CTRL_MAG = 0x0,
   IVE_MAG_AND_ANG_OUT_CTRL_ANG = 0x1,
-  IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG = 0x2, /*The magnitude and angle are output.*/
+  IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG = 0x2,
   IVE_MAG_AND_ANG_OUT_CTRL_BUTT
 } IVE_MAG_AND_ANG_OUT_CTRL_E;
 
@@ -170,7 +165,7 @@ typedef enum IVE_MAG_AND_ANG_OUT_CTRL {
 typedef struct IVE_MAG_AND_ANG_CTRL {
   IVE_MAG_AND_ANG_OUT_CTRL_E enOutCtrl;
   CVI_U16 u16Thr;
-  CVI_S8 as8Mask[25]; /*Template parameter.*/
+  CVI_S8 as8Mask[25];
   CVI_BOOL no_negative;
 } IVE_MAG_AND_ANG_CTRL_S;
 
@@ -178,9 +173,9 @@ typedef struct IVE_MAG_AND_ANG_CTRL {
  * Sad mode
  */
 typedef enum IVE_SAD_MODE {
-  IVE_SAD_MODE_MB_4X4 = 0x0,   /*4x4*/
-  IVE_SAD_MODE_MB_8X8 = 0x1,   /*8x8*/
-  IVE_SAD_MODE_MB_16X16 = 0x2, /*16x16*/
+  IVE_SAD_MODE_MB_4X4 = 0x0,
+  IVE_SAD_MODE_MB_8X8 = 0x1,
+  IVE_SAD_MODE_MB_16X16 = 0x2,
 
   IVE_SAD_MODE_BUTT
 } IVE_SAD_MODE_E;
@@ -188,11 +183,11 @@ typedef enum IVE_SAD_MODE {
  *Sad output ctrl
  */
 typedef enum IVE_SAD_OUT_CTRL {
-  IVE_SAD_OUT_CTRL_16BIT_BOTH = 0x0, /*Output 16 bit sad and thresh*/
-  IVE_SAD_OUT_CTRL_8BIT_BOTH = 0x1,  /*Output 8 bit sad and thresh*/
-  IVE_SAD_OUT_CTRL_16BIT_SAD = 0x2,  /*Output 16 bit sad*/
-  IVE_SAD_OUT_CTRL_8BIT_SAD = 0x3,   /*Output 8 bit sad*/
-  IVE_SAD_OUT_CTRL_THRESH = 0x4,     /*Output thresh,16 bits sad */
+  IVE_SAD_OUT_CTRL_16BIT_BOTH = 0x0,
+  IVE_SAD_OUT_CTRL_8BIT_BOTH = 0x1,
+  IVE_SAD_OUT_CTRL_16BIT_SAD = 0x2,
+  IVE_SAD_OUT_CTRL_8BIT_SAD = 0x3,
+  IVE_SAD_OUT_CTRL_THRESH = 0x4,
 
   IVE_SAD_OUT_CTRL_BUTT
 } IVE_SAD_OUT_CTRL_E;
@@ -202,28 +197,27 @@ typedef enum IVE_SAD_OUT_CTRL {
 typedef struct IVE_SAD_CTRL {
   IVE_SAD_MODE_E enMode;
   IVE_SAD_OUT_CTRL_E enOutCtrl;
-  CVI_U16 u16Thr;  /*srcVal <= u16Thr, dstVal = minVal; srcVal > u16Thr, dstVal = maxVal.*/
-  CVI_U8 u8MinVal; /*Min value*/
-  CVI_U8 u8MaxVal; /*Max value*/
+  CVI_U16 u16Thr;
+  CVI_U8 u8MinVal;
+  CVI_U8 u8MaxVal;
 } IVE_SAD_CTRL_S;
 
 typedef enum IVE_SOBEL_OUT_CTRL {
-  IVE_SOBEL_OUT_CTRL_BOTH = 0x0, /*Output horizontal and vertical*/
-  IVE_SOBEL_OUT_CTRL_HOR = 0x1,  /*Output horizontal*/
-  IVE_SOBEL_OUT_CTRL_VER = 0x2,  /*Output vertical*/
+  IVE_SOBEL_OUT_CTRL_BOTH = 0x0,
+  IVE_SOBEL_OUT_CTRL_HOR = 0x1,
+  IVE_SOBEL_OUT_CTRL_VER = 0x2,
   IVE_SOBEL_OUT_CTRL_BUTT
 } IVE_SOBEL_OUT_CTRL_E;
 
 typedef struct IVE_SOBEL_CTRL {
-  IVE_SOBEL_OUT_CTRL_E enOutCtrl; /*Output format*/
-  CVI_S8 as8Mask[25];             /*Template parameter*/
+  IVE_SOBEL_OUT_CTRL_E enOutCtrl;
+  CVI_S8 as8Mask[25];
 } IVE_SOBEL_CTRL_S;
 
 typedef enum hiIVE_SUB_MODE_E {
   IVE_SUB_MODE_NORMAL = 0x0,
-  IVE_SUB_MODE_ABS = 0x1,   /*Absolute value of the difference*/
-  IVE_SUB_MODE_SHIFT = 0x2, /*The output result is obtained by shifting the result one digit right
-                               to reserve the signed bit.*/
+  IVE_SUB_MODE_ABS = 0x1,
+  IVE_SUB_MODE_SHIFT = 0x2,
   IVE_SUB_MODE_BUTT
 } IVE_SUB_MODE_E;
 
