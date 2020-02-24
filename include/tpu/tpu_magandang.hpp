@@ -26,4 +26,7 @@ class IveTPUMagAndAng : public IveCore {
   bool m_no_negative = false;
   bmk1880v2_tiu_non_atomic_mask_param_t m_p_mask;
   bmk1880v2_tiu_element_wise_mac_param_t m_p_mac_mask;
+#ifdef MAGnANG_DEBUG
+  u64 counting = 0;
+#endif
 };

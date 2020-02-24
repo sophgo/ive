@@ -114,10 +114,13 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE
     float dstV_f = convert_bf16_fp32(dstV_ptr[i]);
     float dstAng_f = convert_bf16_fp32(dstAng_ptr[i]);
     float atan2_res = (float)atan2(dstV_f, dstH_f) * mul_val;
+    if (atan2_res < 0) {
+      atan2_res += 360.f;
+    }
     float error = fabs(atan2_res - dstAng_f) / atan2_res;
     if (error > ang_epsilon) {
-      printf("[%lu] atan2( %f, %f) = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f, dstAng_f,
-             atan2_res, error);
+      printf("[%lu] atan2( %f, %f) = TPU %f, CPU %f (%f). eplison = %f\n", i, dstV_f, dstH_f,
+             dstAng_f, atan2_res, atan2_res - 360.f, error);
       ret = CVI_FAILURE;
     }
   }

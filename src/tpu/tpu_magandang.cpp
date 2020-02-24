@@ -2,6 +2,9 @@
 
 #include <string.h>
 #include "bmkernel/bm1880v2/1880v2_fp_convert.h"
+#ifdef MAGnANG_DEBUG
+#include "../tpu_math/1880v2_utils.h"
+#endif
 
 void IveTPUMagAndAng::exportOption(bool mag_value, bool ang_value) {
   m_export_mag = mag_value;
@@ -17,6 +20,7 @@ int IveTPUMagAndAng::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.nums_of_tl = 10 * 2;  // in bf16
   m_slice_info.nums_of_table = 9 * 2;
   m_kernel_info.nums_of_kernel = 0;  // 2 BF16 kernels
+
   return BM_SUCCESS;
 }
 
@@ -33,7 +37,11 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   auto *tl_input2 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
   auto *tl_mag = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
   auto *tl_angle = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+
   auto *tl_buf = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+  // FIXME: Dirty workaround. Allocate a 1x1 tg also fixed in cmodel.
+  // May not work in soc mode.
+  // CviImg workaround_img(ctx, 1, 1, 1, FMT_BF16);
   auto *tl_buf2 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
   auto *tl_buf3 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
   auto *tl_buf4 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
@@ -153,8 +161,12 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_atan2.b = tl_input2;
   m_p_atan2.res = tl_angle;
   m_p_atan2.buf1 = tl_buf;
-  m_p_atan2.buf2 = tl_buf2;
-  m_p_atan2.buf3 = tl_buf3;
+  /** FIXME: Dirty workaround. tl polution.
+   *  m_p_atan2.buf2 = tl_buf2;
+   *  m_p_atan2.buf3 = tl_buf3;
+   */
+  m_p_atan2.buf2 = tl_buf3;
+  m_p_atan2.buf3 = tl_buf2;
   m_p_atan2.buf4 = tl_buf4;
   m_p_atan2.buf5 = tl_buf5;
   m_p_atan2.buf6 = tl_buf6;
@@ -205,9 +217,12 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   if (m_export_ang) {
     tl_out_idx->push_back(3);
   }
+#ifdef MAGnANG_DEBUG
+  counting = 0;
+#endif
   return BM_SUCCESS;
 }
-#include "../tpu_math/1880v2_utils.h"
+
 void IveTPUMagAndAng::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   if (m_export_mag) {
     bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul);
@@ -223,6 +238,24 @@ void IveTPUMagAndAng::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
                     m_p_atan2.reciprocal_table_answer, m_p_atan2.reciprocal_table_answer_mantissa,
                     m_p_atan2.sqrt_table_answer, m_p_atan2.sqrt_table_answer_mantissa,
                     m_p_atan2.idx_0_table, m_p_atan2.res, m_p_atan2.fmt);
+#ifdef MAGnANG_DEBUG
+    u16 *input1 = (u16 *)get_bf16_tensor_l2g(ctx, bk_ctx, m_p_atan2.a, FMT_BF16);
+    u16 *input2 = (u16 *)get_bf16_tensor_l2g(ctx, bk_ctx, m_p_atan2.b, FMT_BF16);
+    u16 *res_ang = (u16 *)get_bf16_tensor_l2g(ctx, bk_ctx, m_p_atan2.res, FMT_BF16);
+    for (size_t i = 0; i < m_p_atan2.a->shape.h * m_p_atan2.a->shape.w; i++) {
+      float b = convert_bf16_fp32(input2[i]);
+      float a = convert_bf16_fp32(input1[i]);
+      float resss = atan2(b, a);
+      float err = (convert_bf16_fp32(res_ang[i]) - resss) / resss;
+      if (err > 0.02) {
+        printf("%lu ERRRRR b %f a %f cpu %f tpu %f\n", counting, b, a, resss,
+               convert_bf16_fp32(res_ang[i]));
+      }
+    }
+    delete[] input1;
+    delete[] input2;
+    delete[] res_ang;
+#endif
     bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_const);
 
     if (m_no_negative) {
@@ -231,4 +264,7 @@ void IveTPUMagAndAng::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
       bmk1880v2_tiu_bf16_element_wise_mac(bk_ctx, &m_p_mac_mask);
     }
   }
+#ifdef MAGnANG_DEBUG
+  counting++;
+#endif
 }
