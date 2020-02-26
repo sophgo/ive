@@ -20,8 +20,7 @@ int IveTPUAdd::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   auto *tl_input2 = allocTLMem(bk_ctx, tl_shape, FMT_U8, 1);
   auto *high_bit_zeros = allocTLMem(bk_ctx, tl_shape, FMT_U8, 1);
 
-  extendValue2TL(ctx, bk_ctx, 0, tl_shape.n * tl_shape.c, tl_shape.h, tl_shape.w, FMT_U8,
-                 high_bit_zeros);
+  constantFillTL(ctx, bk_ctx, 0, high_bit_zeros);
 
   m_p_add.res_high = NULL;
   m_p_add.res_low = tl_input;
