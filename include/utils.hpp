@@ -7,6 +7,7 @@
 #include <libbmruntime/bmruntime_bmkernel.h>
 
 #include <assert.h>
+#include <limits.h>
 #include <string.h>
 #include <iostream>
 #include <vector>

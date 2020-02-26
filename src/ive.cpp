@@ -1,5 +1,10 @@
 #include "ive.h"
 #include <glog/logging.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb/stb_image_write.h"
+
 #include "kernel_generator.hpp"
 #include "tpu_data.hpp"
 
@@ -202,6 +207,50 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   return CVI_SUCCESS;
 }
 
+IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
+                              IVE_IMAGE_TYPE_E enType) {
+  int desiredNChannels = -1;
+  switch (enType) {
+    case IVE_IMAGE_TYPE_U8C1:
+      desiredNChannels = STBI_grey;
+      break;
+    case IVE_IMAGE_TYPE_U8C3_PLANAR:
+      desiredNChannels = STBI_rgb;
+      break;
+    default:
+      std::cerr << "Not support channel " << enType;
+      break;
+  }
+  IVE_IMAGE_S img;
+  if (desiredNChannels >= 0) {
+    int width, height, nChannels;
+    stbi_uc *stbi_data = stbi_load(filename, &width, &height, &nChannels, desiredNChannels);
+    CVI_IVE_CreateImage(pIveHandle, &img, enType, width, height);
+    memcpy(img.pu8VirAddr[0], stbi_data, desiredNChannels * width * height);
+    stbi_image_free(stbi_data);
+  }
+  return img;
+}
+
+CVI_S32 CVI_IVE_WriteImage(const char *filename, IVE_IMAGE_S *pstImg) {
+  int desiredNChannels = -1;
+  switch (pstImg->enType) {
+    case IVE_IMAGE_TYPE_U8C1:
+      desiredNChannels = STBI_grey;
+      break;
+    case IVE_IMAGE_TYPE_U8C3_PLANAR:
+      desiredNChannels = STBI_rgb;
+      break;
+    default:
+      std::cerr << "Not support channel " << pstImg->enType;
+      return CVI_FAILURE;
+      break;
+  }
+  stbi_write_png(filename, pstImg->u16Width, pstImg->u16Height, desiredNChannels,
+                 pstImg->pu8VirAddr[0], pstImg->u16Stride[0]);
+  return CVI_SUCCESS;
+}
+
 CVI_S32 CVI_SYS_FreeM(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo) {
   delete[] pstMemInfo->pu8VirAddr;
   pstMemInfo->u32Size = 0;
@@ -373,9 +422,9 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   int ret = CVI_NOT_SUPPORTED;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
 
-  float *x = (float *)&ctrl->u0q16X;
-  float *y = (float *)&ctrl->u0q16Y;
-  if ((*x == 1 && *y == 1) || (*x == 0 && *y == 0)) {
+  float x = convert_bf16_fp32(ctrl->u0q16X);
+  float y = convert_bf16_fp32(ctrl->u0q16Y);
+  if ((x == 1 && y == 1) || (x == 0.f && y == 0.f)) {
     ret = CVI_SUCCESS;
     handle_ctx->t_h.t_add.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
@@ -535,7 +584,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   if (CVI_IVE_Sobel(pIveHandle, pstSrc, pstDstH, pstDstV, &iveSblCtrl, 0) != CVI_SUCCESS) {
     return CVI_FAILURE;
   }
-  IVE_MAG_AND_ANG_CTRL iveMaaCtrl;
+  IVE_MAG_AND_ANG_CTRL_S iveMaaCtrl;
   iveMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_ANG;
   iveMaaCtrl.no_negative = true;
   if (CVI_IVE_MagAndAng(pIveHandle, pstDstH, pstDstV, pstDstMag, pstDstAng, &iveMaaCtrl, 0) !=

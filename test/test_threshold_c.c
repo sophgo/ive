@@ -1,8 +1,6 @@
 #include "ive.h"
 
 #include <stdio.h>
-#include "opencv/cv.h"
-#include "opencv/highgui.h"
 
 int main(int argc, char **argv) {
   CVI_SYS_LOGGING(argv[0]);
@@ -11,13 +9,12 @@ int main(int argc, char **argv) {
   printf("BM Kernel init.\n");
 
   // Fetch image information
-  IplImage *img = cvLoadImage("cat.png", 0);
-  IVE_SRC_IMAGE_S src1;
-  CVI_IVE_CreateImage(handle, &src1, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
-  memcpy(src1.pu8VirAddr[0], img->imageData, img->nChannels * img->width * img->height);
+  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, "cat.png", IVE_IMAGE_TYPE_U8C1);
+  int width = src.u16Width;
+  int height = src.u16Height;
 
   IVE_DST_IMAGE_S dst;
-  CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
 
   printf("Run TPU Threshold.\n");
   IVE_THRESH_CTRL_S iveThreshCtrl;  // Currently a dummy variable
@@ -25,16 +22,14 @@ int main(int argc, char **argv) {
   iveThreshCtrl.u8LowThr = 170;
   iveThreshCtrl.u8MinVal = 0;
   iveThreshCtrl.u8MaxVal = 255;
-  CVI_IVE_Thresh(handle, &src1, &dst, &iveThreshCtrl, 0);
+  CVI_IVE_Thresh(handle, &src, &dst, &iveThreshCtrl, 0);
 
   // write result to disk
   printf("Save to image.\n");
-  memcpy(img->imageData, dst.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_threshold_c.png", img, 0);
-  cvReleaseImage(&img);
+  CVI_IVE_WriteImage("test_threshold_c.png", &dst);
 
   // Free memory, instance
-  CVI_SYS_FreeI(handle, &src1);
+  CVI_SYS_FreeI(handle, &src);
   CVI_SYS_FreeI(handle, &dst);
   CVI_IVE_DestroyHandle(handle);
 

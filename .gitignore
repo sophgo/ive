@@ -1,4 +1,7 @@
 .vscode
 build
+build_soc
 install
+install_soc
 prebuilt
+*.o

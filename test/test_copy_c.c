@@ -1,8 +1,6 @@
 #include "ive.h"
 
 #include <stdio.h>
-#include "opencv/cv.h"
-#include "opencv/highgui.h"
 
 int cpu_ref(const int channels, const int x_sz, const int y_sz, IVE_SRC_IMAGE_S *src,
             IVE_DST_IMAGE_S *dst_copy, IVE_DST_IMAGE_S *dst_interval);
@@ -14,13 +12,13 @@ int main(int argc, char **argv) {
   printf("BM Kernel init.\n");
 
   // Fetch image information
-  IplImage *img = cvLoadImage("cat.png", 0);
-  IVE_SRC_IMAGE_S src;
-  CVI_IVE_CreateImage(handle, &src, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
-  memcpy(src.pu8VirAddr[0], img->imageData, img->nChannels * img->width * img->height);
+  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, "cat.png", IVE_IMAGE_TYPE_U8C1);
+  int nChannels = 1;
+  int width = src.u16Width;
+  int height = src.u16Height;
 
   IVE_DST_IMAGE_S dst;
-  CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
 
   printf("Run TPU Direct Copy.\n");
   IVE_DMA_CTRL_S iveDmaCtrl;
@@ -28,7 +26,7 @@ int main(int argc, char **argv) {
   CVI_IVE_DMA(handle, &src, &dst, &iveDmaCtrl, 0);
 
   IVE_DST_IMAGE_S dst2;
-  CVI_IVE_CreateImage(handle, &dst2, IVE_IMAGE_TYPE_U8C1, img->width * 2, img->height * 2);
+  CVI_IVE_CreateImage(handle, &dst2, IVE_IMAGE_TYPE_U8C1, width * 2, height * 2);
 
   printf("Run TPU Interval Copy.\n");
   iveDmaCtrl.enMode = IVE_DMA_MODE_INTERVAL_COPY;
@@ -45,30 +43,13 @@ int main(int argc, char **argv) {
   iveDmaCtrl.enMode = IVE_DMA_MODE_DIRECT_COPY;
   CVI_IVE_DMA(handle, &src_crop, &dst3, &iveDmaCtrl, 0);
 
-  int ret =
-      cpu_ref(img->nChannels, iveDmaCtrl.u8HorSegSize, iveDmaCtrl.u8VerSegRows, &src, &dst, &dst2);
+  int ret = cpu_ref(nChannels, iveDmaCtrl.u8HorSegSize, iveDmaCtrl.u8VerSegRows, &src, &dst, &dst2);
 
   // write result to disk
   printf("Save to image.\n");
-  memcpy(img->imageData, dst.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_dcopy_c.png", img, 0);
-  cvReleaseImage(&img);
-
-  IplImage *img_interval;
-  CvSize img_size = cvSize(dst2.u16Width, dst2.u16Height);
-  img_interval = cvCreateImage(img_size, IPL_DEPTH_8U, 1);
-  memcpy(img_interval->imageData, dst2.pu8VirAddr[0],
-         img_interval->nChannels * img_interval->width * img_interval->height);
-  cvSaveImage("test_icopy_c.png", img_interval, 0);
-  cvReleaseImage(&img_interval);
-
-  IplImage *img_crop;
-  CvSize img_size2 = cvSize(dst3.u16Width, dst3.u16Height);
-  img_crop = cvCreateImage(img_size2, IPL_DEPTH_8U, 1);
-  memcpy(img_crop->imageData, dst3.pu8VirAddr[0],
-         img_crop->nChannels * img_crop->width * img_crop->height);
-  cvSaveImage("test_scopy_c.png", img_crop, 0);
-  cvReleaseImage(&img_crop);
+  CVI_IVE_WriteImage("test_dcopy_c.png", &dst);
+  CVI_IVE_WriteImage("test_icopy_c.png", &dst2);
+  CVI_IVE_WriteImage("test_scopy_c.png", &dst3);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);

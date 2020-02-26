@@ -1,8 +1,7 @@
 #include "ive.h"
 
 #include <stdio.h>
-#include "opencv/cv.h"
-#include "opencv/highgui.h"
+#include <string.h>
 
 int main(int argc, char **argv) {
   CVI_SYS_LOGGING(argv[0]);
@@ -11,16 +10,15 @@ int main(int argc, char **argv) {
   printf("BM Kernel init.\n");
 
   // Fetch image information
-  IplImage *img = cvLoadImage("cat.png", 0);
-  IVE_SRC_IMAGE_S src;
-  CVI_IVE_CreateImage(handle, &src, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
-  memcpy(src.pu8VirAddr[0], img->imageData, img->nChannels * img->width * img->height);
+  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, "cat.png", IVE_IMAGE_TYPE_U8C1);
+  int width = src.u16Width;
+  int height = src.u16Height;
 
   IVE_DST_IMAGE_S dst;
-  CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
 
   IVE_DST_IMAGE_S dst2;
-  CVI_IVE_CreateImage(handle, &dst2, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dst2, IVE_IMAGE_TYPE_U8C1, width, height);
 
   printf("Run TPU Threshold.\n");
   IVE_THRESH_CTRL_S iveThreshCtrl;  // Currently a dummy variable
@@ -31,9 +29,7 @@ int main(int argc, char **argv) {
   CVI_IVE_Thresh(handle, &src, &dst, &iveThreshCtrl, 0);
 
   // write result to disk
-  printf("Save to image.\n");
-  memcpy(img->imageData, dst.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_morph_thresh_c.png", img, 0);
+  CVI_IVE_WriteImage("test_morph_thresh_c.png", &dst);
 
   printf("Run TPU Dilate.\n");
   CVI_U8 arr[] = {0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0};
@@ -43,17 +39,14 @@ int main(int argc, char **argv) {
 
   // write result to disk
   printf("Save to image.\n");
-  memcpy(img->imageData, dst2.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_dilate_c.png", img, 0);
+  CVI_IVE_WriteImage("test_dilate_c.png", &dst2);
 
   printf("Run TPU Erode.\n");
   IVE_ERODE_CTRL_S iveErdCtrl = iveDltCtrl;
   CVI_IVE_Erode(handle, &dst, &dst2, &iveErdCtrl, 0);
   // write result to disk
   printf("Save to image.\n");
-  memcpy(img->imageData, dst2.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_erode_c.png", img, 0);
-  cvReleaseImage(&img);
+  CVI_IVE_WriteImage("test_erode_c.png", &dst2);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);

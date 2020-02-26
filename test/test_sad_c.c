@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "opencv/cv.h"
-#include "opencv/highgui.h"
 
 // clang-format off
 static char test_array[] = {

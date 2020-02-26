@@ -24,6 +24,15 @@ $ cmake .. -DLIBDEP_MIDDLEWARE_DIR=<middleware root folder> -DLIBDEP_BMTAP2_DIR=
 $ make -j8
 ```
 
+SOC mode
+
+```
+$ mkdir build_soc
+$ cd build
+$ cmake .. -DBM_TARGET=soc -DTOOLCHAIN_ROOT_DIR=${PWD}/../../gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu  -DCMAKE_TOOLCHAIN_FILE=../toolchain/toolchain-aarch64-linux.cmake
+$ make -j8
+```
+
 **Note: You'll need to connect to VPN to get prebuilt files from FTP.**
 
 You may install the library with the following command.

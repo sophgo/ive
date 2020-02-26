@@ -1,8 +1,7 @@
 #include "ive.h"
 
 #include <stdio.h>
-#include "opencv/cv.h"
-#include "opencv/highgui.h"
+#include <string.h>
 
 int main(int argc, char **argv) {
   CVI_SYS_LOGGING(argv[0]);
@@ -11,13 +10,12 @@ int main(int argc, char **argv) {
   printf("BM Kernel init.\n");
 
   // Fetch image information
-  IplImage *img = cvLoadImage("cat.png", 0);
-  IVE_SRC_IMAGE_S src;
-  CVI_IVE_CreateImage(handle, &src, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
-  memcpy(src.pu8VirAddr[0], img->imageData, img->nChannels * img->width * img->height);
+  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, "cat.png", IVE_IMAGE_TYPE_U8C1);
+  int width = src.u16Width;
+  int height = src.u16Height;
 
   IVE_DST_IMAGE_S dst;
-  CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
 
   printf("Run TPU Filter.\n");
   CVI_S8 arr[] = {1, 2, 1, 2, 4, 2, 1, 2, 1};
@@ -28,9 +26,7 @@ int main(int argc, char **argv) {
 
   // write result to disk
   printf("Save to image.\n");
-  memcpy(img->imageData, dst.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_filter_c.png", img, 0);
-  cvReleaseImage(&img);
+  CVI_IVE_WriteImage("test_filter_c.png", &dst);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);

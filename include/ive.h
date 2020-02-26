@@ -78,6 +78,25 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
                          CVI_U16 u16X1, CVI_U16 u16Y1, CVI_U16 u16X2, CVI_U16 u16Y2);
 
 /**
+ * @brief Read an image from file system.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param filename File path to the image.
+ * @param enType Type of the destination image.
+ * @return IVE_IMAGE_S Return IVE_IMAGE_S
+ */
+IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAGE_TYPE_E enType);
+
+/**
+ * @brief Write an IVE_IMAGE_S to file system.
+ *
+ * @param filename Save file path.
+ * @param pstImg Input image.
+ * @return CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_WriteImage(const char *filename, IVE_IMAGE_S *pstImg);
+
+/**
  * @brief Free Allocated IVE_MEM_INFO_S.
  *
  * @param pIveHandle Ive instance handler.

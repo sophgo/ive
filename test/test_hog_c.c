@@ -4,8 +4,6 @@
 #include <math.h>
 #include <stdio.h>
 #include "bmkernel/bm1880v2/1880v2_fp_convert.h"
-#include "opencv/cv.h"
-#include "opencv/highgui.h"
 
 #define CELL_SIZE 5
 #define BIN_NUM 9
@@ -20,28 +18,28 @@ int main(int argc, char **argv) {
   printf("BM Kernel init.\n");
 
   // Fetch image information
-  IplImage *img = cvLoadImage("cat.png", 0);
-  IVE_SRC_IMAGE_S src;
-  CVI_IVE_CreateImage(handle, &src, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
-  memcpy(src.pu8VirAddr[0], img->imageData, img->nChannels * img->width * img->height);
+  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, "cat.png", IVE_IMAGE_TYPE_U8C1);
+  int nChannels = 1;
+  int width = src.u16Width;
+  int height = src.u16Height;
 
   IVE_DST_IMAGE_S dstH, dstV;
-  CVI_IVE_CreateImage(handle, &dstV, IVE_IMAGE_TYPE_BF16C1, img->width, img->height);
-  CVI_IVE_CreateImage(handle, &dstH, IVE_IMAGE_TYPE_BF16C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dstV, IVE_IMAGE_TYPE_BF16C1, width, height);
+  CVI_IVE_CreateImage(handle, &dstH, IVE_IMAGE_TYPE_BF16C1, width, height);
 
   IVE_DST_IMAGE_S dstH_u8, dstV_u8;
-  CVI_IVE_CreateImage(handle, &dstH_u8, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
-  CVI_IVE_CreateImage(handle, &dstV_u8, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dstH_u8, IVE_IMAGE_TYPE_U8C1, width, height);
+  CVI_IVE_CreateImage(handle, &dstV_u8, IVE_IMAGE_TYPE_U8C1, width, height);
 
   IVE_DST_IMAGE_S dstAng;
-  CVI_IVE_CreateImage(handle, &dstAng, IVE_IMAGE_TYPE_BF16C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dstAng, IVE_IMAGE_TYPE_BF16C1, width, height);
 
   IVE_DST_IMAGE_S dstAng_u8;
-  CVI_IVE_CreateImage(handle, &dstAng_u8, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dstAng_u8, IVE_IMAGE_TYPE_U8C1, width, height);
 
   IVE_DST_IMAGE_S dstBlk;
-  CVI_IVE_CreateImage(handle, &dstBlk, IVE_IMAGE_TYPE_BF16C1, img->width / CELL_SIZE,
-                      img->height / CELL_SIZE);
+  CVI_IVE_CreateImage(handle, &dstBlk, IVE_IMAGE_TYPE_BF16C1, width / CELL_SIZE,
+                      height / CELL_SIZE);
 
   IVE_DST_MEM_INFO_S dstHist;
   CVI_IVE_CreateMemInfo(handle, &dstHist, BIN_NUM * sizeof(int));
@@ -59,17 +57,13 @@ int main(int argc, char **argv) {
   CVI_IVE_ImageTypeConvert(handle, &dstH, &dstH_u8, &iveItcCtrl, 0);
   CVI_IVE_ImageTypeConvert(handle, &dstAng, &dstAng_u8, &iveItcCtrl, 0);
 
-  int ret = cpu_ref(img->nChannels, &src, &dstH, &dstV, &dstAng);
+  int ret = cpu_ref(nChannels, &src, &dstH, &dstV, &dstAng);
 
   // write result to disk
   printf("Save to image.\n");
-  memcpy(img->imageData, dstV_u8.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_sobelV_c.png", img, 0);
-  memcpy(img->imageData, dstH_u8.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_sobelH_c.png", img, 0);
-  memcpy(img->imageData, dstAng_u8.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_ang_c.png", img, 0);
-  cvReleaseImage(&img);
+  CVI_IVE_WriteImage("test_sobelV_c.png", &dstV_u8);
+  CVI_IVE_WriteImage("test_sobelH_c.png", &dstH_u8);
+  CVI_IVE_WriteImage("test_ang_c.png", &dstAng_u8);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);

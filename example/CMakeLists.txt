@@ -6,5 +6,5 @@ include_directories(
 )
 
 add_executable(example_bk_subtract example_bk_subtract.cpp)
-target_link_libraries(example_bk_subtract cvi_ive_tpu glog ${OpenCV_LIBS})
+target_link_libraries(example_bk_subtract cvi_ive_tpu ${GLOG_LIBRARIES} ${OpenCV_LIBS})
 install(TARGETS example_bk_subtract DESTINATION bin)

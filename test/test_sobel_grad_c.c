@@ -3,9 +3,8 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <sys/time.h>
 #include "bmkernel/bm1880v2/1880v2_fp_convert.h"
-#include "opencv/cv.h"
-#include "opencv/highgui.h"
 
 int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE_DST_IMAGE_S *dstV,
             IVE_DST_IMAGE_S *dstMag, IVE_DST_IMAGE_S *dstAng);
@@ -17,36 +16,49 @@ int main(int argc, char **argv) {
   printf("BM Kernel init.\n");
 
   // Fetch image information
-  IplImage *img = cvLoadImage("cat.png", 0);
-  IVE_SRC_IMAGE_S src;
-  CVI_IVE_CreateImage(handle, &src, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
-  memcpy(src.pu8VirAddr[0], img->imageData, img->nChannels * img->width * img->height);
+  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, "cat.png", IVE_IMAGE_TYPE_U8C1);
+  int nChannels = 1;
+  int width = src.u16Width;
+  int height = src.u16Height;
 
   IVE_DST_IMAGE_S dstH, dstV;
-  CVI_IVE_CreateImage(handle, &dstV, IVE_IMAGE_TYPE_BF16C1, img->width, img->height);
-  CVI_IVE_CreateImage(handle, &dstH, IVE_IMAGE_TYPE_BF16C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dstV, IVE_IMAGE_TYPE_BF16C1, width, height);
+  CVI_IVE_CreateImage(handle, &dstH, IVE_IMAGE_TYPE_BF16C1, width, height);
 
   IVE_DST_IMAGE_S dstH_u8, dstV_u8;
-  CVI_IVE_CreateImage(handle, &dstH_u8, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
-  CVI_IVE_CreateImage(handle, &dstV_u8, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dstH_u8, IVE_IMAGE_TYPE_U8C1, width, height);
+  CVI_IVE_CreateImage(handle, &dstV_u8, IVE_IMAGE_TYPE_U8C1, width, height);
 
   IVE_DST_IMAGE_S dstMag, dstAng;
-  CVI_IVE_CreateImage(handle, &dstMag, IVE_IMAGE_TYPE_BF16C1, img->width, img->height);
-  CVI_IVE_CreateImage(handle, &dstAng, IVE_IMAGE_TYPE_BF16C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dstMag, IVE_IMAGE_TYPE_BF16C1, width, height);
+  CVI_IVE_CreateImage(handle, &dstAng, IVE_IMAGE_TYPE_BF16C1, width, height);
 
   IVE_DST_IMAGE_S dstMag_u8, dstAng_u8;
-  CVI_IVE_CreateImage(handle, &dstMag_u8, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
-  CVI_IVE_CreateImage(handle, &dstAng_u8, IVE_IMAGE_TYPE_U8C1, img->width, img->height);
+  CVI_IVE_CreateImage(handle, &dstMag_u8, IVE_IMAGE_TYPE_U8C1, width, height);
+  CVI_IVE_CreateImage(handle, &dstAng_u8, IVE_IMAGE_TYPE_U8C1, width, height);
 
   printf("Run TPU Sobel Grad.\n");
   IVE_SOBEL_CTRL_S iveSblCtrl;
   iveSblCtrl.enOutCtrl = IVE_SOBEL_OUT_CTRL_BOTH;
-  CVI_IVE_Sobel(handle, &src, &dstH, &dstV, &iveSblCtrl, 0);
-  printf("Run TPU Mag and Ang.\n");
   IVE_MAG_AND_ANG_CTRL_S pstMaaCtrl;
   pstMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG;
   pstMaaCtrl.no_negative = true;
-  CVI_IVE_MagAndAng(handle, &dstH, &dstV, &dstMag, &dstAng, &pstMaaCtrl, 0);
+  unsigned long long total_t = 0;
+  struct timeval t0, t1, t2;
+  for (size_t i = 0; i < 500; i++) {
+    gettimeofday(&t0, NULL);
+    CVI_IVE_Sobel(handle, &src, &dstH, &dstV, &iveSblCtrl, 0);
+    gettimeofday(&t1, NULL);
+    CVI_IVE_MagAndAng(handle, &dstH, &dstV, &dstMag, &dstAng, &pstMaaCtrl, 0);
+    gettimeofday(&t2, NULL);
+    unsigned long elapsed = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
+    unsigned long elapsed2 = (t2.tv_sec - t1.tv_sec) * 1000000 + t2.tv_usec - t1.tv_usec;
+    printf("[%lu] time elapsed sobel %lu mag and angle %lu\n", i, elapsed, elapsed2);
+    total_t += (elapsed + elapsed2);
+  }
+  printf("total time %llu\n", total_t);
+
+  printf("Run TPU Mag and Ang.\n");
 
   printf("Normalize result to 0-255.\n");
   IVE_ITC_CRTL_S iveItcCtrl;
@@ -56,19 +68,14 @@ int main(int argc, char **argv) {
   CVI_IVE_ImageTypeConvert(handle, &dstMag, &dstMag_u8, &iveItcCtrl, 0);
   CVI_IVE_ImageTypeConvert(handle, &dstAng, &dstAng_u8, &iveItcCtrl, 0);
 
-  int ret = cpu_ref(img->nChannels, &src, &dstH, &dstV, &dstMag, &dstAng);
+  int ret = cpu_ref(nChannels, &src, &dstH, &dstV, &dstMag, &dstAng);
 
   // write result to disk
   printf("Save to image.\n");
-  memcpy(img->imageData, dstV_u8.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_sobelV_c.png", img, 0);
-  memcpy(img->imageData, dstH_u8.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_sobelH_c.png", img, 0);
-  memcpy(img->imageData, dstMag_u8.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_mag_c.png", img, 0);
-  memcpy(img->imageData, dstAng_u8.pu8VirAddr[0], img->nChannels * img->width * img->height);
-  cvSaveImage("test_ang_c.png", img, 0);
-  cvReleaseImage(&img);
+  CVI_IVE_WriteImage("test_sobelV_c.png", &dstV_u8);
+  CVI_IVE_WriteImage("test_sobelH_c.png", &dstH_u8);
+  CVI_IVE_WriteImage("test_mag_c.png", &dstMag_u8);
+  CVI_IVE_WriteImage("test_ang_c.png", &dstAng_u8);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);
