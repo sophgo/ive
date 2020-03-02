@@ -71,6 +71,8 @@ int main(int argc, char **argv) {
   memcpy(src.pu8VirAddr[0], test_array, TEST_W * TEST_H);
   CVI_IVE_CreateImage(handle, &src2, IVE_IMAGE_TYPE_U8C1, TEST_W, TEST_H);
   memcpy(src2.pu8VirAddr[0], test_array2, TEST_W * TEST_H);
+  CVI_IVE_BufFlush(handle, &src);
+  CVI_IVE_BufFlush(handle, &src2);
 
   IVE_SAD_CTRL_S iveSadCtrl;
   iveSadCtrl.enMode = IVE_SAD_MODE_MB_4X4;
@@ -101,6 +103,10 @@ int main(int argc, char **argv) {
   printf("Run TPU SAD.\n");
   CVI_IVE_SAD(handle, &src, &src2, &dst, &dst_thresh, &iveSadCtrl, 0);
 
+  CVI_IVE_BufRequest(handle, &src);
+  CVI_IVE_BufRequest(handle, &src2);
+  CVI_IVE_BufRequest(handle, &dst);
+  CVI_IVE_BufRequest(handle, &dst_thresh);
   int ret = cpu_ref(TEST_W, TEST_H, window_size, iveSadCtrl.u16Thr, iveSadCtrl.u8MinVal,
                     iveSadCtrl.u8MaxVal, &src, &src2, &dst, &dst_thresh);
 

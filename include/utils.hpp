@@ -60,11 +60,22 @@ inline bool tgTLShapeCompare(bmk1880v2_tensor_lmem_shape_t &tl_shape,
   return false;
 }
 
+inline void cviImgFlush2TL(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, CviImg &img,
+                           bmk1880v2_tensor_lmem_t *lmem) {
+  img.Flush(ctx);
+  bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
+  p.src = &img.m_tg;
+  p.dst = lmem;
+  bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
+  bmruntime_bmkernel_submit(*ctx);
+}
+
 inline void extendValue2TL(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, const int value, const int c,
                            const int h, const int w, const fmt_t fmt,
                            bmk1880v2_tensor_lmem_t *lmem) {
   CviImg thresh_img(ctx, c, h, w, fmt);
   memset(thresh_img.GetVAddr(), value, c * h * w);
+  thresh_img.Flush(ctx);
   bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
   p.src = &thresh_img.m_tg;
   p.dst = lmem;

@@ -1,7 +1,7 @@
 #include "tpu/tpu_filter.hpp"
 #include <string.h>
 
-void IveTPUFilter::setKernel(const IveKernel &kernel) {
+void IveTPUFilter::setKernel(IveKernel &kernel) {
   m_kernel = &kernel;
   m_kernel_info.size = m_kernel->img.m_tg.shape.h;
   int pad = (m_kernel_info.size - 1) / 2;
@@ -37,13 +37,8 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                                                m_kernel_info.size};
   bmk1880v2_tensor_lmem_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
   auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, FMT_U8, 1);
-  {
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-    p.src = &m_kernel->img.m_tg;
-    p.dst = tl_kernel;
-    bmk1880v2_tdma_g2l_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
-  }
+  cviImgFlush2TL(ctx, bk_ctx, m_kernel->img, tl_kernel);
+
   auto *tl_multiplier = allocTLMem(bk_ctx, packed_s, FMT_U8, 1);
   {
     // TODO: Need refine
@@ -51,11 +46,7 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         getPackedMultiplierArray(tl_shape.c, m_kernel->multiplier.base, m_kernel->multiplier.shift);
     CviImg cvi_multi(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, FMT_U8);
     memcpy(cvi_multi.GetVAddr(), arr, tl_shape.c * MULTIPLIER_ONLY_PACKED_DATA_SIZE);
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-    p.src = &cvi_multi.m_tg;
-    p.dst = tl_multiplier;
-    bmk1880v2_tdma_g2l_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
+    cviImgFlush2TL(ctx, bk_ctx, cvi_multi, tl_multiplier);
     cvi_multi.Free(ctx);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
     tl_multiplier->stride = bmk1880v2_tensor_lmem_default_stride(bk_ctx, tl_multiplier->shape, 0);

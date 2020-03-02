@@ -43,6 +43,7 @@ int main(int argc, char** argv) {
 
   CviImg cvi_img(&ctx, 1, 25, 25, FMT_U8);
   memcpy(cvi_img.GetVAddr(), test_array, 625);
+  cvi_img.Flush(&ctx);
   CviImg result(&ctx, 1, 5, 5, FMT_U8);
   CviImg result2(&ctx, 1, 5, 5, FMT_BF16);
 
@@ -58,6 +59,7 @@ int main(int argc, char** argv) {
   tpu_block.init(&ctx, bk_ctx);
   tpu_block.runSingleSizeKernel(&ctx, bk_ctx, inputs, &outputs);
 
+  result.Invld(&ctx);
   printf("Result:\n");
   for (size_t i = 0; i < 5; i++) {
     for (size_t j = 0; j < 5; j++) {
@@ -74,6 +76,7 @@ int main(int argc, char** argv) {
   tpu_block_bf16.init(&ctx, bk_ctx);
   tpu_block_bf16.runSingleSizeKernel(&ctx, bk_ctx, inputs, &outputs);
 
+  result2.Invld(&ctx);
   printf("Result:\n");
   for (size_t i = 0; i < 5; i++) {
     for (size_t j = 0; j < 5; j++) {

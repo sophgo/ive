@@ -18,6 +18,8 @@ int main(int argc, char** argv) {
   memcpy(cvi_img.GetVAddr(), img.data, img.channels() * img.cols * img.rows);
   CviImg black_img(&ctx, img.channels(), img.rows, img.cols, FMT_U8);
   memset(black_img.GetVAddr(), 0, img.channels() * img.cols * img.rows);
+  cvi_img.Flush(&ctx);
+  black_img.Flush(&ctx);
   CviImg result(&ctx, img.channels(), img.rows, img.cols, FMT_U8);
 
   std::vector<CviImg> inputs, outputs;
@@ -32,6 +34,7 @@ int main(int argc, char** argv) {
   tpu_sub.runSingleSizeKernel(&ctx, bk_ctx, inputs, &outputs);
 
   // write result to disk
+  result.Invld(&ctx);
   cv::Mat img1(img.rows, img.cols, CV_8UC1, result.GetVAddr());
   cv::imwrite("test_sub.png", img1);
 

@@ -43,13 +43,17 @@ int main(int argc, char **argv) {
   iveDmaCtrl.enMode = IVE_DMA_MODE_DIRECT_COPY;
   CVI_IVE_DMA(handle, &src_crop, &dst3, &iveDmaCtrl, 0);
 
+  CVI_IVE_BufRequest(handle, &src);
+  CVI_IVE_BufRequest(handle, &dst);
+  CVI_IVE_BufRequest(handle, &dst2);
+  CVI_IVE_BufRequest(handle, &dst3);
   int ret = cpu_ref(nChannels, iveDmaCtrl.u8HorSegSize, iveDmaCtrl.u8VerSegRows, &src, &dst, &dst2);
 
   // write result to disk
   printf("Save to image.\n");
-  CVI_IVE_WriteImage("test_dcopy_c.png", &dst);
-  CVI_IVE_WriteImage("test_icopy_c.png", &dst2);
-  CVI_IVE_WriteImage("test_scopy_c.png", &dst3);
+  CVI_IVE_WriteImage(handle, "test_dcopy_c.png", &dst);
+  CVI_IVE_WriteImage(handle, "test_icopy_c.png", &dst2);
+  CVI_IVE_WriteImage(handle, "test_scopy_c.png", &dst3);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);

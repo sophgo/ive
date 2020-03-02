@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
       src2.pu8VirAddr[0][i + j * width] = 0;
     }
   }
+  CVI_IVE_BufFlush(handle, &src2);
 
   IVE_DST_IMAGE_S dst;
   CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
@@ -34,7 +35,7 @@ int main(int argc, char **argv) {
 
   // write result to disk
   printf("Save to image.\n");
-  CVI_IVE_WriteImage("test_sub_c.png", &dst);
+  CVI_IVE_WriteImage(handle, "test_sub_c.png", &dst);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src1);

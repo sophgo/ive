@@ -57,13 +57,17 @@ int main(int argc, char **argv) {
   CVI_IVE_ImageTypeConvert(handle, &dstH, &dstH_u8, &iveItcCtrl, 0);
   CVI_IVE_ImageTypeConvert(handle, &dstAng, &dstAng_u8, &iveItcCtrl, 0);
 
+  CVI_IVE_BufRequest(handle, &src);
+  CVI_IVE_BufRequest(handle, &dstH);
+  CVI_IVE_BufRequest(handle, &dstV);
+  CVI_IVE_BufRequest(handle, &dstAng);
   int ret = cpu_ref(nChannels, &src, &dstH, &dstV, &dstAng);
 
   // write result to disk
   printf("Save to image.\n");
-  CVI_IVE_WriteImage("test_sobelV_c.png", &dstV_u8);
-  CVI_IVE_WriteImage("test_sobelH_c.png", &dstH_u8);
-  CVI_IVE_WriteImage("test_ang_c.png", &dstAng_u8);
+  CVI_IVE_WriteImage(handle, "test_sobelV_c.png", &dstV_u8);
+  CVI_IVE_WriteImage(handle, "test_sobelH_c.png", &dstH_u8);
+  CVI_IVE_WriteImage(handle, "test_ang_c.png", &dstAng_u8);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);

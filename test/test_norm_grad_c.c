@@ -29,9 +29,9 @@ int main(int argc, char **argv) {
 
   // write result to disk
   printf("Save to image.\n");
-  CVI_IVE_WriteImage("test_normV_c.png", &dstV_u8);
-  CVI_IVE_WriteImage("test_normH_c.png", &dstH_u8);
-  CVI_IVE_WriteImage("test_normHV_c.png", &dstHV_u8);
+  CVI_IVE_WriteImage(handle, "test_normV_c.png", &dstV_u8);
+  CVI_IVE_WriteImage(handle, "test_normH_c.png", &dstH_u8);
+  CVI_IVE_WriteImage(handle, "test_normHV_c.png", &dstHV_u8);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);

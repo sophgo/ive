@@ -63,20 +63,10 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     bf16_atan_tbl((u16 *)table_data_atan_y0.GetVAddr(), (u16 *)table_data_atan_slope.GetVAddr(),
                   (u16 *)table_data_atan_invert.GetVAddr(),
                   (u16 *)table_data_atan_pos_neg.GetVAddr(), &tl_table_s);
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-    p.src = &table_data_atan_y0.m_tg;
-    p.dst = tl_y0_table;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    p.src = &table_data_atan_slope.m_tg;
-    p.dst = tl_slope_table;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    p.src = &table_data_atan_invert.m_tg;
-    p.dst = tl_invert_table;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    p.src = &table_data_atan_pos_neg.m_tg;
-    p.dst = tl_pos_neg_table;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
+    cviImgFlush2TL(ctx, bk_ctx, table_data_atan_y0, tl_y0_table);
+    cviImgFlush2TL(ctx, bk_ctx, table_data_atan_slope, tl_slope_table);
+    cviImgFlush2TL(ctx, bk_ctx, table_data_atan_invert, tl_invert_table);
+    cviImgFlush2TL(ctx, bk_ctx, table_data_atan_pos_neg, tl_pos_neg_table);
     table_data_atan_y0.Free(ctx);
     table_data_atan_slope.Free(ctx);
     table_data_atan_invert.Free(ctx);
@@ -89,14 +79,8 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     CviImg table_data_mantissa(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
     bf16_reciprocal_tbl((u16 *)table_data.GetVAddr(), (u16 *)table_data_mantissa.GetVAddr(),
                         &tl_table_s);
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-    p.src = &table_data.m_tg;
-    p.dst = tl_reciprocal_table_answer;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    p.src = &table_data_mantissa.m_tg;
-    p.dst = tl_reciprocal_table_answer_mantissa;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
+    cviImgFlush2TL(ctx, bk_ctx, table_data, tl_reciprocal_table_answer);
+    cviImgFlush2TL(ctx, bk_ctx, table_data_mantissa, tl_reciprocal_table_answer_mantissa);
     table_data.Free(ctx);
     table_data_mantissa.Free(ctx);
   }
@@ -106,14 +90,8 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     CviImg table_data(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
     CviImg table_data_mantissa(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
     bf16_sqrt_tbl((u16 *)table_data.GetVAddr(), (u16 *)table_data_mantissa.GetVAddr(), &tl_table_s);
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-    p.src = &table_data.m_tg;
-    p.dst = tl_sqrt_table_answer;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    p.src = &table_data_mantissa.m_tg;
-    p.dst = tl_sqrt_table_answer_mantissa;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
+    cviImgFlush2TL(ctx, bk_ctx, table_data, tl_sqrt_table_answer);
+    cviImgFlush2TL(ctx, bk_ctx, table_data_mantissa, tl_sqrt_table_answer_mantissa);
     table_data.Free(ctx);
     table_data_mantissa.Free(ctx);
   }
@@ -122,11 +100,7 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   {
     CviImg idx_0_table_data(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
     bf16_gen_0_tbl((u16 *)idx_0_table_data.GetVAddr(), &tl_table_s);
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-    p.src = &idx_0_table_data.m_tg;
-    p.dst = tl_idx_0_table;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
+    cviImgFlush2TL(ctx, bk_ctx, idx_0_table_data, tl_idx_0_table);
     idx_0_table_data.Free(ctx);
   }
 

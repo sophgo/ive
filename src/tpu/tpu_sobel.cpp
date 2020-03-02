@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-void IveTPUSobel::setKernel(const IveKernel &kernel_x, const IveKernel &kernel_y) {
+void IveTPUSobel::setKernel(IveKernel &kernel_x, IveKernel &kernel_y) {
   m_kernel_x = &kernel_x;
   m_kernel_y = &kernel_y;
   m_kernel_info.size = m_kernel_x->img.m_tg.shape.h;
@@ -41,21 +41,10 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size,
                                                m_kernel_info.size};
   auto *tl_kernel_gx = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1);
-  {
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-    p.src = &m_kernel_x->img.m_tg;
-    p.dst = tl_kernel_gx;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
-  }
   auto *tl_kernel_gy = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1);
-  {
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-    p.src = &m_kernel_y->img.m_tg;
-    p.dst = tl_kernel_gy;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
-  }
+  cviImgFlush2TL(ctx, bk_ctx, m_kernel_x->img, tl_kernel_gx);
+  cviImgFlush2TL(ctx, bk_ctx, m_kernel_y->img, tl_kernel_gy);
+
   bmk1880v2_tensor_lmem_shape_t tl_table_s;
   bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_BF16);
   auto *tl_table_data = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1);
@@ -64,14 +53,8 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     CviImg table_data(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
     CviImg table_data_mantissa(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
     bf16_sqrt_tbl((u16 *)table_data.GetVAddr(), (u16 *)table_data_mantissa.GetVAddr(), &tl_table_s);
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-    p.src = &table_data.m_tg;
-    p.dst = tl_table_data;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    p.src = &table_data_mantissa.m_tg;
-    p.dst = tl_table_data_mantissa;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
+    cviImgFlush2TL(ctx, bk_ctx, table_data, tl_table_data);
+    cviImgFlush2TL(ctx, bk_ctx, table_data_mantissa, tl_table_data_mantissa);
     table_data.Free(ctx);
     table_data_mantissa.Free(ctx);
   }

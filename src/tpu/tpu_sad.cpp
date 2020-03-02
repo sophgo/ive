@@ -124,11 +124,7 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
       CviImg table_data_atan_pos_neg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
       genTableBF16((u16 *)table_data_atan_pos_neg.GetVAddr(), &tl_table_s, (float)m_min_value,
                    (float)m_max_value);
-      bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-      p.src = &table_data_atan_pos_neg.m_tg;
-      p.dst = tl_pos_neg_table;
-      bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-      bmruntime_bmkernel_submit(*ctx);
+      cviImgFlush2TL(ctx, bk_ctx, table_data_atan_pos_neg, tl_pos_neg_table);
       table_data_atan_pos_neg.Free(ctx);
     }
 

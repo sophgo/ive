@@ -15,6 +15,7 @@ int main() {
   cv::resize(img, img, cv::Size(640, 360));
   CviImg cvi_img(&ctx, img.channels(), img.rows, img.cols, FMT_U8);
   memcpy(cvi_img.GetVAddr(), img.data, img.channels() * img.cols * img.rows);
+  cvi_img.Flush(&ctx);
 
   u32 kernel_size = 3;
   IveKernel kernel =
@@ -32,6 +33,7 @@ int main() {
   tpu_filter.setKernel(kernel);
   tpu_filter.runSingleSizeKernel(&ctx, bk_ctx, inputs, &outputs);
 
+  result.Invld(&ctx);
   // write result to disk
   cv::Mat img1(img.rows, img.cols, CV_8UC1, result.GetVAddr());
   cv::imwrite("test_filter.png", img1);

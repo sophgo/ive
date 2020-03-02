@@ -196,6 +196,22 @@ class CviImg {
    */
   int Free(bmctx_t *ctx);
 
+  /**
+   * @brief Flush cache data to RAM.
+   *
+   * @param ctx bm context.
+   * @return int return 0 if success.
+   */
+  int Flush(bmctx_t *ctx) { return bm_device_flush(*ctx, m_bmmem); }
+
+  /**
+   * @brief Update cache data from RAM.
+   *
+   * @param ctx bm context.
+   * @return int return 0 if success.
+   */
+  int Invld(bmctx_t *ctx) { return bm_device_invld(*ctx, m_bmmem); }
+
   bmk1880v2_tensor_tgmem_t m_tg;
 
  private:

@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
   CVI_IVE_Thresh(handle, &src, &dst, &iveThreshCtrl, 0);
 
   // write result to disk
-  CVI_IVE_WriteImage("test_morph_thresh_c.png", &dst);
+  CVI_IVE_WriteImage(handle, "test_morph_thresh_c.png", &dst);
 
   printf("Run TPU Dilate.\n");
   CVI_U8 arr[] = {0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0};
@@ -39,14 +39,14 @@ int main(int argc, char **argv) {
 
   // write result to disk
   printf("Save to image.\n");
-  CVI_IVE_WriteImage("test_dilate_c.png", &dst2);
+  CVI_IVE_WriteImage(handle, "test_dilate_c.png", &dst2);
 
   printf("Run TPU Erode.\n");
   IVE_ERODE_CTRL_S iveErdCtrl = iveDltCtrl;
   CVI_IVE_Erode(handle, &dst, &dst2, &iveErdCtrl, 0);
   // write result to disk
   printf("Save to image.\n");
-  CVI_IVE_WriteImage("test_erode_c.png", &dst2);
+  CVI_IVE_WriteImage(handle, "test_erode_c.png", &dst2);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);

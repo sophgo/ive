@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
       src2.pu8VirAddr[0][i + j * width] = 0;
     }
   }
+  CVI_IVE_BufFlush(handle, &src2);
 
   IVE_DST_IMAGE_S dst;
   CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
@@ -50,12 +51,16 @@ int main(int argc, char **argv) {
     total_t += elapsed;
   }
   printf("total time %llu\n", total_t);
+  CVI_IVE_BufRequest(handle, &src1);
+  CVI_IVE_BufRequest(handle, &src2);
+  CVI_IVE_BufRequest(handle, &dst);
+  int ret = cpu_ref(nChannels, &src1, &src2, &dst);
 #ifdef __ARM_ARCH
   uint8_t *ptr1 = src1.pu8VirAddr[0];
   uint8_t *ptr2 = src2.pu8VirAddr[0];
   uint8_t *ptr3 = dst.pu8VirAddr[0];
   gettimeofday(&t0, NULL);
-  for (size_t i = 0; i < 960 * 540 / 16; i++) {
+  for (size_t i = 0; i < width * height / 16; i++) {
     uint8x16_t val = vld1q_u8(ptr1);
     uint8x16_t val2 = vld1q_u8(ptr2);
     uint8x16_t result = vqaddq_u8(val, val2);
@@ -64,14 +69,14 @@ int main(int argc, char **argv) {
     ptr2 += 16;
     ptr3 += 16;
   }
-#endif
   gettimeofday(&t1, NULL);
   unsigned long elapsed = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
-  printf("cpu time elapsed %lu\n", elapsed);
-  int ret = cpu_ref(nChannels, &src1, &src2, &dst);
+  printf("cpu time neon elapsed %lu\n", elapsed);
+#endif
+
   // write result to disk
   printf("Save to image.\n");
-  CVI_IVE_WriteImage("test_add_c.png", &dst);
+  CVI_IVE_WriteImage(handle, "test_add_c.png", &dst);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src1);

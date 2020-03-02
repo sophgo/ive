@@ -46,6 +46,7 @@ int main(int argc, char **argv) {
   IVE_SRC_IMAGE_S src;
   CVI_IVE_CreateImage(handle, &src, IVE_IMAGE_TYPE_U8C1, TEST_W, TEST_H);
   memcpy(src.pu8VirAddr[0], test_array, TEST_W * TEST_H);
+  CVI_IVE_BufFlush(handle, &src);
 
   int res_w = TEST_W / CELL_SZ;
   int res_h = TEST_H / CELL_SZ;
@@ -65,6 +66,9 @@ int main(int argc, char **argv) {
   iveItcCtrl.enType = IVE_ITC_SATURATE;
   CVI_IVE_ImageTypeConvert(handle, &dst_bf16, &dst_fp32, &iveItcCtrl, 0);
 
+  CVI_IVE_BufRequest(handle, &src);
+  CVI_IVE_BufRequest(handle, &dst);
+  CVI_IVE_BufRequest(handle, &dst_fp32);
   int ret = cpu_ref(res_w, res_h, iveBlkCtrl.bin_num, &src, &dst, &dst_fp32);
 
   // Free memory, instance

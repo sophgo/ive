@@ -23,6 +23,8 @@ int main(int argc, char** argv) {
       black_img.GetVAddr()[i + j * img.cols] = 0;
     }
   }
+  cvi_img.Flush(&ctx);
+  black_img.Flush(&ctx);
   CviImg result(&ctx, img.channels(), img.rows, img.cols, FMT_U8);
 
   std::vector<CviImg> inputs, outputs;
@@ -36,6 +38,9 @@ int main(int argc, char** argv) {
   tpu_add.init(&ctx, bk_ctx);
   tpu_add.runSingleSizeKernel(&ctx, bk_ctx, inputs, &outputs);
 
+  cvi_img.Invld(&ctx);
+  black_img.Invld(&ctx);
+  result.Invld(&ctx);
   // write result to disk
   cv::Mat img1(img.rows, img.cols, CV_8UC1, result.GetVAddr());
   cv::imwrite("test_add.png", img1);

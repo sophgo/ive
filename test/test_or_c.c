@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 
   // write result to disk
   printf("Save to image.\n");
-  CVI_IVE_WriteImage("test_or_c.png", &dst);
+  CVI_IVE_WriteImage(handle, "test_or_c.png", &dst);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src1);

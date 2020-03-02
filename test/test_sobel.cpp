@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
   // cv::resize(img, img, cv::Size(640, 360));
   CviImg cvi_img(&ctx, img.channels(), img.rows, img.cols, FMT_U8);
   memcpy(cvi_img.GetVAddr(), img.data, img.channels() * img.cols * img.rows);
-
+  cvi_img.Flush(&ctx);
   u32 kernel_size = 3;
   IveKernel kernel_x =
       createKernel(&ctx, img.channels(), kernel_size, kernel_size, IVE_KERNEL::SOBEL_X);
@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
   tpu_sobel.runSingleSizeKernel(&ctx, bk_ctx, inputs, &outputs);
 
   // write result to disk
+  result.Invld(&ctx);
   cv::Mat img1(img.rows, img.cols, CV_32FC1);
   float *img1_ptr = (float *)img1.data;
   s16 *result_ptr = (s16 *)result.GetVAddr();

@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-void IveTPUSobelGradOnly::setKernel(const IveKernel &kernel_x, const IveKernel &kernel_y) {
+void IveTPUSobelGradOnly::setKernel(IveKernel &kernel_x, IveKernel &kernel_y) {
   m_kernel_x = &kernel_x;
   m_kernel_y = &kernel_y;
   m_kernel_info.size = m_kernel_x->img.m_tg.shape.h;
@@ -40,21 +40,9 @@ int IveTPUSobelGradOnly::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size,
                                                m_kernel_info.size};
   auto *tl_kernel_gx = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1);
-  {
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-    p.src = &m_kernel_x->img.m_tg;
-    p.dst = tl_kernel_gx;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
-  }
   auto *tl_kernel_gy = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1);
-  {
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-    p.src = &m_kernel_y->img.m_tg;
-    p.dst = tl_kernel_gy;
-    bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
-  }
+  cviImgFlush2TL(ctx, bk_ctx, m_kernel_x->img, tl_kernel_gx);
+  cviImgFlush2TL(ctx, bk_ctx, m_kernel_y->img, tl_kernel_gy);
 
   m_p_conv.pad_top = m_kernel_info.pad[2];
   m_p_conv.pad_bottom = m_kernel_info.pad[3];

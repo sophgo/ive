@@ -67,7 +67,25 @@ CVI_S32 CVI_IVE_DestroyHandle(IVE_HANDLE pIveHandle) {
   return CVI_SUCCESS;
 }
 
-CVI_S32 CVI_IVE_Flush(IVE_HANDLE pIveHandle) {
+CVI_S32 CVI_IVE_BufFlush(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  auto *img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
+  if (img->Flush(&handle_ctx->ctx) != BM_SUCCESS) {
+    return CVI_FAILURE;
+  }
+  return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_BufRequest(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  auto *img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
+  if (img->Invld(&handle_ctx->ctx) != BM_SUCCESS) {
+    return CVI_FAILURE;
+  }
+  return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_CmdFlush(IVE_HANDLE pIveHandle) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   bmruntime_bmkernel_submit(handle_ctx->ctx);
   return CVI_SUCCESS;
@@ -227,12 +245,13 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
     stbi_uc *stbi_data = stbi_load(filename, &width, &height, &nChannels, desiredNChannels);
     CVI_IVE_CreateImage(pIveHandle, &img, enType, width, height);
     memcpy(img.pu8VirAddr[0], stbi_data, desiredNChannels * width * height);
+    CVI_IVE_BufFlush(pIveHandle, &img);
     stbi_image_free(stbi_data);
   }
   return img;
 }
 
-CVI_S32 CVI_IVE_WriteImage(const char *filename, IVE_IMAGE_S *pstImg) {
+CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAGE_S *pstImg) {
   int desiredNChannels = -1;
   switch (pstImg->enType) {
     case IVE_IMAGE_TYPE_U8C1:
@@ -246,6 +265,7 @@ CVI_S32 CVI_IVE_WriteImage(const char *filename, IVE_IMAGE_S *pstImg) {
       return CVI_FAILURE;
       break;
   }
+  CVI_IVE_BufRequest(pIveHandle, pstImg);
   stbi_write_png(filename, pstImg->u16Width, pstImg->u16Height, desiredNChannels,
                  pstImg->pu8VirAddr[0], pstImg->u16Stride[0]);
   return CVI_SUCCESS;
@@ -276,8 +296,12 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   if (pstDmaCtrl->enMode == IVE_DMA_MODE_DIRECT_COPY) {
     ret = CVI_SUCCESS;
 #ifdef USE_CPU_COPY
+    CVI_IVE_BufRequest(pIveHandle, pstSrc);
+    CVI_IVE_BufRequest(pIveHandle, pstDst);
     uint size = pstSrc->u16Stride[0] * pstSrc->u16Height;
     memcpy(pstDst->pu8VirAddr[0], pstSrc->pu8VirAddr[0], size);
+    CVI_IVE_BufFlush(pIveHandle, pstSrc);
+    CVI_IVE_BufFlush(pIveHandle, pstDst);
 #else
     CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
     CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
@@ -303,24 +327,31 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
 CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                                  IVE_DST_IMAGE_S *pstDst, IVE_ITC_CRTL_S *pstItcCtrl,
                                  bool bInstant) {
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
   if (pstItcCtrl->enType == IVE_ITC_NORMALIZE) {
     if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_F32) {
+      cpp_src->Invld(&handle_ctx->ctx);
+      cpp_dst->Invld(&handle_ctx->ctx);
       u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
       float *dst_ptr = (float *)cpp_dst->GetVAddr();
 
       for (u64 i = 0; i < cpp_src->GetImgSize() / 2; i++) {
         dst_ptr[i] = convert_bf16_fp32(src_ptr[i]);
       }
+      cpp_src->Flush(&handle_ctx->ctx);
+      cpp_dst->Flush(&handle_ctx->ctx);
     } else if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_U16) {
+      cpp_src->Invld(&handle_ctx->ctx);
+      cpp_dst->Invld(&handle_ctx->ctx);
       u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
       u16 *dst_ptr = (u16 *)cpp_dst->GetVAddr();
       u16 *tmp_arr = new u16[cpp_src->GetImgSize()];
       u16 min = 65535, max = 0;
       u64 img_size = cpp_src->m_tg.shape.c * cpp_src->m_tg.shape.h * cpp_src->m_tg.shape.w;
       for (u64 i = 0; i < img_size; i++) {
-        tmp_arr[i] = src_ptr[i];
+        tmp_arr[i] = convert_bf16_fp32(src_ptr[i]);
         if (tmp_arr[i] < min) {
           min = tmp_arr[i];
         }
@@ -334,8 +365,12 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
         dst_ptr[i] = std::round((int)(multiplier * (tmp_arr[i] - min)) - s8_offset);
       }
       delete[] tmp_arr;
+      cpp_src->Flush(&handle_ctx->ctx);
+      cpp_dst->Flush(&handle_ctx->ctx);
     } else if (cpp_src->m_tg.fmt == FMT_U16 &&
                (cpp_dst->m_tg.fmt == FMT_U8 || cpp_dst->m_tg.fmt == FMT_I8)) {
+      cpp_src->Invld(&handle_ctx->ctx);
+      cpp_dst->Invld(&handle_ctx->ctx);
       u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
       u8 *dst_ptr = (u8 *)cpp_dst->GetVAddr();
       u16 *tmp_arr = new u16[cpp_src->GetImgSize()];
@@ -356,8 +391,12 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
         dst_ptr[i] = std::round((int)(multiplier * (tmp_arr[i] - min)) - s8_offset);
       }
       delete[] tmp_arr;
+      cpp_src->Flush(&handle_ctx->ctx);
+      cpp_dst->Flush(&handle_ctx->ctx);
     } else if (cpp_src->m_tg.fmt == FMT_BF16 &&
                (cpp_dst->m_tg.fmt == FMT_U8 || cpp_dst->m_tg.fmt == FMT_I8)) {
+      cpp_src->Invld(&handle_ctx->ctx);
+      cpp_dst->Invld(&handle_ctx->ctx);
       u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
       u8 *dst_ptr = (u8 *)cpp_dst->GetVAddr();
       float *tmp_arr = new float[cpp_src->GetImgSize()];
@@ -378,27 +417,39 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
         dst_ptr[i] = std::round((u8)(multiplier * (tmp_arr[i] - min)) - s8_offset);
       }
       delete[] tmp_arr;
+      cpp_src->Flush(&handle_ctx->ctx);
+      cpp_dst->Flush(&handle_ctx->ctx);
     }
   } else if (pstItcCtrl->enType == IVE_ITC_SATURATE) {
     if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_F32) {
+      cpp_src->Invld(&handle_ctx->ctx);
+      cpp_dst->Invld(&handle_ctx->ctx);
       u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
       float *dst_ptr = (float *)cpp_dst->GetVAddr();
 
       for (u64 i = 0; i < cpp_src->GetImgSize() / 2; i++) {
         dst_ptr[i] = convert_bf16_fp32(src_ptr[i]);
       }
+      cpp_src->Flush(&handle_ctx->ctx);
+      cpp_dst->Flush(&handle_ctx->ctx);
     } else if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_U16) {
+      cpp_src->Invld(&handle_ctx->ctx);
+      cpp_dst->Invld(&handle_ctx->ctx);
       u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
       u16 *dst_ptr = (u16 *)cpp_dst->GetVAddr();
 
       for (u64 i = 0; i < cpp_src->GetImgSize() / 2; i++) {
-        dst_ptr[i] = std::round(convert_bf16_fp32(src_ptr[i]));
+        int val = std::round(convert_bf16_fp32(src_ptr[i]));
+        if (val > 65535) val = 65535;
+        if (val < 0) val = 0;
+        dst_ptr[i] = val;
       }
+      cpp_src->Flush(&handle_ctx->ctx);
+      cpp_dst->Flush(&handle_ctx->ctx);
     } else if ((cpp_src->m_tg.fmt == FMT_BF16 || cpp_src->m_tg.fmt == FMT_U8 ||
                 cpp_src->m_tg.fmt == FMT_I8) &&
                (cpp_dst->m_tg.fmt == FMT_BF16 || cpp_dst->m_tg.fmt == FMT_U8 ||
                 cpp_dst->m_tg.fmt == FMT_I8)) {
-      IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
       CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
       CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
       std::vector<CviImg> inputs = {*cpp_src};
@@ -600,6 +651,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
     return CVI_FAILURE;
   }
   // Get Histogram
+  CVI_IVE_BufRequest(pIveHandle, pstDstBlk);
   u16 *blk_ptr = (u16 *)pstDstBlk->pu8VirAddr[0];
   u32 *hog_ptr = (u32 *)pstDstHist->pu8VirAddr;
   memset(hog_ptr, 0, pstDstHist->u32Size);

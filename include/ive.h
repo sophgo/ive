@@ -31,12 +31,31 @@ IVE_HANDLE CVI_IVE_CreateHandle();
 CVI_S32 CVI_IVE_DestroyHandle(IVE_HANDLE pIveHandle);
 
 /**
+ * @brief Flush cache data to RAM. Call this after IVE_IMAGE_S VAddr operations.
+ *
+ * @param pIveHandle Ive instanace handler.
+ * @param pstImg Image to be flushed.
+ * @return CVI_S32 Return CVI_SUCCESS if operation succeeded.
+ */
+CVI_S32 CVI_IVE_BufFlush(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg);
+
+/**
+ * @brief Update cache from RAM. Call this function before using data from VAddr \
+ *        in CPU.
+ *
+ * @param pIveHandle Ive instanace handler.
+ * @param pstImg Cache image to be updated.
+ * @return CVI_S32 Return CVI_SUCCESS if operation succeeded.
+ */
+CVI_S32 CVI_IVE_BufRequest(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg);
+
+/**
  * @brief Flush the TPU command buffer saved inside the instnace handler.
  *
  * @param pIveHandle Ive instance handler.
  * @return CVI_S32 Return CVI_SUCCESS if operation succeed.
  */
-CVI_S32 CVI_IVE_Flush(IVE_HANDLE pIveHandle);
+CVI_S32 CVI_IVE_CmdFlush(IVE_HANDLE pIveHandle);
 
 /**
  * @brief Create a IVE_MEM_INFO_S.
@@ -90,11 +109,12 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename, IVE_I
 /**
  * @brief Write an IVE_IMAGE_S to file system.
  *
+ * @param pIveHandle Ive instance handler.
  * @param filename Save file path.
  * @param pstImg Input image.
  * @return CVI_S32 Return CVI_SUCCESS if succeed.
  */
-CVI_S32 CVI_IVE_WriteImage(const char *filename, IVE_IMAGE_S *pstImg);
+CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAGE_S *pstImg);
 
 /**
  * @brief Free Allocated IVE_MEM_INFO_S.

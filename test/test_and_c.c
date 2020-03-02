@@ -25,6 +25,7 @@ int main(int argc, char **argv) {
       src2.pu8VirAddr[0][i + j * width] = 255;
     }
   }
+  CVI_IVE_BufFlush(handle, &src2);
 
   IVE_DST_IMAGE_S dst;
   CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
@@ -32,11 +33,14 @@ int main(int argc, char **argv) {
   printf("Run TPU And.\n");
   CVI_IVE_And(handle, &src1, &src2, &dst, 0);
 
+  CVI_IVE_BufRequest(handle, &src1);
+  CVI_IVE_BufRequest(handle, &src2);
+  CVI_IVE_BufRequest(handle, &dst);
   int ret = cpu_ref(nChannels, &src1, &src2, &dst);
 
   // write result to disk
   printf("Save to image.\n");
-  CVI_IVE_WriteImage("test_and_c.png", &dst);
+  CVI_IVE_WriteImage(handle, "test_and_c.png", &dst);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src1);

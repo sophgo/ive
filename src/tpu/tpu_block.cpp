@@ -71,15 +71,11 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     CviImg cvi_multi(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, FMT_U8);
     getPackedMultiplierArrayBuffer(tl_shape.c, quantized_multiplier, right_shift,
                                    cvi_multi.GetVAddr());
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
-    p.src = &cvi_multi.m_tg;
-    p.dst = tl_multiplier;
-    bmk1880v2_tdma_g2l_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
+    cviImgFlush2TL(ctx, bk_ctx, cvi_multi, tl_multiplier);
     cvi_multi.Free(ctx);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
     tl_multiplier->stride =
-        bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, m_tl_vec[3]->shape, 0, FMT_U8);
+        bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_multiplier->shape, 0, FMT_U8);
   }
 
   m_p_conv.pad_top = m_kernel_info.pad[2];
