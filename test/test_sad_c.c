@@ -180,7 +180,7 @@ int cpu_ref(const int width, const int height, const int window_size,
     for (size_t j = pad_0; j < width - pad_1; j++) {
       int value = cpu_result[i * width + j] >= threshold ? max : min;
       if (value != dst_thresh_addr[i * width + j]) {
-        printf("[%lu, %lu] %f %d \n", j, i, cpu_result[i * width + j],
+        printf("[%lu, %lu] %d %d \n", j, i, value,
                                             (int)dst_thresh_addr[i * width + j]);
         ret = CVI_FAILURE;
         break;
