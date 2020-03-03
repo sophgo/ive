@@ -65,12 +65,13 @@ int main(int argc, char **argv) {
   CVI_IVE_BufRequest(handle, &dst);
   int ret = cpu_ref(nChannels, &src1, &src2, &dst);
 #ifdef __ARM_ARCH
-  size_t total_size = nChannels * width * height;
-  uint8_t *cpu_dst = malloc(sizeof(uint8_t) * total_size);
+  IVE_DST_IMAGE_S dst_cpu;
+  CVI_IVE_CreateImage(handle, &dst_cpu, IVE_IMAGE_TYPE_U8C1, width, height);
   uint8_t *ptr1 = src1.pu8VirAddr[0];
   uint8_t *ptr2 = src2.pu8VirAddr[0];
-  uint8_t *ptr3 = cpu_dst;
+  uint8_t *ptr3 = dst_cpu.pu8VirAddr[0];
   gettimeofday(&t0, NULL);
+  size_t total_size = nChannels * width * height;
   size_t neon_turn = total_size / 16;
   for (size_t i = 0; i < neon_turn; i++) {
     uint8x16_t val = vld1q_u8(ptr1);
@@ -84,7 +85,7 @@ int main(int argc, char **argv) {
   size_t neon_left = total_size - (neon_turn * 16);
   ptr1 = src1.pu8VirAddr[0];
   ptr2 = src2.pu8VirAddr[0];
-  ptr3 = cpu_dst;
+  ptr3 = dst_cpu.pu8VirAddr[0];
   for (size_t i = neon_left; i < width * height; i++) {
     int res = ptr1[i] + ptr2[i];
     res = res > 255 ? 255 : res;
@@ -95,15 +96,14 @@ int main(int argc, char **argv) {
   gettimeofday(&t0, NULL);
   ptr1 = src1.pu8VirAddr[0];
   ptr2 = src2.pu8VirAddr[0];
-  ptr3 = cpu_dst;
+  ptr3 = dst_cpu.pu8VirAddr[0];
   for (size_t i = 0; i < nChannels * src1.u16Width * src1.u16Height; i++) {
     int res = ptr1[i] + ptr2[i];
-    res = res > 255 ? 255 : res;
-    ptr3[i] = res;
+    ptr3[i] = res > 255 ? 255 : res;
   }
   gettimeofday(&t1, NULL);
   unsigned long elapsed_cpu = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
-  free(cpu_dst);
+  CVI_SYS_FreeI(handle, &dst_cpu);
 #endif
   if (total_run == 1) {
     printf("TPU avg time %lu\n", elapsed_tpu);
