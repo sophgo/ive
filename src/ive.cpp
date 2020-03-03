@@ -484,8 +484,7 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
     std::vector<CviImg> outputs = {*cpp_dst};
 
-    handle_ctx->t_h.t_add.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                              &outputs);
+    handle_ctx->t_h.t_add.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   }
   return ret;
 }

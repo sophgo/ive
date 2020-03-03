@@ -12,6 +12,8 @@ class IveCore {
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) = 0;
   int runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
                           std::vector<CviImg> *output);
+  int runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+                  std::vector<CviImg> *output, bool enable_min_max = false);
 
  protected:
   bmk1880v2_tensor_lmem_t *allocTLMem(bmk1880v2_context_t *bk_ctx,

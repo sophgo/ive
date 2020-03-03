@@ -1,5 +1,6 @@
 #include "core.hpp"
 
+#include <cmath>
 #include <iostream>
 #include "debug.hpp"
 
@@ -354,6 +355,236 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", m_slice_info.w.slice,
             m_slice_info.w.turn, m_slice_info.w.skip, m_slice_info.w.left);
 
+  freeTLMems(bk_ctx);
+  return BM_SUCCESS;
+}
+
+int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+                         std::vector<CviImg> *output, bool enable_min_max) {
+  // Only supports kernel size = 1. NoKernel means kernel size = 1. You still can use depthwise
+  // conv + qdm as u8 div.
+  if (m_kernel_info.size != 1) {
+    return BM_ERR_FAILURE;
+  }
+
+  // Calculating slice
+  // Calculate fixed kernel size
+  u32 kernel_sz = (m_kernel_info.nums_of_kernel * m_kernel_info.size * m_kernel_info.size +
+                   MULTIPLIER_ONLY_PACKED_DATA_SIZE * m_kernel_info.use_multiplier);
+  // Find max available mem for one tl.
+  int64_t result = m_chip_info.lmem_size -
+                   (int64_t)(kernel_sz + m_table_per_channel_size * m_slice_info.nums_of_table) -
+                   (int64_t)m_slice_info.fix_lmem_size;
+  size_t max_hxw = std::floor(result / (m_slice_info.nums_of_tl * 32));
+  u32 total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
+  u32 idiv_32 = (u32)(total_size / 32);
+  uint32_t div = max_hxw;
+  // Find div value that idiv % div == 0 while div < max_hxw
+  while (idiv_32 % div != 0) {
+    u32 val = std::ceil(float(idiv_32) / div);
+    div = std::floor(float(idiv_32) / val);
+  }
+  // Make w 16 align.
+  u32 div_16 = div / 16;
+  div = div_16 * 16;
+  // FIXME: We assumed that h never exceeds 1024.
+  bmk1880v2_tensor_tgmem_shape_t shape = {1, 32, div_16, 16};
+  size_t loop_turn = total_size / (32 * div);
+  std::vector<bmk1880v2_tensor_tgmem_shape_t> s_in_vec, s_out_vec;
+  for (size_t k = 0; k < input.size(); k++) {
+    s_in_vec.push_back({shape.n, shape.c, shape.h, shape.w});
+  }
+  for (size_t k = 0; k < output->size(); k++) {
+    s_out_vec.push_back({shape.n, shape.c, shape.h, shape.w});
+  }
+  // Check if any pixel left.
+  size_t left_pixels = total_size - (loop_turn * (32 * div));
+  IVE_DEBUG("turn %lu left %lu\n", loop_turn, left_pixels);
+  IVE_DEBUG("%u %u %u %u\n", shape.n, shape.c, shape.h, shape.w);
+
+  // allocate tl shape and get input/ output indices.
+  std::vector<u32> tl_in_idx, tl_out_idx;
+  runSetup(ctx, bk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx);
+
+  // Find and create input/ output fmt size pair.
+  std::vector<bmk1880v2_tensor_lmem_t *> tl_in, tl_out;
+  std::vector<FmtPair> fmt_input_vec, fmt_output_vec;
+  std::vector<bmk1880v2_tensor_tgmem_stride_t> input_stride_vec, output_stride_vec;
+  for (size_t i = 0; i < tl_in_idx.size(); i++) {
+    auto *lmem = m_tl_vec[tl_in_idx[i]];
+    tl_in.emplace_back(lmem);
+    FmtPair fp;
+    fp.setTGFmt(input[i].m_tg.fmt);
+    fp.setTLFmt(lmem->fmt);
+    fmt_input_vec.push_back(fp);
+    input_stride_vec.push_back(
+        bmk1880v2_bf16_tensor_tgmem_default_stride(shape, input[0].m_tg.fmt));
+  }
+  // TODO: Add do enable_min_max info
+  for (size_t i = 0; i < tl_out_idx.size(); i++) {
+    auto *lmem = m_tl_vec[tl_out_idx[i]];
+    tl_out.emplace_back(lmem);
+    FmtPair fp;
+    fp.setTGFmt((*output)[i].m_tg.fmt);
+    fp.setTLFmt(lmem->fmt);
+    fmt_output_vec.push_back(fp);
+    output_stride_vec.push_back(
+        bmk1880v2_bf16_tensor_tgmem_default_stride(shape, (*output)[0].m_tg.fmt));
+  }
+
+  // Create tg block
+  bmk1880v2_tensor_tgmem_t tg_in;
+  tg_in.base_reg_index = 0;
+  bmk1880v2_tensor_tgmem_t tg_out;
+  tg_out.base_reg_index = 0;
+
+  // Get device memory start offset
+  std::vector<u64> bm_src_addr, bm_dest_addr;
+  for (size_t k = 0; k < input.size(); k++) {
+    u64 bm_start_addr = input[k].GetPAddr();
+    bm_src_addr.push_back(bm_start_addr);
+  }
+  for (size_t k = 0; k < output->size(); k++) {
+    u64 bm_des_addr = (*output)[k].GetPAddr();
+    bm_dest_addr.push_back(bm_des_addr + ((*output)[k].m_tg.stride.h * m_kernel_info.pad[2]) +
+                           (m_kernel_info.pad[0] * fmt_output_vec[k].getTGFmtSize()));
+  }
+  // FIXME: Currently only supports input image size = output image.
+  size_t jump_src = shape.n * shape.c * shape.h * shape.w;
+  size_t jump_dst = jump_src;
+  for (size_t i = 0; i < loop_turn; i++) {
+    for (size_t k = 0; k < tl_in.size(); k++) {
+      tg_in.start_address = bm_src_addr[k];
+      tg_in.shape.n = tl_in[k]->shape.n;
+      tg_in.shape.c = tl_in[k]->shape.c;
+      tg_in.shape.h = tl_in[k]->shape.h;
+      tg_in.shape.w = tl_in[k]->shape.w;
+      tg_in.fmt = fmt_input_vec[k].getTGFmt();
+      tg_in.stride = input_stride_vec[k];
+      bmk1880v2_tdma_tg2l_tensor_copy_param_t p_copy_in;
+      p_copy_in.src = &tg_in;
+      p_copy_in.dst = tl_in[k];
+      bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p_copy_in);
+
+      // Change src head addr
+      bm_src_addr[k] += 1 * jump_src * fmt_input_vec[k].getTGFmtSize();
+    }
+
+    operation(ctx, bk_ctx);
+
+    // tl2tg
+    for (size_t k = 0; k < tl_out.size(); k++) {
+      tg_out.start_address = bm_dest_addr[k];
+      tg_out.fmt = fmt_output_vec[k].getTGFmt();
+      tg_out.shape.n = tl_out[k]->shape.n;
+      tg_out.shape.c = tl_out[k]->shape.c;
+      tg_out.shape.h = tl_out[k]->shape.h;
+      tg_out.shape.w = tl_out[k]->shape.w;
+      tg_out.stride = output_stride_vec[k];
+      bmk1880v2_tensor_lmem_t out_shape;
+      bmk1880v2_tdma_l2tg_tensor_copy_param_t p_copy_out;
+      p_copy_out.src = tl_out[k];
+      p_copy_out.dst = &tg_out;
+      bmk1880v2_tdma_l2g_bf16_tensor_copy(bk_ctx, &p_copy_out);
+
+      // Change dest head addr
+      bm_dest_addr[k] += 1 * jump_dst * fmt_output_vec[k].getTGFmtSize();
+    }
+    bmruntime_bmkernel_submit(*ctx);
+  }
+  if (left_pixels != 0) {
+    bmk1880v2_tensor_tgmem_shape_t left_shape = {0, 0, 0, 0};
+    u32 div = 31;
+    while (left_pixels % div != 0) {
+      u32 val = std::ceil(float(left_pixels) / div);
+      div = std::floor(float(left_pixels) / val);
+    }
+    u32 hw = left_pixels / div;
+    // FIXME: Again, we assumed that h and w may not exceed 1024.
+    left_shape.n = 1;
+    left_shape.c = div;
+    left_shape.h = 1;
+    left_shape.w = hw;
+    IVE_DEBUG("%u %u %u %u\n", left_shape.n, left_shape.c, left_shape.h, left_shape.w);
+
+    for (size_t i = 0; i < input_stride_vec.size(); i++) {
+      input_stride_vec[i] =
+          bmk1880v2_bf16_tensor_tgmem_default_stride(left_shape, input[0].m_tg.fmt);
+    }
+    for (size_t i = 0; i < output_stride_vec.size(); i++) {
+      output_stride_vec[i] =
+          bmk1880v2_bf16_tensor_tgmem_default_stride(left_shape, (*output)[0].m_tg.fmt);
+    }
+    // Category tl shapes
+    for (size_t i = 0; i < m_tl_vec.size(); i++) {
+      auto *lmem = m_tl_vec[i];
+      bool skip = false;
+      for (size_t k = 0; k < s_in_vec.size(); k++) {
+        if (tgTLShapeCompare(lmem->shape, s_in_vec[k])) {
+          lmem->shape.n = left_shape.n;
+          lmem->shape.c = left_shape.c;
+          lmem->shape.h = left_shape.h;
+          lmem->shape.w = left_shape.w;
+          bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+          skip = true;
+          break;
+        }
+      }
+      if (skip) {
+        continue;
+      }
+      for (size_t k = 0; k < s_out_vec.size(); k++) {
+        if (tgTLShapeCompare(lmem->shape, s_out_vec[k])) {
+          lmem->shape.n = left_shape.n;
+          lmem->shape.c = left_shape.c;
+          lmem->shape.h = left_shape.h;
+          lmem->shape.w = left_shape.w;
+          bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+          break;
+        }
+      }
+    }
+    size_t jump_src = left_shape.n * left_shape.c * left_shape.h * left_shape.w;
+    size_t jump_dst = jump_src;
+    for (size_t k = 0; k < tl_in.size(); k++) {
+      tg_in.start_address = bm_src_addr[k];
+      tg_in.shape.n = tl_in[k]->shape.n;
+      tg_in.shape.c = tl_in[k]->shape.c;
+      tg_in.shape.h = tl_in[k]->shape.h;
+      tg_in.shape.w = tl_in[k]->shape.w;
+      tg_in.fmt = fmt_input_vec[k].getTGFmt();
+      tg_in.stride = input_stride_vec[k];
+      bmk1880v2_tdma_tg2l_tensor_copy_param_t p_copy_in;
+      p_copy_in.src = &tg_in;
+      p_copy_in.dst = tl_in[k];
+      bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p_copy_in);
+
+      // Change src head addr
+      bm_src_addr[k] += 1 * jump_src * fmt_input_vec[k].getTGFmtSize();
+    }
+
+    operation(ctx, bk_ctx);
+
+    // tl2tg
+    for (size_t k = 0; k < tl_out.size(); k++) {
+      tg_out.start_address = bm_dest_addr[k];
+      tg_out.fmt = fmt_output_vec[k].getTGFmt();
+      tg_out.shape.n = tl_out[k]->shape.n;
+      tg_out.shape.c = tl_out[k]->shape.c;
+      tg_out.shape.h = tl_out[k]->shape.h;
+      tg_out.shape.w = tl_out[k]->shape.w;
+      tg_out.stride = output_stride_vec[k];
+      bmk1880v2_tensor_lmem_t out_shape;
+      bmk1880v2_tdma_l2tg_tensor_copy_param_t p_copy_out;
+      p_copy_out.src = tl_out[k];
+      p_copy_out.dst = &tg_out;
+      bmk1880v2_tdma_l2g_bf16_tensor_copy(bk_ctx, &p_copy_out);
+
+      // Change dest head addr
+      bm_dest_addr[k] += 1 * jump_dst * fmt_output_vec[k].getTGFmtSize();
+    }
+    bmruntime_bmkernel_submit(*ctx);
+  }
   freeTLMems(bk_ctx);
   return BM_SUCCESS;
 }
