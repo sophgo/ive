@@ -1,12 +1,27 @@
 #include "ive.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
+#ifdef __ARM_ARCH
+#include "arm_neon.h"
+#endif
 
 int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src1, IVE_SRC_IMAGE_S *src2, IVE_DST_IMAGE_S *dst);
 
 int main(int argc, char **argv) {
+  if (argc != 2) {
+    printf("Incorrect loop value. Usage: test_add_c <loop in value (1-1000)>\n");
+    return CVI_FAILURE;
+  }
   CVI_SYS_LOGGING(argv[0]);
+  size_t total_run = atoi(argv[1]);
+  printf("Loop value: %lu\n", total_run);
+  if (total_run > 1000 || total_run == 0) {
+    printf("Incorrect loop value. Usage: test_add_c <loop in value (1-1000)>\n");
+    return CVI_FAILURE;
+  }
   // Create instance
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
   printf("BM Kernel init.\n");
@@ -31,16 +46,66 @@ int main(int argc, char **argv) {
   CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
 
   printf("Run TPU And.\n");
-  CVI_IVE_And(handle, &src1, &src2, &dst, 0);
-
+  struct timeval t0, t1;
+  gettimeofday(&t0, NULL);
+  for (size_t i = 0; i < total_run; i++) {
+    CVI_IVE_And(handle, &src1, &src2, &dst, 0);
+  }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_tpu =
+      ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
   CVI_IVE_BufRequest(handle, &src1);
   CVI_IVE_BufRequest(handle, &src2);
   CVI_IVE_BufRequest(handle, &dst);
   int ret = cpu_ref(nChannels, &src1, &src2, &dst);
 
-  // write result to disk
-  printf("Save to image.\n");
-  CVI_IVE_WriteImage(handle, "test_and_c.png", &dst);
+#ifdef __ARM_ARCH
+  uint8_t *ptr1 = src1.pu8VirAddr[0];
+  uint8_t *ptr2 = src2.pu8VirAddr[0];
+  uint8_t *ptr3 = dst.pu8VirAddr[0];
+  gettimeofday(&t0, NULL);
+  size_t total_size = nChannels * width * height;
+  size_t neon_turn = total_size / 16;
+  for (size_t i = 0; i < neon_turn; i++) {
+    uint8x16_t val = vld1q_u8(ptr1);
+    uint8x16_t val2 = vld1q_u8(ptr2);
+    uint8x16_t result = vandq_u8(val, val2);
+    vst1q_u8(ptr3, result);
+    ptr1 += 16;
+    ptr2 += 16;
+    ptr3 += 16;
+  }
+  size_t neon_left = total_size - (neon_turn * 16);
+  ptr1 = src1.pu8VirAddr[0];
+  ptr2 = src2.pu8VirAddr[0];
+  ptr3 = dst.pu8VirAddr[0];
+  for (size_t i = neon_left; i < width * height; i++) {
+    ptr3[i] = ptr1[i] & ptr2[i];
+  }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_neon = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
+  gettimeofday(&t0, NULL);
+  for (size_t i = 0; i < nChannels * src1.u16Width * src1.u16Height; i++) {
+    ptr3[i] = ptr1[i] & ptr2[i];
+  }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_cpu = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
+#endif
+  if (total_run == 1) {
+    printf("TPU avg time %lu\n", elapsed_tpu);
+#ifdef __ARM_ARCH
+    printf("CPU NEON time %lu\n", elapsed_neon);
+    printf("CPU time %lu\n", elapsed_cpu);
+#endif
+    // write result to disk
+    printf("Save to image.\n");
+    CVI_IVE_WriteImage(handle, "test_and_c.png", &dst);
+  }
+#ifdef __ARM_ARCH
+  else {
+    printf("OOO %-10s %10lu %10lu %10lu\n", "AND", elapsed_tpu, elapsed_neon, elapsed_cpu);
+  }
+#endif
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src1);

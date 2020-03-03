@@ -1,10 +1,25 @@
 #include "ive.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
+#ifdef __ARM_ARCH
+#include "arm_neon.h"
+#endif
 
 int main(int argc, char **argv) {
+  if (argc != 2) {
+    printf("Incorrect loop value. Usage: test_add_c <loop in value (1-1000)>\n");
+    return CVI_FAILURE;
+  }
   CVI_SYS_LOGGING(argv[0]);
+  size_t total_run = atoi(argv[1]);
+  printf("Loop value: %lu\n", total_run);
+  if (total_run > 1000 || total_run == 0) {
+    printf("Incorrect loop value. Usage: test_add_c <loop in value (1-1000)>\n");
+    return CVI_FAILURE;
+  }
   // Create instance
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
   printf("BM Kernel init.\n");
@@ -22,11 +37,22 @@ int main(int argc, char **argv) {
   IVE_FILTER_CTRL_S iveFltCtrl;
   memcpy(iveFltCtrl.as8Mask, arr, 9 * sizeof(CVI_S8));
   iveFltCtrl.u8Norm = 16;
-  CVI_IVE_Filter(handle, &src, &dst, &iveFltCtrl, 0);
+  struct timeval t0, t1;
+  gettimeofday(&t0, NULL);
+  for (size_t i = 0; i < total_run; i++) {
+    CVI_IVE_Filter(handle, &src, &dst, &iveFltCtrl, 0);
+  }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_tpu =
+      ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
 
-  // write result to disk
-  printf("Save to image.\n");
-  CVI_IVE_WriteImage(handle, "test_filter_c.png", &dst);
+  if (total_run == 1) {
+    // write result to disk
+    printf("Save to image.\n");
+    CVI_IVE_WriteImage(handle, "test_filter_c.png", &dst);
+  } else {
+    printf("OOO %-10s %10lu %10s %10s\n", "FILTER", elapsed_tpu, "NA", "NA");
+  }
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);
