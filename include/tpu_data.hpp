@@ -60,6 +60,8 @@ struct sliceUnit {
  *
  */
 struct SliceInfo {
+  u32 ping_pong_size = 1;
+  u32 ping_pong_share_tl = 0;
   u32 nums_of_tl = 2;
   u32 fix_lmem_size = 0;
   u32 nums_of_table = 0;

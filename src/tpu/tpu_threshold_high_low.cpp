@@ -78,7 +78,7 @@ int IveTPUThresholdHighLow::runSetup(
   return BM_SUCCESS;
 }
 
-void IveTPUThresholdHighLow::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+void IveTPUThresholdHighLow::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
   bmk1880v2_tiu_element_wise_mac(bk_ctx, &m_p_mac);
   bmk1880v2_tiu_element_wise_mul(bk_ctx, &m_p_mul);
   bmk1880v2_tiu_element_wise_max(bk_ctx, &m_p_max);

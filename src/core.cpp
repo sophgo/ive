@@ -100,6 +100,11 @@ int IveCore::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_o
 
 int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                                  std::vector<CviImg> &input, std::vector<CviImg> *output) {
+  // FIXME: Support later
+  if (m_slice_info.ping_pong_size != 1) {
+    std::cerr << "Currently runSingleSizeKernel does not support ping pong." << std::endl;
+    m_slice_info.ping_pong_size = 1;
+  }
   u32 batch = input[0].m_tg.shape.n;
   u32 channel = input[0].m_tg.shape.c;
   u32 height = input[0].m_tg.shape.h;
@@ -306,9 +311,8 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         // Change src head addr
         bm_src_addr_w[k] += 1 * in_slice_res.w.skip * fmt_input_vec[k].getTGFmtSize();
       }
-      bmruntime_bmkernel_submit(*ctx);
 
-      operation(ctx, bk_ctx);
+      operation(ctx, bk_ctx, 0);
 
       // tl2tg
       for (size_t k = 0; k < tl_out.size(); k++) {
@@ -366,6 +370,11 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   if (m_kernel_info.size != 1) {
     return BM_ERR_FAILURE;
   }
+  u32 total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
+  if (total_size % 16) {
+    std::cerr << "Image size " << total_size << " is not 16 aligned." << std::endl;
+    return BM_ERR_FAILURE;
+  }
 
   // Calculating slice
   // Calculate fixed kernel size
@@ -375,8 +384,10 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   int64_t result = m_chip_info.lmem_size -
                    (int64_t)(kernel_sz + m_table_per_channel_size * m_slice_info.nums_of_table) -
                    (int64_t)m_slice_info.fix_lmem_size;
-  size_t max_hxw = std::floor(result / (m_slice_info.nums_of_tl * 32));
-  u32 total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
+  size_t max_hxw =
+      std::floor(result / ((m_slice_info.nums_of_tl - m_slice_info.ping_pong_share_tl) *
+                               m_slice_info.ping_pong_size +
+                           m_slice_info.ping_pong_share_tl));
   u32 idiv_32 = (u32)(total_size / 32);
   uint32_t div = max_hxw;
   // Find div value that idiv % div == 0 while div < max_hxw
@@ -389,7 +400,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   div = div_16 * 16;
   // FIXME: We assumed that h never exceeds 1024.
   bmk1880v2_tensor_tgmem_shape_t shape = {1, 32, div_16, 16};
-  size_t loop_turn = total_size / (32 * div);
+  size_t loop_turn = (total_size / (32 * div)) / m_slice_info.ping_pong_size;
   std::vector<bmk1880v2_tensor_tgmem_shape_t> s_in_vec, s_out_vec;
   for (size_t k = 0; k < input.size(); k++) {
     s_in_vec.push_back({shape.n, shape.c, shape.h, shape.w});
@@ -398,7 +409,8 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
     s_out_vec.push_back({shape.n, shape.c, shape.h, shape.w});
   }
   // Check if any pixel left.
-  size_t left_pixels = total_size - (loop_turn * (32 * div));
+  size_t left_pixels = total_size - ((loop_turn * (32 * div)) * m_slice_info.ping_pong_size);
+  IVE_DEBUG("Total size %u\n", total_size);
   IVE_DEBUG("turn %lu left %lu\n", loop_turn, left_pixels);
   IVE_DEBUG("%u %u %u %u\n", shape.n, shape.c, shape.h, shape.w);
 
@@ -410,22 +422,23 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   std::vector<bmk1880v2_tensor_lmem_t *> tl_in, tl_out;
   std::vector<FmtPair> fmt_input_vec, fmt_output_vec;
   std::vector<bmk1880v2_tensor_tgmem_stride_t> input_stride_vec, output_stride_vec;
+  u32 sz_mod = tl_in_idx.size() / m_slice_info.ping_pong_size;
   for (size_t i = 0; i < tl_in_idx.size(); i++) {
     auto *lmem = m_tl_vec[tl_in_idx[i]];
     tl_in.emplace_back(lmem);
     FmtPair fp;
-    fp.setTGFmt(input[i].m_tg.fmt);
+    fp.setTGFmt(input[i % sz_mod].m_tg.fmt);
     fp.setTLFmt(lmem->fmt);
     fmt_input_vec.push_back(fp);
     input_stride_vec.push_back(
         bmk1880v2_bf16_tensor_tgmem_default_stride(shape, input[0].m_tg.fmt));
   }
-  // TODO: Add do enable_min_max info
+  sz_mod = tl_out_idx.size() / m_slice_info.ping_pong_size;
   for (size_t i = 0; i < tl_out_idx.size(); i++) {
     auto *lmem = m_tl_vec[tl_out_idx[i]];
     tl_out.emplace_back(lmem);
     FmtPair fp;
-    fp.setTGFmt((*output)[i].m_tg.fmt);
+    fp.setTGFmt((*output)[i % sz_mod].m_tg.fmt);
     fp.setTLFmt(lmem->fmt);
     fmt_output_vec.push_back(fp);
     output_stride_vec.push_back(
@@ -453,48 +466,57 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   size_t jump_src = shape.n * shape.c * shape.h * shape.w;
   size_t jump_dst = jump_src;
   for (size_t i = 0; i < loop_turn; i++) {
-    for (size_t k = 0; k < tl_in.size(); k++) {
-      tg_in.start_address = bm_src_addr[k];
-      tg_in.shape.n = tl_in[k]->shape.n;
-      tg_in.shape.c = tl_in[k]->shape.c;
-      tg_in.shape.h = tl_in[k]->shape.h;
-      tg_in.shape.w = tl_in[k]->shape.w;
-      tg_in.fmt = fmt_input_vec[k].getTGFmt();
-      tg_in.stride = input_stride_vec[k];
-      bmk1880v2_tdma_tg2l_tensor_copy_param_t p_copy_in;
-      p_copy_in.src = &tg_in;
-      p_copy_in.dst = tl_in[k];
-      bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p_copy_in);
+    for (size_t pp = 0; pp < m_slice_info.ping_pong_size; pp++) {
+      u32 tl_idx = tl_in.size() / m_slice_info.ping_pong_size;
+      u32 pp_skip = pp * tl_idx;
+      for (size_t k = 0; k < tl_idx; k++) {
+        tg_in.start_address = bm_src_addr[k];
+        tg_in.shape.n = tl_in[k + pp_skip]->shape.n;
+        tg_in.shape.c = tl_in[k + pp_skip]->shape.c;
+        tg_in.shape.h = tl_in[k + pp_skip]->shape.h;
+        tg_in.shape.w = tl_in[k + pp_skip]->shape.w;
+        tg_in.fmt = fmt_input_vec[k + pp_skip].getTGFmt();
+        tg_in.stride = input_stride_vec[k + pp_skip];
+        bmk1880v2_tdma_tg2l_tensor_copy_param_t p_copy_in;
+        p_copy_in.src = &tg_in;
+        p_copy_in.dst = tl_in[k + pp_skip];
+        bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p_copy_in);
 
-      // Change src head addr
-      bm_src_addr[k] += 1 * jump_src * fmt_input_vec[k].getTGFmtSize();
+        // Change src head addr
+        bm_src_addr[k] += 1 * jump_src * fmt_input_vec[k + pp_skip].getTGFmtSize();
+      }
     }
 
-    operation(ctx, bk_ctx);
+    for (size_t pp = 0; pp < m_slice_info.ping_pong_size; pp++) {
+      operation(ctx, bk_ctx, pp);
+    }
 
     // tl2tg
-    for (size_t k = 0; k < tl_out.size(); k++) {
-      tg_out.start_address = bm_dest_addr[k];
-      tg_out.fmt = fmt_output_vec[k].getTGFmt();
-      tg_out.shape.n = tl_out[k]->shape.n;
-      tg_out.shape.c = tl_out[k]->shape.c;
-      tg_out.shape.h = tl_out[k]->shape.h;
-      tg_out.shape.w = tl_out[k]->shape.w;
-      tg_out.stride = output_stride_vec[k];
-      bmk1880v2_tensor_lmem_t out_shape;
-      bmk1880v2_tdma_l2tg_tensor_copy_param_t p_copy_out;
-      p_copy_out.src = tl_out[k];
-      p_copy_out.dst = &tg_out;
-      bmk1880v2_tdma_l2g_bf16_tensor_copy(bk_ctx, &p_copy_out);
+    for (size_t pp = 0; pp < m_slice_info.ping_pong_size; pp++) {
+      u32 tl_idx = tl_out.size() / m_slice_info.ping_pong_size;
+      u32 pp_skip = pp * tl_idx;
+      for (size_t k = 0; k < tl_idx; k++) {
+        tg_out.start_address = bm_dest_addr[k];
+        tg_out.shape.n = tl_out[k + pp_skip]->shape.n;
+        tg_out.shape.c = tl_out[k + pp_skip]->shape.c;
+        tg_out.shape.h = tl_out[k + pp_skip]->shape.h;
+        tg_out.shape.w = tl_out[k + pp_skip]->shape.w;
+        tg_out.fmt = fmt_output_vec[k + pp_skip].getTGFmt();
+        tg_out.stride = output_stride_vec[k + pp_skip];
+        bmk1880v2_tensor_lmem_t out_shape;
+        bmk1880v2_tdma_l2tg_tensor_copy_param_t p_copy_out;
+        p_copy_out.src = tl_out[k + pp_skip];
+        p_copy_out.dst = &tg_out;
+        bmk1880v2_tdma_l2g_bf16_tensor_copy(bk_ctx, &p_copy_out);
 
-      // Change dest head addr
-      bm_dest_addr[k] += 1 * jump_dst * fmt_output_vec[k].getTGFmtSize();
+        // Change dest head addr
+        bm_dest_addr[k] += 1 * jump_dst * fmt_output_vec[k + pp_skip].getTGFmtSize();
+      }
     }
-    bmruntime_bmkernel_submit(*ctx);
   }
   if (left_pixels != 0) {
     bmk1880v2_tensor_tgmem_shape_t left_shape = {0, 0, 0, 0};
-    u32 div = 31;
+    u32 div = 32;
     while (left_pixels % div != 0) {
       u32 val = std::ceil(float(left_pixels) / div);
       div = std::floor(float(left_pixels) / val);
@@ -546,7 +568,8 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
     }
     size_t jump_src = left_shape.n * left_shape.c * left_shape.h * left_shape.w;
     size_t jump_dst = jump_src;
-    for (size_t k = 0; k < tl_in.size(); k++) {
+    u32 tl_idx = tl_in.size() / m_slice_info.ping_pong_size;
+    for (size_t k = 0; k < tl_idx; k++) {
       tg_in.start_address = bm_src_addr[k];
       tg_in.shape.n = tl_in[k]->shape.n;
       tg_in.shape.c = tl_in[k]->shape.c;
@@ -563,10 +586,11 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
       bm_src_addr[k] += 1 * jump_src * fmt_input_vec[k].getTGFmtSize();
     }
 
-    operation(ctx, bk_ctx);
+    operation(ctx, bk_ctx, 0);
 
     // tl2tg
-    for (size_t k = 0; k < tl_out.size(); k++) {
+    tl_idx = tl_out.size() / m_slice_info.ping_pong_size;
+    for (size_t k = 0; k < tl_idx; k++) {
       tg_out.start_address = bm_dest_addr[k];
       tg_out.fmt = fmt_output_vec[k].getTGFmt();
       tg_out.shape.n = tl_out[k]->shape.n;
@@ -583,8 +607,43 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
       // Change dest head addr
       bm_dest_addr[k] += 1 * jump_dst * fmt_output_vec[k].getTGFmtSize();
     }
-    bmruntime_bmkernel_submit(*ctx);
   }
+  int ret = BM_SUCCESS;
+  for (size_t k = 0; k < input.size(); k++) {
+    u64 bm_start_addr = input[k].GetPAddr();
+    u64 jumped_value = bm_src_addr[k] - bm_start_addr;
+    if (jumped_value != total_size) {
+      printf("Error! Input %lu jumped value not align to image size %lu, original %u\n", k,
+             jumped_value, total_size);
+      ret = BM_ERR_FAILURE;
+    }
+  }
+  for (size_t k = 0; k < output->size(); k++) {
+    u64 bm_des_addr = (*output)[k].GetPAddr();
+    u64 jumped_value = bm_dest_addr[k] - bm_des_addr;
+    if (jumped_value != total_size) {
+      printf("Error! Output %lu jumped value not align to image size %lu, original %u\n", k,
+             jumped_value, total_size);
+      ret = BM_ERR_FAILURE;
+    }
+  }
+  if (ret == BM_SUCCESS) {
+    if (m_write_cdbuf) {
+      u32 len;
+      u8 *buf = bmk1880v2_acquire_cmdbuf(bk_ctx, &len);
+      printf("Cmdbuf length %u\n", len);
+      FILE *pFile;
+      pFile = fopen("cmdbuf.bin", "wb");
+      fwrite(buf, sizeof(char), len, pFile);
+      fclose(pFile);
+      uint16_t seq_no;
+      bmerr_t ret = bm_send_cmdbuf(*ctx, buf, (size_t)len, &seq_no);
+      bmk1880v2_reset(bk_ctx);
+    } else {
+      bmruntime_bmkernel_submit(*ctx);
+    }
+  }
+
   freeTLMems(bk_ctx);
   return BM_SUCCESS;
 }

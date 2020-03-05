@@ -83,7 +83,7 @@ int IveTPUErode::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return BM_SUCCESS;
 }
 
-void IveTPUErode::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+void IveTPUErode::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
   m_p_xor.a = m_tl_vec[0];
   m_p_xor.res = m_tl_vec[0];
   bmk1880v2_tiu_element_wise_xor_int8(bk_ctx, &m_p_xor);

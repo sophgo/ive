@@ -103,6 +103,6 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return BM_SUCCESS;
 }
 
-void IveTPUBlock::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+void IveTPUBlock::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
   bmk1880v2_tiu_depthwise_convolution_qdm(bk_ctx, &m_p_conv);
 }

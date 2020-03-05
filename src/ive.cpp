@@ -499,7 +499,7 @@ CVI_S32 CVI_IVE_And(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  handle_ctx->t_h.t_and.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  handle_ctx->t_h.t_and.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return CVI_SUCCESS;
 }
 
@@ -987,8 +987,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
     std::vector<CviImg> outputs = {*cpp_dst};
 
-    handle_ctx->t_h.t_sub.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                              &outputs);
+    handle_ctx->t_h.t_sub.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   } else if (ctrl->enMode == IVE_SUB_MODE_ABS) {
     ret = CVI_SUCCESS;
     handle_ctx->t_h.t_sub_abs.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
@@ -998,8 +997,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
     std::vector<CviImg> outputs = {*cpp_dst};
 
-    handle_ctx->t_h.t_sub_abs.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                  &outputs);
+    handle_ctx->t_h.t_sub_abs.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   }
   return ret;
 }
@@ -1018,13 +1016,12 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
     if (ctrl->u8MinVal == 0 && ctrl->u8MaxVal == 255) {
       handle_ctx->t_h.t_thresh.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
       handle_ctx->t_h.t_thresh.setThreshold(ctrl->u8LowThr);
-      handle_ctx->t_h.t_thresh.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                   &outputs);
+      handle_ctx->t_h.t_thresh.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     } else {
       handle_ctx->t_h.t_thresh_hl.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
       handle_ctx->t_h.t_thresh_hl.setThreshold(ctrl->u8LowThr, ctrl->u8MinVal, ctrl->u8MaxVal);
-      handle_ctx->t_h.t_thresh_hl.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                      &outputs);
+      handle_ctx->t_h.t_thresh_hl.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
+                                              &outputs);
     }
   }
   return ret;

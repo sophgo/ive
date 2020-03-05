@@ -77,7 +77,7 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return BM_SUCCESS;
 }
 
-void IveTPUFilter::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+void IveTPUFilter::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
   bmk1880v2_tiu_depthwise_convolution_qdm(bk_ctx, &m_p_conv);
 }
 
@@ -151,6 +151,6 @@ int IveTPUFilterBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return BM_SUCCESS;
 }
 
-void IveTPUFilterBF16::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+void IveTPUFilterBF16::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
   bmk1880v2_tiu_depthwise_convolution(bk_ctx, &m_p_conv);
 }

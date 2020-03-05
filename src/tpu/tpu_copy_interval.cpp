@@ -55,7 +55,7 @@ int IveTPUCopyInterval::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return BM_SUCCESS;
 }
 
-void IveTPUCopyInterval::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+void IveTPUCopyInterval::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
   auto *tl_in = m_tl_vec[0];
   auto *tl_out = m_tl_vec[1];
   auto shape = tl_out->shape;

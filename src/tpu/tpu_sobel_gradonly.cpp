@@ -69,7 +69,7 @@ int IveTPUSobelGradOnly::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return BM_SUCCESS;
 }
 
-void IveTPUSobelGradOnly::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+void IveTPUSobelGradOnly::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
   m_p_conv.ofmap = m_tl_vec[1];
   m_p_conv.weight = m_tl_vec[3];
   bmk1880v2_tiu_bf16_depthwise_convolution(bk_ctx, &m_p_conv);

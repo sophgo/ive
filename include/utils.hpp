@@ -91,7 +91,6 @@ inline void constantFillTL(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, const u16 
   p_fill.dst = lmem;
 
   bmk1880v2_tdma_tg2l_bf16_tensor_fill_constant(bk_ctx, &p_fill);
-  bmruntime_bmkernel_submit(*ctx);
 }
 
 inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, u32 *quantized_multiplier,

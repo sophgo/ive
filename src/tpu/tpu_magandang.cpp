@@ -197,7 +197,7 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return BM_SUCCESS;
 }
 
-void IveTPUMagAndAng::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+void IveTPUMagAndAng::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
   if (m_export_mag) {
     bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul);
     bmk1880v2_tiu_bf16_element_wise_mac(bk_ctx, &m_p_mac);
