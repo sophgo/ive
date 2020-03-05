@@ -523,10 +523,15 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
     }
     u32 hw = left_pixels / div;
     // FIXME: Again, we assumed that h and w may not exceed 1024.
+    u32 w_val = 1024;
+    while (hw % w_val != 0) {
+      u32 val = std::ceil(float(hw) / w_val);
+      w_val = std::floor(float(hw) / val);
+    }
     left_shape.n = 1;
     left_shape.c = div;
-    left_shape.h = 1;
-    left_shape.w = hw;
+    left_shape.h = hw / w_val;
+    left_shape.w = w_val;
     IVE_DEBUG("%u %u %u %u\n", left_shape.n, left_shape.c, left_shape.h, left_shape.w);
 
     for (size_t i = 0; i < input_stride_vec.size(); i++) {
@@ -547,7 +552,8 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
           lmem->shape.c = left_shape.c;
           lmem->shape.h = left_shape.h;
           lmem->shape.w = left_shape.w;
-          bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+          lmem->stride =
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
           skip = true;
           break;
         }
@@ -561,7 +567,8 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
           lmem->shape.c = left_shape.c;
           lmem->shape.h = left_shape.h;
           lmem->shape.w = left_shape.w;
-          bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+          lmem->stride =
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
           break;
         }
       }
