@@ -35,14 +35,13 @@ inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int ke
 }
 
 int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32 fixed_lmem_size,
-                      const u32 n, const u32 c, const u32 h, const u32 w,
+                      const u32 n, const u32 c, const u32 h, const u32 w, const u32 table_size,
                       const kernelInfo kernel_info, sliceUnit *unit_h, sliceUnit *unit_w) {
   // Calculate fixed kernel size
-  u32 kernel_sz = (m_kernel_info.nums_of_kernel * m_kernel_info.size * m_kernel_info.size +
-                   MULTIPLIER_ONLY_PACKED_DATA_SIZE * m_kernel_info.use_multiplier);
+  u32 kernel_sz = (kernel_info.nums_of_kernel * kernel_info.size * kernel_info.size +
+                   MULTIPLIER_ONLY_PACKED_DATA_SIZE * kernel_info.use_multiplier);
   // Find max available mem for one tl.
-  int64_t result = m_chip_info.lmem_size -
-                   (int64_t)(kernel_sz + m_table_per_channel_size * nums_of_table) -
+  int64_t result = m_chip_info.lmem_size - (int64_t)(kernel_sz + table_size * nums_of_table) -
                    (int64_t)fixed_lmem_size;
   if (result < 0) {
     std::cerr << "Insufficient memory: " << result << std::endl;
@@ -116,9 +115,9 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   u64 result = bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_U8);
   m_table_per_channel_size = result / m_chip_info.npu_num;  // 32 * 8 for bm1880v2
   SliceRes slice_res;
-  int ret =
-      getSlice(m_slice_info.nums_of_tl, m_slice_info.nums_of_table, m_slice_info.fix_lmem_size,
-               batch, channel, height, width, m_kernel_info, &slice_res.h, &slice_res.w);
+  int ret = getSlice(m_slice_info.nums_of_tl, m_slice_info.nums_of_table,
+                     m_slice_info.fix_lmem_size, batch, channel, height, width,
+                     m_table_per_channel_size, m_kernel_info, &slice_res.h, &slice_res.w);
   if (ret != BM_SUCCESS) {
     return BM_ERR_FAILURE;
   }

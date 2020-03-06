@@ -35,8 +35,8 @@ class IveCore {
 
  private:
   int getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32 fixed_lmem_size,
-               const u32 n, const u32 c, const u32 h, const u32 w, const kernelInfo kernel_info,
-               sliceUnit *unit_h, sliceUnit *unit_w);
+               const u32 n, const u32 c, const u32 h, const u32 w, const u32 table_size,
+               const kernelInfo kernel_info, sliceUnit *unit_h, sliceUnit *unit_w);
   int freeTLMems(bmk1880v2_context_t *bk_ctx);
 
   bool m_write_cdbuf = false;
