@@ -1,17 +1,36 @@
 #include "ive.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/time.h>
+#ifdef __ARM_ARCH
+#include "arm_neon.h"
+#endif
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
+  if (argc != 3) {
+    printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
+    return CVI_FAILURE;
+  }
   CVI_SYS_LOGGING(argv[0]);
+  const char* filename = argv[1];
+  size_t total_run = atoi(argv[2]);
+  printf("Loop value: %lu\n", total_run);
+  if (total_run > 1000 || total_run == 0) {
+    printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
+    return CVI_FAILURE;
+  }
   // Create instance
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
   printf("BM Kernel init.\n");
 
   // Fetch image information
-  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, "cat.png", IVE_IMAGE_TYPE_U8C1);
+  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, filename, IVE_IMAGE_TYPE_U8C1);
+  int nChannels = 1;
   int width = src.u16Width;
   int height = src.u16Height;
+  printf("Image size is %d X %d, channel %d\n", width, height, nChannels);
 
   IVE_DST_IMAGE_S dst;
   CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
@@ -22,11 +41,43 @@ int main(int argc, char **argv) {
   iveThreshCtrl.u8LowThr = 170;
   iveThreshCtrl.u8MinVal = 0;
   iveThreshCtrl.u8MaxVal = 255;
-  CVI_IVE_Thresh(handle, &src, &dst, &iveThreshCtrl, 0);
+  struct timeval t0, t1;
+  gettimeofday(&t0, NULL);
+  for (size_t i = 0; i < total_run; i++) {
+    CVI_IVE_Thresh(handle, &src, &dst, &iveThreshCtrl, 0);
+  }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_tpu =
+      ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
 
-  // write result to disk
-  printf("Save to image.\n");
-  CVI_IVE_WriteImage(handle, "test_threshold_c.png", &dst);
+#ifdef __ARM_ARCH
+  IVE_DST_IMAGE_S dst_cpu;
+  CVI_IVE_CreateImage(handle, &dst_cpu, IVE_IMAGE_TYPE_U8C1, width, height);
+  gettimeofday(&t0, NULL);
+  CVI_U8* ptr1 = src.pu8VirAddr[0];
+  CVI_U8* ptr2 = dst_cpu.pu8VirAddr[0];
+  for (size_t i = 0; i < nChannels * src.u16Width * src.u16Height; i++) {
+    ptr2[i] = ptr1[i] >= iveThreshCtrl.u8LowThr ? iveThreshCtrl.u8MaxVal : iveThreshCtrl.u8MinVal;
+  }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_cpu = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
+  CVI_SYS_FreeI(handle, &dst_cpu);
+#endif
+  if (total_run == 1) {
+    printf("TPU avg time %lu\n", elapsed_tpu);
+#ifdef __ARM_ARCH
+    printf("CPU NEON time %s\n", "NA");
+    printf("CPU time %lu\n", elapsed_cpu);
+#endif
+    // write result to disk
+    printf("Save to image.\n");
+    CVI_IVE_WriteImage(handle, "test_threshold_c.png", &dst);
+  }
+#ifdef __ARM_ARCH
+  else {
+    printf("OOO %-10s %10lu %10s %10lu\n", "THRESH", elapsed_tpu, "NA", elapsed_cpu);
+  }
+#endif
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);

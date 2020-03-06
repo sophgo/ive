@@ -3,20 +3,36 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/time.h>
+#ifdef __ARM_ARCH
+#include "arm_neon.h"
+#endif
 #include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 
 int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE_DST_IMAGE_S *dstV,
             IVE_DST_IMAGE_S *dstMag, IVE_DST_IMAGE_S *dstAng);
 
 int main(int argc, char **argv) {
+  if (argc != 3) {
+    printf("Incorrect loop value. Usage: %s <file_name> <loop in value (1-1000)>\n", argv[0]);
+    return CVI_FAILURE;
+  }
   CVI_SYS_LOGGING(argv[0]);
+  const char *file_name = argv[1];
+  size_t total_run = atoi(argv[2]);
+  printf("Loop value: %lu\n", total_run);
+  if (total_run > 1000 || total_run == 0) {
+    printf("Incorrect loop value. Usage: %s <file_name> <loop in value (1-1000)>\n", argv[0]);
+    return CVI_FAILURE;
+  }
   // Create instance
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
   printf("BM Kernel init.\n");
 
   // Fetch image information
-  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, "cat.png", IVE_IMAGE_TYPE_U8C1);
+  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, file_name, IVE_IMAGE_TYPE_U8C1);
   int nChannels = 1;
   int width = src.u16Width;
   int height = src.u16Height;
@@ -43,9 +59,10 @@ int main(int argc, char **argv) {
   IVE_MAG_AND_ANG_CTRL_S pstMaaCtrl;
   pstMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG;
   pstMaaCtrl.no_negative = true;
-  unsigned long long total_t = 0;
+  unsigned long long total_s = 0;
+  unsigned long long total_mag = 0;
   struct timeval t0, t1, t2;
-  for (size_t i = 0; i < 500; i++) {
+  for (size_t i = 0; i < total_run; i++) {
     gettimeofday(&t0, NULL);
     CVI_IVE_Sobel(handle, &src, &dstH, &dstV, &iveSblCtrl, 0);
     gettimeofday(&t1, NULL);
@@ -53,12 +70,13 @@ int main(int argc, char **argv) {
     gettimeofday(&t2, NULL);
     unsigned long elapsed = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
     unsigned long elapsed2 = (t2.tv_sec - t1.tv_sec) * 1000000 + t2.tv_usec - t1.tv_usec;
-    printf("[%lu] time elapsed sobel %lu mag and angle %lu\n", i, elapsed, elapsed2);
-    total_t += (elapsed + elapsed2);
+    total_s += elapsed;
+    total_mag += elapsed2;
   }
-  printf("total time %llu\n", total_t);
-
-  printf("Run TPU Mag and Ang.\n");
+  total_s /= total_run;
+  total_mag /= total_run;
+  printf("TPU Sobel avg time %llu\n", total_s);
+  printf("TPU MagAndAng avg time %llu\n", total_mag);
 
   printf("Normalize result to 0-255.\n");
   IVE_ITC_CRTL_S iveItcCtrl;
