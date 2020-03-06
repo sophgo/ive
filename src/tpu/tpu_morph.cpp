@@ -39,13 +39,10 @@ int IveTPUErode::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   cviImgFlush2TL(ctx, bk_ctx, m_kernel->img, tl_kernel);
   auto *tl_multiplier = allocTLMem(bk_ctx, packed_s, FMT_U8, 1);
   {
-    // TODO: Need refine
-    u8 *arr =
-        getPackedMultiplierArray(tl_shape.c, m_kernel->multiplier.base, m_kernel->multiplier.shift);
-    CviImg cvi_multi(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, FMT_U8);
-    memcpy(cvi_multi.GetVAddr(), arr, tl_shape.c * MULTIPLIER_ONLY_PACKED_DATA_SIZE);
-    cviImgFlush2TL(ctx, bk_ctx, cvi_multi, tl_multiplier);
-    cvi_multi.Free(ctx);
+    mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, FMT_U8);
+    getPackedMultiplierArrayBuffer(tl_shape.c, m_kernel->multiplier.base,
+                                   m_kernel->multiplier.shift, mp_multiplier->GetVAddr());
+    cviImgFlush2TL(ctx, bk_ctx, *mp_multiplier, tl_multiplier);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
     tl_multiplier->stride = bmk1880v2_tensor_lmem_default_stride(bk_ctx, m_tl_vec[3]->shape, 0);
   }
@@ -71,9 +68,7 @@ int IveTPUErode::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_conv.chl_quan_param = tl_multiplier;
 
   auto *tl_xor_ones = allocTLMem(bk_ctx, tl_shape, FMT_U8, 1);
-
-  extendValue2TL(ctx, bk_ctx, 255, tl_shape.n * tl_shape.c, tl_shape.h, tl_shape.w, FMT_U8,
-                 tl_xor_ones);
+  constantFillTL(ctx, bk_ctx, 255, tl_xor_ones);
 
   m_p_xor.b = tl_xor_ones;
   m_p_xor.layer_id = 0;
@@ -91,4 +86,11 @@ void IveTPUErode::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_
   m_p_xor.a = m_tl_vec[1];
   m_p_xor.res = m_tl_vec[1];
   bmk1880v2_tiu_element_wise_xor_int8(bk_ctx, &m_p_xor);
+}
+
+int IveTPUErode::freeChildTGMem(bmctx_t *ctx) {
+  mp_multiplier->Free(ctx);
+  delete mp_multiplier;
+  mp_multiplier = nullptr;
+  return BM_SUCCESS;
 }

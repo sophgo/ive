@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+void IveTPUSobel::setTblMgr(TblMgr *tblmgr) { mp_tblmgr = tblmgr; }
+
 void IveTPUSobel::setKernel(IveKernel &kernel_x, IveKernel &kernel_y) {
   m_kernel_x = &kernel_x;
   m_kernel_y = &kernel_y;
@@ -45,18 +47,14 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   cviImgFlush2TL(ctx, bk_ctx, m_kernel_x->img, tl_kernel_gx);
   cviImgFlush2TL(ctx, bk_ctx, m_kernel_y->img, tl_kernel_gy);
 
-  bmk1880v2_tensor_lmem_shape_t tl_table_s;
-  bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_BF16);
+  const bmk1880v2_tensor_lmem_shape_t tl_table_s = mp_tblmgr->getTblTLShape();
   auto *tl_table_data = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1);
   auto *tl_table_data_mantissa = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1);
   {
-    CviImg table_data(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
-    CviImg table_data_mantissa(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
-    bf16_sqrt_tbl((u16 *)table_data.GetVAddr(), (u16 *)table_data_mantissa.GetVAddr(), &tl_table_s);
-    cviImgFlush2TL(ctx, bk_ctx, table_data, tl_table_data);
-    cviImgFlush2TL(ctx, bk_ctx, table_data_mantissa, tl_table_data_mantissa);
-    table_data.Free(ctx);
-    table_data_mantissa.Free(ctx);
+    const CviImg *table_data = mp_tblmgr->sqrt(TBLSQRT::TBLSQRT_DATA);
+    const CviImg *table_data_mantissa = mp_tblmgr->sqrt(TBLSQRT::TBLSQRT_MANTISSA);
+    cviImg2TL(ctx, bk_ctx, *table_data, tl_table_data);
+    cviImg2TL(ctx, bk_ctx, *table_data_mantissa, tl_table_data_mantissa);
   }
 
   m_p_conv.pad_top = m_kernel_info.pad[2];
@@ -106,6 +104,7 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(1);
+
   return BM_SUCCESS;
 }
 

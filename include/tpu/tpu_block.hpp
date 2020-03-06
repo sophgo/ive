@@ -14,10 +14,12 @@ class IveTPUBlock : public IveCore {
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
                        std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx) override;
   virtual void operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) override;
+  virtual int freeChildTGMem(bmctx_t *ctx) override;
 
  private:
   float m_bin_num = 1;
   u32 m_channel = 3;
+  CviImg *mp_multiplier = nullptr;
   bmk1880v2_tiu_depthwise_convolution_qdm_param_t m_p_conv;
 };
 

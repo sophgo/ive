@@ -1,9 +1,11 @@
 #pragma once
 #include "bmkernel_non_atomic.h"
 #include "core.hpp"
+#include "table_manager.hpp"
 
 class IveTPUSAD : public IveCore {
  public:
+  void setTblMgr(TblMgr *tblmgr);
   void outputThresholdOnly(bool value);
   void doThreshold(bool value);
   void setThreshold(const u16 threshold, const u8 min_val, const u8 max_val);
@@ -18,6 +20,7 @@ class IveTPUSAD : public IveCore {
   virtual void operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) override;
 
  private:
+  TblMgr *mp_tblmgr = nullptr;
   bool m_output_thresh_only = false;
   bool m_do_threshold = false;
   u16 m_threshold = 0;

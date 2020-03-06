@@ -1,3 +1,4 @@
+#include "table_manager.hpp"
 #include "tpu/tpu_sobel.hpp"
 
 #include "bmkernel/bm1880v2/1880v2_fp_convert.h"
@@ -12,6 +13,8 @@ int main(int argc, char **argv) {
   bmctx_t ctx;
   bmk1880v2_context_t *bk_ctx;
   createHandle(&ctx, &bk_ctx);
+  TblMgr tblmgr;
+  tblmgr.init(&ctx, bk_ctx);
   printf("BM Kernel init.\n");
 
   // Fetch image information
@@ -34,6 +37,7 @@ int main(int argc, char **argv) {
   printf("Run TPU Sobel.\n");
   // Run TPU Add
   IveTPUSobel tpu_sobel;
+  tpu_sobel.setTblMgr(&tblmgr);
   tpu_sobel.init(&ctx, bk_ctx);
   tpu_sobel.setKernel(kernel_x, kernel_y);
   tpu_sobel.runSingleSizeKernel(&ctx, bk_ctx, inputs, &outputs);
@@ -55,6 +59,7 @@ int main(int argc, char **argv) {
   kernel_x.img.Free(&ctx);
   kernel_y.img.Free(&ctx);
   result.Free(&ctx);
+  tblmgr.free(&ctx);
   destroyHandle(&ctx);
   return 0;
 }

@@ -98,6 +98,8 @@ int IveCore::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_o
   return BM_SUCCESS;
 }
 
+int IveCore::freeChildTGMem(bmctx_t *ctx) { return BM_SUCCESS; }
+
 int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                                  std::vector<CviImg> &input, std::vector<CviImg> *output) {
   // FIXME: Support later
@@ -342,25 +344,56 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         // Change dest head addr
         bm_dest_addr_w[k] += 1 * out_slice_res.w.skip * fmt_output_vec[k].getTGFmtSize();
       }
-      bmruntime_bmkernel_submit(*ctx);
     }
     // Change src/ dest head addr
     for (size_t k = 0; k < tl_in.size(); k++) {
-      bm_src_addr[k] += 1 * input[k].m_tg.stride.h * in_slice_res.h.skip;
+      auto jump_val = (i == in_slice_res.h.turn - 1 && in_slice_res.h.left != 0)
+                          ? in_slice_res.h.left
+                          : in_slice_res.h.skip;
+      bm_src_addr[k] += 1 * input[k].m_tg.stride.h * jump_val;
     }
     for (size_t k = 0; k < tl_out.size(); k++) {
-      bm_dest_addr[k] += 1 * (*output)[k].m_tg.stride.h * out_slice_res.h.skip;
+      auto jump_val = (i == out_slice_res.h.turn - 1 && out_slice_res.h.left != 0)
+                          ? out_slice_res.h.left
+                          : out_slice_res.h.skip;
+      bm_dest_addr[k] += 1 * (*output)[k].m_tg.stride.h * jump_val;
     }
   }
 
+  // Dummy gaurd for buffer overflow
+  for (size_t k = 0; k < input.size(); k++) {
+    u64 bm_start_addr = input[k].GetPAddr();
+    u64 jumped_value = bm_src_addr[k] - bm_start_addr;
+    u32 total_addr = input[k].m_tg.stride.n;
+    if (jumped_value != total_addr) {
+      printf("Error! Input %lu jumped value not align to image size %lu, original %u\n", k,
+             jumped_value, total_addr);
+      ret = BM_ERR_FAILURE;
+    }
+  }
+  for (size_t k = 0; k < output->size(); k++) {
+    u64 bm_des_addr = (*output)[k].GetPAddr();
+    u64 jumped_value = bm_dest_addr[k] - bm_des_addr;
+    u32 total_addr =
+        ((*output)[k].m_tg.stride.n + (((*output)[k].m_tg.stride.h * m_kernel_info.pad[2]) +
+                                       (m_kernel_info.pad[0] * fmt_output_vec[k].getTGFmtSize())));
+    if (jumped_value != total_addr) {
+      printf("Error! Output %lu jumped value not align to image size %lu, original %u\n", k,
+             jumped_value, total_addr);
+      ret = BM_ERR_FAILURE;
+    }
+  }
   IVE_DEBUG("Slice info:\n");
   IVE_DEBUG("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", m_slice_info.h.slice,
             m_slice_info.h.turn, m_slice_info.h.skip, m_slice_info.h.left);
   IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", m_slice_info.w.slice,
             m_slice_info.w.turn, m_slice_info.w.skip, m_slice_info.w.left);
-
+  if (ret == BM_SUCCESS) {
+    bmruntime_bmkernel_submit(*ctx);
+  }
   freeTLMems(bk_ctx);
-  return BM_SUCCESS;
+  freeChildTGMem(ctx);
+  return ret;
 }
 
 int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
@@ -375,7 +408,9 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
     std::cerr << "Image size " << total_size << " is not 16 aligned." << std::endl;
     return BM_ERR_FAILURE;
   }
-
+  bmk1880v2_tensor_lmem_shape_t tl_table_s;
+  u64 table_sz = bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_U8);
+  m_table_per_channel_size = table_sz / m_chip_info.npu_num;  // 32 * 8 for bm1880v2
   // Calculating slice
   // Calculate fixed kernel size
   u32 kernel_sz = (m_kernel_info.nums_of_kernel * m_kernel_info.size * m_kernel_info.size +
@@ -619,18 +654,20 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   for (size_t k = 0; k < input.size(); k++) {
     u64 bm_start_addr = input[k].GetPAddr();
     u64 jumped_value = bm_src_addr[k] - bm_start_addr;
-    if (jumped_value != total_size) {
-      printf("Error! Input %lu jumped value not align to image size %lu, original %u\n", k,
-             jumped_value, total_size);
+    u64 total_addr = input[k].m_tg.stride.n;
+    if (jumped_value != total_addr) {
+      printf("Error! Input %lu jumped value not align to image size %lu, original %lu\n", k,
+             jumped_value, total_addr);
       ret = BM_ERR_FAILURE;
     }
   }
   for (size_t k = 0; k < output->size(); k++) {
     u64 bm_des_addr = (*output)[k].GetPAddr();
     u64 jumped_value = bm_dest_addr[k] - bm_des_addr;
-    if (jumped_value != total_size) {
-      printf("Error! Output %lu jumped value not align to image size %lu, original %u\n", k,
-             jumped_value, total_size);
+    u64 total_addr = (*output)[k].m_tg.stride.n;
+    if (jumped_value != total_addr) {
+      printf("Error! Output %lu jumped value not align to image size %lu, original %lu\n", k,
+             jumped_value, total_addr);
       ret = BM_ERR_FAILURE;
     }
   }
@@ -652,5 +689,6 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   }
 
   freeTLMems(bk_ctx);
+  freeChildTGMem(ctx);
   return BM_SUCCESS;
 }

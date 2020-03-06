@@ -10,6 +10,7 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/core.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ive.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/kernel_generator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/table_manager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu_data.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_add.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_and.cpp

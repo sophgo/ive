@@ -3,6 +3,8 @@
 #include <string.h>
 #include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 
+void IveTPUSAD::setTblMgr(TblMgr *tblmgr) { mp_tblmgr = tblmgr; }
+
 void IveTPUSAD::outputThresholdOnly(bool value) { m_output_thresh_only = value; }
 void IveTPUSAD::doThreshold(bool value) { m_do_threshold = value; }
 
@@ -121,11 +123,8 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_BF16);  // 32 * 8
     auto *tl_pos_neg_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1);
     {
-      CviImg table_data_atan_pos_neg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
-      genTableBF16((u16 *)table_data_atan_pos_neg.GetVAddr(), &tl_table_s, (float)m_min_value,
-                   (float)m_max_value);
-      cviImgFlush2TL(ctx, bk_ctx, table_data_atan_pos_neg, tl_pos_neg_table);
-      table_data_atan_pos_neg.Free(ctx);
+      const CviImg *table_pos_neg = mp_tblmgr->mask(TBLMASK::TBLMASK_POSNEG);
+      cviImg2TL(ctx, bk_ctx, *table_pos_neg, tl_pos_neg_table);
     }
 
     m_p_add_thresh.a_high = NULL;

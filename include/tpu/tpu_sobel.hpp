@@ -1,10 +1,12 @@
 #pragma once
 #include "core.hpp"
+#include "table_manager.hpp"
 
 #include "bmkernel_non_atomic.h"
 
 class IveTPUSobel : public IveCore {
  public:
+  void setTblMgr(TblMgr *tblmgr);
   void setKernel(IveKernel &kernel_x, IveKernel &kernel_y);
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) override;
   virtual int runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -14,6 +16,7 @@ class IveTPUSobel : public IveCore {
   virtual void operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) override;
 
  private:
+  TblMgr *mp_tblmgr = nullptr;
   IveKernel *m_kernel_x = nullptr;
   IveKernel *m_kernel_y = nullptr;
   bmk1880v2_tiu_depthwise_convolution_param_t m_p_conv;

@@ -68,11 +68,10 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     u32 quantized_multiplier;
     int right_shift;
     QuantizeMultiplierSmallerThanOne(real_multiplier, &quantized_multiplier, &right_shift);
-    CviImg cvi_multi(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, FMT_U8);
+    mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, FMT_U8);
     getPackedMultiplierArrayBuffer(tl_shape.c, quantized_multiplier, right_shift,
-                                   cvi_multi.GetVAddr());
-    cviImgFlush2TL(ctx, bk_ctx, cvi_multi, tl_multiplier);
-    cvi_multi.Free(ctx);
+                                   mp_multiplier->GetVAddr());
+    cviImgFlush2TL(ctx, bk_ctx, *mp_multiplier, tl_multiplier);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
     tl_multiplier->stride =
         bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_multiplier->shape, 0, FMT_U8);
@@ -105,4 +104,11 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
 void IveTPUBlock::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
   bmk1880v2_tiu_depthwise_convolution_qdm(bk_ctx, &m_p_conv);
+}
+
+int IveTPUBlock::freeChildTGMem(bmctx_t *ctx) {
+  mp_multiplier->Free(ctx);
+  delete mp_multiplier;
+  mp_multiplier = nullptr;
+  return BM_SUCCESS;
 }

@@ -41,13 +41,10 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   auto *tl_multiplier = allocTLMem(bk_ctx, packed_s, FMT_U8, 1);
   {
-    // TODO: Need refine
-    u8 *arr =
-        getPackedMultiplierArray(tl_shape.c, m_kernel->multiplier.base, m_kernel->multiplier.shift);
-    CviImg cvi_multi(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, FMT_U8);
-    memcpy(cvi_multi.GetVAddr(), arr, tl_shape.c * MULTIPLIER_ONLY_PACKED_DATA_SIZE);
-    cviImgFlush2TL(ctx, bk_ctx, cvi_multi, tl_multiplier);
-    cvi_multi.Free(ctx);
+    mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, FMT_U8);
+    getPackedMultiplierArrayBuffer(tl_shape.c, m_kernel->multiplier.base,
+                                   m_kernel->multiplier.shift, mp_multiplier->GetVAddr());
+    cviImgFlush2TL(ctx, bk_ctx, *mp_multiplier, tl_multiplier);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
     tl_multiplier->stride = bmk1880v2_tensor_lmem_default_stride(bk_ctx, tl_multiplier->shape, 0);
   }
@@ -79,6 +76,13 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
 void IveTPUFilter::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
   bmk1880v2_tiu_depthwise_convolution_qdm(bk_ctx, &m_p_conv);
+}
+
+int IveTPUFilter::freeChildTGMem(bmctx_t *ctx) {
+  mp_multiplier->Free(ctx);
+  delete mp_multiplier;
+  mp_multiplier = nullptr;
+  return BM_SUCCESS;
 }
 
 void IveTPUFilterBF16::setKernel(const IveKernel &kernel) {
@@ -122,7 +126,6 @@ int IveTPUFilterBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     p.src = &m_kernel->img.m_tg;
     p.dst = tl_kernel;
     bmk1880v2_tdma_g2l_tensor_copy(bk_ctx, &p);
-    bmruntime_bmkernel_submit(*ctx);
   }
 
   m_p_conv.pad_top = m_kernel_info.pad[2];

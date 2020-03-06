@@ -1,10 +1,12 @@
 #pragma once
 #include "core.hpp"
+#include "table_manager.hpp"
 
 #include "bmkernel_non_atomic.h"
 
 class IveTPUMagAndAng : public IveCore {
  public:
+  void setTblMgr(TblMgr *tblmgr);
   void exportOption(bool mag_value, bool ang_value);
   void noNegative(bool value);
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) override;
@@ -15,6 +17,7 @@ class IveTPUMagAndAng : public IveCore {
   virtual void operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) override;
 
  private:
+  TblMgr *mp_tblmgr = nullptr;
   bool m_export_mag = true;
   bmk1880v2_tiu_element_wise_mul_param_t m_p_mul;
   bmk1880v2_tiu_element_wise_mac_param_t m_p_mac;

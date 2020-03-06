@@ -6,6 +6,7 @@
 #include "stb/stb_image_write.h"
 
 #include "kernel_generator.hpp"
+#include "table_manager.hpp"
 #include "tpu_data.hpp"
 
 #include "tpu/tpu_add.hpp"
@@ -25,6 +26,7 @@
 #include <cmath>
 
 struct TPU_HANDLE {
+  TblMgr t_tblmgr;
   IveTPUAdd t_add;
   IveTPUAnd t_and;
   IveTPUBlock t_block;
@@ -58,11 +60,13 @@ void CVI_SYS_LOGGING(char *argv0) { google::InitGoogleLogging(argv0); }
 IVE_HANDLE CVI_IVE_CreateHandle() {
   IVE_HANDLE_CTX *handle_ctx = new IVE_HANDLE_CTX;
   createHandle(&handle_ctx->ctx, &handle_ctx->bk_ctx);
+  handle_ctx->t_h.t_tblmgr.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   return (void *)handle_ctx;
 }
 
 CVI_S32 CVI_IVE_DestroyHandle(IVE_HANDLE pIveHandle) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  handle_ctx->t_h.t_tblmgr.free(&handle_ctx->ctx);
   destroyHandle(&handle_ctx->ctx);
   return CVI_SUCCESS;
 }
@@ -683,6 +687,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
                           IVE_DST_IMAGE_S *pstDstMag, IVE_DST_IMAGE_S *pstDstAng,
                           IVE_MAG_AND_ANG_CTRL_S *pstMaaCtrl, bool bInstant) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  handle_ctx->t_h.t_magandang.setTblMgr(&handle_ctx->t_h.t_tblmgr);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrcH->tpu_block);
   CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrcV->tpu_block);
   CviImg *cpp_dst =
@@ -728,8 +733,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
   handle_ctx->t_h.t_magandang.noNegative(pstMaaCtrl->no_negative);
   handle_ctx->t_h.t_magandang.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
 
-  handle_ctx->t_h.t_magandang.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                  &outputs);
+  handle_ctx->t_h.t_magandang.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return CVI_SUCCESS;
 }
 
@@ -932,6 +936,7 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IM
 CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDstH,
                       IVE_DST_IMAGE_S *pstDstV, IVE_SOBEL_CTRL_S *pstSobelCtrl, bool bInstant) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  handle_ctx->t_h.t_sobel.setTblMgr(&handle_ctx->t_h.t_tblmgr);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dsth = reinterpret_cast<CviImg *>(pstDstH->tpu_block);
   CviImg *cpp_dstv = reinterpret_cast<CviImg *>(pstDstV->tpu_block);
