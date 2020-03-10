@@ -8,7 +8,8 @@ class IveTPUFilter : public IveCore {
   virtual int runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
-                       std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx) override;
+                       std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                       const bool enable_cext) override;
   virtual void operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) override;
   virtual int freeChildTGMem(bmctx_t *ctx) override;
 
@@ -25,7 +26,8 @@ class IveTPUFilterBF16 : public IveCore {
   virtual int runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
-                       std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx) override;
+                       std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                       const bool enable_cext) override;
   virtual void operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) override;
 
  private:

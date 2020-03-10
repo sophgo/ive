@@ -17,7 +17,8 @@ int IveTPUSubAbs::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
 int IveTPUSubAbs::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                            const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
                            const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
-                           std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx) {
+                           std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                           const bool enable_cext) {
   m_input1.clear();
   m_input2.clear();
   m_min.clear();

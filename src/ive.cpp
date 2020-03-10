@@ -608,19 +608,24 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  CviImg cimg(&handle_ctx->ctx, cpp_src->m_tg.shape.c, 3, 3, FMT_I8);
+  if (pstFltCtrl->maskSize != 3 && pstFltCtrl->maskSize != 5) {
+    std::cerr << "Currently Filter only supports filter size 3 or 5." << std::endl;
+  }
+  u32 npu_num = handle_ctx->t_h.t_filter.getNpuNum();
+  CviImg cimg(&handle_ctx->ctx, npu_num, pstFltCtrl->maskSize, pstFltCtrl->maskSize, FMT_I8);
   IveKernel kernel;
   kernel.img = cimg;
   kernel.img.GetVAddr();
-  for (size_t i = 0; i < cpp_src->m_tg.shape.c; i++) {
-    memcpy(kernel.img.GetVAddr() + i * 9, pstFltCtrl->as8Mask, 9);
+  int mask_length = pstFltCtrl->maskSize * pstFltCtrl->maskSize;
+  for (size_t i = 0; i < npu_num; i++) {
+    memcpy(kernel.img.GetVAddr() + i * mask_length, pstFltCtrl->as8Mask, mask_length);
   }
   kernel.multiplier.f = 1.f / pstFltCtrl->u8Norm;
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_filter.setKernel(kernel);
-  handle_ctx->t_h.t_filter.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                               &outputs);
+  handle_ctx->t_h.t_filter.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
+                                                  &outputs);
   kernel.img.Free(&handle_ctx->ctx);
   return CVI_SUCCESS;
 }

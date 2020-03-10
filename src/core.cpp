@@ -25,6 +25,11 @@ inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int ke
   unit->turn = ((int64_t)length - unit->slice - pad_1) / unit->skip + 1;
   int64_t result = (int64_t)length - (int64_t)((unit->turn) * (unit->slice - pad_total));
   if (result >= kernel_sz) {
+    // x + (x - 1) * (kz - (pad_tatal - stride + 1))
+    int res_left = result - kernel_sz;
+    int kz_unit = (kernel_sz - (pad_total - default_stride + 1));
+    int res_div = res_left / kz_unit;
+    int result = kz_unit * res_div + kernel_sz;
     unit->left = result;
     unit->turn++;
   } else if (result < 0 && unit->slice > std::abs(result)) {
@@ -36,7 +41,12 @@ inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int ke
 
 int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32 fixed_lmem_size,
                       const u32 n, const u32 c, const u32 h, const u32 w, const u32 table_size,
-                      const kernelInfo kernel_info, sliceUnit *unit_h, sliceUnit *unit_w) {
+                      const kernelInfo kernel_info, const int npu_num, sliceUnit *unit_h,
+                      sliceUnit *unit_w, const bool enable_cext) {
+  if (c > 32) {
+    std::cerr << "Channel exceed limitation." << std::endl;
+    return BM_ERR_FAILURE;
+  }
   // Calculate fixed kernel size
   u32 kernel_sz = (kernel_info.nums_of_kernel * kernel_info.size * kernel_info.size +
                    MULTIPLIER_ONLY_PACKED_DATA_SIZE * kernel_info.use_multiplier);
@@ -52,10 +62,39 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32
   u32 h_tmp_slice = 0;
   int w_num = 1;
   // Here the default value for kernel size is 1. The h_slice should never smaller than kernel size.
-  while (h_tmp_slice < kernel_info.size) {
-    w_length = w / w_num;
-    h_tmp_slice = available_lmem_per_tl / w_length;
-    w_num++;
+  h_tmp_slice = available_lmem_per_tl / w_length;
+  w_num++;
+  if (kernel_info.size == 1) {
+    while (h_tmp_slice < kernel_info.size) {
+      w_length = w / w_num;
+      u32 h_tmp_res = available_lmem_per_tl / w_length;
+      h_tmp_slice = h_tmp_res > h ? h : h_tmp_res;
+      w_num++;
+    }
+  } else {
+    while (h_tmp_slice < kernel_info.size) {
+      w_length = w / w_num;
+      if (w_length + 16 < w) {
+        int res = w_length % 16;
+        w_length += (res == 0 ? 16 : res);
+      }
+      u32 h_tmp_res = available_lmem_per_tl / w_length;
+      h_tmp_slice = h_tmp_res > h ? h : h_tmp_res;
+      w_num++;
+    }
+  }
+  // If enable channel extending feature
+  if (enable_cext) {
+    // FIXME: Pass eu num here
+    int c_multiplier = (int)(npu_num / c) - 1;
+    u32 unit_skip =
+        h_tmp_slice - kernel_info.pad[2] - kernel_info.pad[3] + (kernel_info.default_stride_y - 1);
+    h_tmp_slice += unit_skip * c_multiplier;
+    while (h_tmp_slice > h) {
+      h_tmp_slice -= unit_skip;
+      c_multiplier--;
+    }
+    unit_h->c_multiplier = c_multiplier;
   }
 
   // FIXME: Logic error
@@ -99,8 +138,51 @@ int IveCore::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_o
 
 int IveCore::freeChildTGMem(bmctx_t *ctx) { return BM_SUCCESS; }
 
+inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
+                                 const std::vector<CviImg> &output,
+                                 std::vector<FmtPair> &fmt_input_vec,
+                                 std::vector<FmtPair> &fmt_output_vec,
+                                 const std::vector<u64> &bm_src_addr,
+                                 const std::vector<u64> &bm_dest_addr, const int &pad_l,
+                                 const int &pad_t, const bool is_1d) {
+#if DISABLE_OVERFLOWCHECK
+  return BM_SUCCESS;
+#else
+  int ret = BM_SUCCESS;
+  for (size_t k = 0; k < input.size(); k++) {
+    const u64 bm_start_addr = input[k].GetPAddr();
+    u64 jumped_value = bm_src_addr[k] - bm_start_addr;
+    u32 total_addr = is_1d ? input[k].m_tg.stride.n : input[k].m_tg.stride.c;
+    if (jumped_value != total_addr) {
+      printf(
+          "Error! Input %lu jumped value not align to image size %lu, original %u, start addr "
+          "%lu\n",
+          k, jumped_value, total_addr, bm_start_addr);
+      ret = BM_ERR_FAILURE;
+    }
+  }
+  for (size_t k = 0; k < output.size(); k++) {
+    const u64 bm_des_addr = output[k].GetPAddr();
+    u64 jumped_value = bm_dest_addr[k] - bm_des_addr;
+    u32 total_addr =
+        is_1d ? output[k].m_tg.stride.n
+              : (output[k].m_tg.stride.c +
+                 ((output[k].m_tg.stride.h * pad_t) + (pad_l * fmt_output_vec[k].getTGFmtSize())));
+    if (jumped_value != total_addr) {
+      printf(
+          "Error! Output %lu jumped value not align to image size %lu, original %u, start addr "
+          "%lu\n",
+          k, jumped_value, total_addr, bm_des_addr);
+      ret = BM_ERR_FAILURE;
+    }
+  }
+  return ret;
+#endif
+}
+
 int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                                 std::vector<CviImg> &input, std::vector<CviImg> *output) {
+                                 std::vector<CviImg> &input, std::vector<CviImg> *output,
+                                 bool enable_min_max) {
   // FIXME: Support later
   if (m_slice_info.ping_pong_size != 1) {
     std::cerr << "Currently runSingleSizeKernel does not support ping pong." << std::endl;
@@ -115,9 +197,10 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   u64 result = bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_U8);
   m_table_per_channel_size = result / m_chip_info.npu_num;  // 32 * 8 for bm1880v2
   SliceRes slice_res;
-  int ret = getSlice(m_slice_info.nums_of_tl, m_slice_info.nums_of_table,
-                     m_slice_info.fix_lmem_size, batch, channel, height, width,
-                     m_table_per_channel_size, m_kernel_info, &slice_res.h, &slice_res.w);
+  int ret =
+      getSlice(m_slice_info.nums_of_tl, m_slice_info.nums_of_table, m_slice_info.fix_lmem_size,
+               batch, channel, height, width, m_table_per_channel_size, m_kernel_info,
+               m_chip_info.npu_num, &slice_res.h, &slice_res.w, false);
   if (ret != BM_SUCCESS) {
     return BM_ERR_FAILURE;
   }
@@ -151,7 +234,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   // allocate tl shape and get input/ output indices.
   std::vector<u32> tl_in_idx, tl_out_idx;
-  runSetup(ctx, bk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx);
+  runSetup(ctx, bk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
 
   // Dummy check, can be turned off in official release
   std::vector<bmk1880v2_tensor_lmem_t *> tl_in, tl_out;
@@ -358,41 +441,422 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
       bm_dest_addr[k] += 1 * (*output)[k].m_tg.stride.h * jump_val;
     }
   }
+  IVE_DEBUG("Slice info:\n");
+  IVE_DEBUG("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", in_slice_res.h.slice,
+            in_slice_res.h.turn, in_slice_res.h.skip, in_slice_res.h.left);
+  IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", in_slice_res.w.slice,
+            in_slice_res.w.turn, in_slice_res.w.skip, in_slice_res.w.left);
 
   // Dummy gaurd for buffer overflow
-  for (size_t k = 0; k < input.size(); k++) {
-    u64 bm_start_addr = input[k].GetPAddr();
-    u64 jumped_value = bm_src_addr[k] - bm_start_addr;
-    u32 total_addr = input[k].m_tg.stride.n;
-    if (jumped_value != total_addr) {
-      printf("Error! Input %lu jumped value not align to image size %lu, original %u\n", k,
-             jumped_value, total_addr);
-      ret = BM_ERR_FAILURE;
-    }
-  }
-  for (size_t k = 0; k < output->size(); k++) {
-    u64 bm_des_addr = (*output)[k].GetPAddr();
-    u64 jumped_value = bm_dest_addr[k] - bm_des_addr;
-    u32 total_addr =
-        ((*output)[k].m_tg.stride.n + (((*output)[k].m_tg.stride.h * m_kernel_info.pad[2]) +
-                                       (m_kernel_info.pad[0] * fmt_output_vec[k].getTGFmtSize())));
-    if (jumped_value != total_addr) {
-      printf("Error! Output %lu jumped value not align to image size %lu, original %u\n", k,
-             jumped_value, total_addr);
-      ret = BM_ERR_FAILURE;
-    }
-  }
-  IVE_DEBUG("Slice info:\n");
-  IVE_DEBUG("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", m_slice_info.h.slice,
-            m_slice_info.h.turn, m_slice_info.h.skip, m_slice_info.h.left);
-  IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", m_slice_info.w.slice,
-            m_slice_info.w.turn, m_slice_info.w.skip, m_slice_info.w.left);
+  ret |= checkIsBufferOverflow(input, *output, fmt_input_vec, fmt_output_vec, bm_src_addr,
+                               bm_dest_addr, m_kernel_info.pad[0], m_kernel_info.pad[2], false);
   if (ret == BM_SUCCESS) {
     bmruntime_bmkernel_submit(*ctx);
   }
   freeTLMems(bk_ctx);
   freeChildTGMem(ctx);
   return ret;
+}
+
+inline int channelExtension(bmk1880v2_context_t *bk_ctx, const int ic, const int ih, const int iw,
+                            const int h_cext_multiplier, const int pad_left, const int pad_right,
+                            const int pad_top, const int pad_bottom, const int kh, const int kw,
+                            const int k_stride_h, const int k_stride_w, fmt_t fmt_type,
+                            TensorSliceInfo *tsi) {
+  bmk1880v2_tensor_lmem_shape_t tl_weight_shape;
+  bmk1880v2_tensor_lmem_shape_t tl_bias_shape;
+
+  if (bm1880v2_reshape_channel_same(
+          bk_ctx, ic, ih, iw, kh, kw, pad_right, pad_left, k_stride_h, k_stride_w,
+          &tsi->tl_load.shape, &tsi->tl_load.stride, &tsi->tg_load.shape, &tsi->tg_load.stride,
+          &tl_weight_shape, &tl_bias_shape, &tsi->tl_store.shape, fmt_type, CTRL_AL) == -1) {
+    std::cerr << "Extend failed." << std::endl;
+    return BM_ERR_FAILURE;
+  }
+  tsi->tg_store.shape.n = tsi->tl_store.shape.n;
+  tsi->tg_store.shape.c = tsi->tl_store.shape.c;
+  tsi->tg_store.shape.h = tsi->tl_store.shape.h;
+  tsi->tg_store.shape.w = tsi->tl_store.shape.w;
+  tsi->tg_store.stride = bmk1880v2_bf16_tensor_tgmem_default_stride(tsi->tg_store.shape, fmt_type);
+  tsi->tl_store.stride =
+      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tsi->tl_store.shape, 1, fmt_type);
+  // clang-format off
+  IVE_DEBUG("[Summary]\n" \
+            " Original shape: n c h w %d %d %d %d\n" \
+            " Kernel size: h w %d %d\n" \
+            " Pad: left right %d %d\n" \
+            " Kernel stride: h w %d %d\n" \
+            " => tl load shape %d %d %d %d\n" \
+            " => tl load stride %d %d %d %d\n" \
+            " => tg load shape %d %d %d %d\n" \
+            " => tg load stride %d %d %d\n" \
+            " => tl store shape %d %d %d %d\n" \
+            " => tl store stride %d %d %d %d\n",
+            1, ic, ih, iw,
+            kh, kw,
+            pad_left, pad_right,
+            k_stride_h, k_stride_w,
+            tsi->tl_load.shape.n, tsi->tl_load.shape.c, tsi->tl_load.shape.h, tsi->tl_load.shape.w,
+            tsi->tl_load.stride.n, tsi->tl_load.stride.c, tsi->tl_load.stride.h, tsi->tl_load.stride.w,
+            tsi->tg_load.shape.n, tsi->tg_load.shape.c, tsi->tg_load.shape.h, tsi->tg_load.shape.w,
+            tsi->tg_load.stride.n, tsi->tg_load.stride.c, tsi->tg_load.stride.h,
+            tsi->tl_store.shape.n, tsi->tl_store.shape.c, tsi->tl_store.shape.h, tsi->tl_store.shape.w,
+            tsi->tl_store.stride.n, tsi->tl_store.stride.c, tsi->tl_store.stride.h, tsi->tl_store.stride.w);
+  // clang-format on
+  u32 h_input_single_lane = ih / h_cext_multiplier + pad_bottom + pad_top;
+  if (tsi->tg_load.shape.h != h_input_single_lane) {
+    std::cerr << "H extend c multiplier: " << h_cext_multiplier << std::endl;
+    std::cerr << "Predicted h_slice not match. " << tsi->tg_load.shape.h << ", "
+              << h_input_single_lane << std::endl;
+    return BM_ERR_FAILURE;
+  }
+  return BM_SUCCESS;
+}
+
+int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
+                                    std::vector<CviImg> &input, std::vector<CviImg> *output,
+                                    bool enable_min_max) {
+  if (m_slice_info.io_fmt == FMT_INVALID) {
+    std::cerr << "Invalid fmt engine type." << std::endl;
+    return BM_ERR_FAILURE;
+  }
+  // FIXME: Support later
+  if (m_slice_info.ping_pong_size != 1) {
+    std::cerr << "Currently runSingleSizeKernel does not support ping pong." << std::endl;
+    m_slice_info.ping_pong_size = 1;
+  }
+  u32 batch = input[0].m_tg.shape.n;
+  u32 channel = input[0].m_tg.shape.c;
+  u32 height = input[0].m_tg.shape.h;
+  u32 width = input[0].m_tg.shape.w;
+  // Insert extra tl
+  u32 nums_of_tl = m_slice_info.nums_of_tl;
+  u32 fix_lmem_size = m_slice_info.fix_lmem_size;
+
+  // FIXME: Move to constructor if possible.
+  bmk1880v2_tensor_lmem_shape_t tl_table_s;
+  u64 result = bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_U8);
+  m_table_per_channel_size = result / m_chip_info.npu_num;  // 32 * 8 for bm1880v2
+  SliceRes slice_res;
+  int ret = getSlice(nums_of_tl, m_slice_info.nums_of_table, fix_lmem_size, batch, channel, height,
+                     width, m_table_per_channel_size, m_kernel_info, m_chip_info.npu_num,
+                     &slice_res.h, &slice_res.w, true);
+  if (ret != BM_SUCCESS) {
+    return BM_ERR_FAILURE;
+  }
+  SliceRes in_slice_res, out_slice_res;
+  in_slice_res = slice_res;
+  out_slice_res = slice_res;
+  const int vertical_pad_total = m_kernel_info.pad[2] + m_kernel_info.pad[3];
+  out_slice_res.h.slice -= vertical_pad_total;
+  out_slice_res.h.left -= vertical_pad_total;
+  // channel ext supports w
+  // out_slice_res.w.slice -= (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
+  // out_slice_res.w.left -= (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
+  TensorSliceInfo out_info, out_w_info, out_h_info, out_wh_info;
+  channelExtension(bk_ctx, channel, out_slice_res.h.slice, out_slice_res.w.slice,
+                   out_slice_res.h.c_multiplier, m_kernel_info.pad[0], m_kernel_info.pad[1],
+                   m_kernel_info.pad[2], m_kernel_info.pad[3], m_kernel_info.size,
+                   m_kernel_info.size, m_kernel_info.default_stride_y,
+                   m_kernel_info.default_stride_x, m_slice_info.io_fmt, &out_info);
+  if (slice_res.w.left != 0) {
+    int c_multiplier = m_chip_info.npu_num;
+    while (out_slice_res.w.left % c_multiplier != 0) {
+      c_multiplier--;
+    }
+    channelExtension(bk_ctx, channel, out_slice_res.h.slice, out_slice_res.w.left, c_multiplier,
+                     m_kernel_info.pad[0], m_kernel_info.pad[1], m_kernel_info.pad[2],
+                     m_kernel_info.pad[3], m_kernel_info.size, m_kernel_info.size,
+                     m_kernel_info.default_stride_y, m_kernel_info.default_stride_x,
+                     m_slice_info.io_fmt, &out_w_info);
+  } else {
+    out_w_info = out_info;
+  }
+  if (out_slice_res.h.left != 0) {
+    int c_multiplier = m_chip_info.npu_num;
+    while (out_slice_res.h.left % c_multiplier != 0) {
+      c_multiplier--;
+    }
+    channelExtension(bk_ctx, channel, out_slice_res.h.left, out_slice_res.w.slice, c_multiplier,
+                     m_kernel_info.pad[0], m_kernel_info.pad[1], m_kernel_info.pad[2],
+                     m_kernel_info.pad[3], m_kernel_info.size, m_kernel_info.size,
+                     m_kernel_info.default_stride_y, m_kernel_info.default_stride_x,
+                     m_slice_info.io_fmt, &out_h_info);
+  } else {
+    out_h_info = out_info;
+  }
+  if (out_slice_res.h.left != 0 && out_slice_res.w.left != 0) {
+    int c_multiplier = m_chip_info.npu_num;
+    while (out_slice_res.h.left % c_multiplier != 0) {
+      c_multiplier--;
+    }
+    channelExtension(bk_ctx, channel, out_slice_res.h.left, out_slice_res.w.left, c_multiplier,
+                     m_kernel_info.pad[0], m_kernel_info.pad[1], m_kernel_info.pad[2],
+                     m_kernel_info.pad[3], m_kernel_info.size, m_kernel_info.size,
+                     m_kernel_info.default_stride_y, m_kernel_info.default_stride_x,
+                     m_slice_info.io_fmt, &out_wh_info);
+  } else if (out_slice_res.h.left != 0 && out_slice_res.w.left == 0) {
+    out_wh_info = out_h_info;
+  } else if (out_slice_res.h.left == 0 && out_slice_res.w.left != 0) {
+    out_wh_info = out_w_info;
+  } else {
+    out_wh_info = out_info;
+  }
+  // FIXME: Slice Setup not supported in this mode yet.
+  // sliceSetup(slice_res, &in_slice_res, &out_slice_res);
+  // if (in_slice_res.h.turn != out_slice_res.h.turn) {
+  //   std::cerr << "Input/ output h slice turn are not the same " << in_slice_res.h.turn << ", "
+  //             << out_slice_res.h.turn << std::endl;
+  // }
+  // if (in_slice_res.w.turn != out_slice_res.w.turn) {
+  //   std::cerr << "Input/ output w slice turn are not the same " << in_slice_res.w.turn << ", "
+  //             << out_slice_res.w.turn << std::endl;
+  // }
+
+  // Setup slice input/ output shapes and left shapes
+  std::vector<bmk1880v2_tensor_tgmem_shape_t> s_in_vec, s_out_vec;
+  for (size_t k = 0; k < input.size(); k++) {
+    s_in_vec.push_back(
+        {1, out_info.tl_load.shape.c, out_info.tl_load.shape.h, out_info.tl_load.shape.w});
+  }
+  for (size_t k = 0; k < output->size(); k++) {
+    s_out_vec.push_back(
+        {1, out_info.tl_store.shape.c, out_info.tl_store.shape.h, out_info.tl_store.shape.w});
+  }
+
+  // allocate tl shape and get input/ output indices.
+  std::vector<u32> tl_in_idx, tl_out_idx;
+  runSetup(ctx, bk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, true);
+
+  // Dummy check, can be turned off in official release
+  if (tl_in_idx.size() != input.size()) {
+    std::cerr << "Input tl size not match input image num " << tl_in_idx.size() << ", "
+              << input.size() << std::endl;
+  }
+  if (tl_out_idx.size() != output->size()) {
+    std::cerr << "Output tl size not match input image num " << tl_out_idx.size() << ", "
+              << output->size() << std::endl;
+  }
+  // Dummy check end
+  // Category tl shapes
+  std::vector<std::pair<int, bmk1880v2_tensor_lmem_t *>> tl_in_shape_lmem_vec,
+      tl_out_shape_lmem_vec;
+  for (size_t i = 0; i < m_tl_vec.size(); i++) {
+    auto *lmem = m_tl_vec[i];
+    bool skip = false;
+    for (size_t k = 0; k < s_in_vec.size(); k++) {
+      if (tgTLShapeCompare(lmem->shape, s_in_vec[k])) {
+        tl_in_shape_lmem_vec.push_back({k, lmem});
+        skip = true;
+        break;
+      }
+    }
+    if (skip) {
+      continue;
+    }
+    for (size_t k = 0; k < s_out_vec.size(); k++) {
+      if (tgTLShapeCompare(lmem->shape, s_out_vec[k])) {
+        tl_out_shape_lmem_vec.push_back({k, lmem});
+        break;
+      }
+    }
+  }
+
+  // Find and create input/ output fmt size pair.
+  std::vector<bmk1880v2_tensor_lmem_t *> tl_in, tl_out;
+  std::vector<FmtPair> fmt_input_vec, fmt_output_vec;
+  for (size_t i = 0; i < tl_in_idx.size(); i++) {
+    auto *lmem = m_tl_vec[tl_in_idx[i]];
+    tl_in.emplace_back(lmem);
+    FmtPair fp;
+    fp.setTGFmt(input[i].m_tg.fmt);
+    fp.setTLFmt(lmem->fmt);
+    fmt_input_vec.push_back(fp);
+  }
+  // TODO: Add do enable_min_max info
+  for (size_t i = 0; i < tl_out_idx.size(); i++) {
+    auto *lmem = m_tl_vec[tl_out_idx[i]];
+    tl_out.emplace_back(lmem);
+    FmtPair fp;
+    fp.setTGFmt((*output)[i].m_tg.fmt);
+    fp.setTLFmt(lmem->fmt);
+    fmt_output_vec.push_back(fp);
+  }
+
+  // Create tg block
+  bmk1880v2_tensor_tgmem_t tg_in;
+  tg_in.base_reg_index = 0;
+  bmk1880v2_tensor_tgmem_t tg_out;
+  tg_out.base_reg_index = 0;
+
+  // Get device memory start offset
+  std::vector<u64> bm_src_addr, bm_dest_addr;
+  for (size_t k = 0; k < input.size(); k++) {
+    u64 bm_start_addr = input[k].GetPAddr();
+    bm_src_addr.push_back(bm_start_addr);
+  }
+  for (size_t k = 0; k < output->size(); k++) {
+    u64 bm_des_addr = (*output)[k].GetPAddr();
+    bm_dest_addr.push_back(bm_des_addr + ((*output)[k].m_tg.stride.h * m_kernel_info.pad[2]) +
+                           (m_kernel_info.pad[0] * fmt_output_vec[k].getTGFmtSize()));
+  }
+
+  // Main for loop
+  TensorSliceInfo *tsi = &out_info;
+  for (u32 i = 0; i < slice_res.h.turn; i++) {
+    // Re-assign head address to w.
+    std::vector<u64> bm_src_addr_w = bm_src_addr;
+    std::vector<u64> bm_dest_addr_w = bm_dest_addr;
+    for (u32 j = 0; j < slice_res.w.turn; j++) {
+      // Change H TL size to fit left shape in last turn
+      if (i == in_slice_res.h.turn - 1) {
+        if (j == 0) {
+          tsi = &out_h_info;
+        } else if (j == in_slice_res.w.turn - 1) {
+          tsi = &out_wh_info;
+        }
+      } else {
+        if (j == 0) {
+          tsi = &out_info;
+        } else if (j == in_slice_res.w.turn - 1) {
+          tsi = &out_w_info;
+        }
+      }
+      for (size_t k = 0; k < tl_in_shape_lmem_vec.size(); k++) {
+        int &index = tl_in_shape_lmem_vec[k].first;
+        auto *lmem = tl_in_shape_lmem_vec[k].second;
+        lmem->shape = tsi->tl_load.shape;
+        lmem->stride = tsi->tl_load.stride;
+      }
+      for (size_t k = 0; k < tl_out_shape_lmem_vec.size(); k++) {
+        int &index = tl_out_shape_lmem_vec[k].first;
+        auto *lmem = tl_out_shape_lmem_vec[k].second;
+        lmem->shape = tsi->tl_store.shape;
+        lmem->stride = tsi->tl_store.stride;
+      }
+      for (size_t k = 0; k < m_tl_vec.size(); k++) {
+        auto *lmem = m_tl_vec[k];
+        u64 &&align_up_res = align_up(lmem->shape.c, m_chip_info.npu_num) / m_chip_info.npu_num;
+        int is_align = (lmem->stride.n != align_up_res) ? 1 : 0;
+        if (lmem->shape.c != tsi->tl_load.shape.c) {
+          lmem->shape.c = tsi->tl_load.shape.c;
+          lmem->stride =
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, is_align, lmem->fmt);
+        }
+      }
+
+      // tg2tl
+      for (size_t k = 0; k < tl_in.size(); k++) {
+        tg_in.start_address = bm_src_addr_w[k];
+        tg_in.shape = tsi->tg_load.shape;
+        tg_in.stride = tsi->tg_load.stride;
+        tg_in.fmt = fmt_input_vec[k].getTGFmt();
+
+        // clang-format off
+        IVE_DEBUG("[%lu] In\n"
+                  " tg start address %lu\n"
+                  " tg shape %d %d %d %d\n"
+                  " tg stride %d %d %d\n"
+                  " tl shape %d %d %d %d\n"
+                  " tl stride %u %u %u %u\n",
+                  k,
+                  tg_in.start_address,
+                  tg_in.shape.n, tg_in.shape.c, tg_in.shape.h, tg_in.shape.w,
+                  tg_in.stride.n, tg_in.stride.c, tg_in.stride.h,
+                  tl_in[k]->shape.n, tl_in[k]->shape.c, tl_in[k]->shape.h, tl_in[k]->shape.w,
+                  tl_in[k]->stride.n, tl_in[k]->stride.c, tl_in[k]->stride.h, tl_in[k]->stride.w);
+        // clang-format on
+
+        bmk1880v2_tdma_tg2l_tensor_copy_param_t p_copy_in;
+        p_copy_in.src = &tg_in;
+        p_copy_in.dst = tl_in[k];
+        bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p_copy_in);
+
+        // Change src head addr
+        bm_src_addr_w[k] += 1 * in_slice_res.w.skip * fmt_input_vec[k].getTGFmtSize();
+      }
+
+      operation(ctx, bk_ctx, 0);
+
+      // tl2tg
+      for (size_t k = 0; k < tl_out.size(); k++) {
+        tg_out.start_address = bm_dest_addr_w[k];
+        tg_out.fmt = fmt_output_vec[k].getTGFmt();
+        tg_out.shape = tsi->tg_store.shape;
+        // Note: Channel extension does not support h padding.
+        // tg_out.shape.h = tl_out[k]->shape.h - (m_kernel_info.pad[2] + m_kernel_info.pad[3]);
+        tg_out.shape.w = tg_out.shape.w - (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
+        tg_out.stride = tsi->tg_store.stride;
+        bmk1880v2_tensor_lmem_t out_shape;
+        // printf("st addr%d, tg st addr %lu\n", tl_out[k]->start_address, bm_dest_addr_w[k]);
+        out_shape.start_address =
+            tl_out[k]->start_address + (m_kernel_info.pad[0] * fmt_output_vec[k].getTLFmtSize());
+        out_shape.fmt = tl_out[k]->fmt;
+        out_shape.cmprs_fmt = tl_out[k]->cmprs_fmt;
+        out_shape.shape = tl_out[k]->shape;
+        out_shape.stride = tl_out[k]->stride;
+        out_shape.shape.w = tg_out.shape.w;
+
+        // clang-format off
+        IVE_DEBUG("[%lu] Out\n"
+                  " tg start address %lu\n"
+                  " tg shape %d %d %d %d\n"
+                  " tg stride %d %d %d\n"
+                  " tl shape %d %d %d %d\n"
+                  " tl stride %u %u %u %u\n",
+                  k,
+                  tg_out.start_address,
+                  tg_out.shape.n, tg_out.shape.c, tg_out.shape.h, tg_out.shape.w,
+                  tg_out.stride.n, tg_out.stride.c, tg_out.stride.h,
+                  tl_out[k]->shape.n, tl_out[k]->shape.c, tl_out[k]->shape.h, tl_out[k]->shape.w,
+                  tl_out[k]->stride.n, tl_out[k]->stride.c, tl_out[k]->stride.h, tl_out[k]->stride.w);
+        // clang-format on
+
+        bmk1880v2_tdma_l2tg_tensor_copy_param_t p_copy_out;
+        p_copy_out.src = &out_shape;
+        p_copy_out.dst = &tg_out;
+        bmk1880v2_tdma_l2g_bf16_tensor_copy(bk_ctx, &p_copy_out);
+
+        // Change dest head addr
+        bm_dest_addr_w[k] += 1 * out_slice_res.w.skip * fmt_output_vec[k].getTGFmtSize();
+      }
+    }
+    // Change src/ dest head addr
+    for (size_t k = 0; k < tl_in.size(); k++) {
+      auto jump_val = (i == in_slice_res.h.turn - 1 && in_slice_res.h.left != 0)
+                          ? in_slice_res.h.left
+                          : in_slice_res.h.skip;
+      bm_src_addr[k] += 1 * input[k].m_tg.stride.h * jump_val;
+    }
+    for (size_t k = 0; k < tl_out.size(); k++) {
+      auto jump_val = (i == out_slice_res.h.turn - 1 && out_slice_res.h.left != 0)
+                          ? out_slice_res.h.left + vertical_pad_total
+                          : out_slice_res.h.skip;
+
+      bm_dest_addr[k] += 1 * (*output)[k].m_tg.stride.h * jump_val;
+    }
+  }
+  IVE_DEBUG("In slice info:\n");
+  IVE_DEBUG("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", in_slice_res.h.slice,
+            in_slice_res.h.turn, in_slice_res.h.skip, in_slice_res.h.left);
+  IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", in_slice_res.w.slice,
+            in_slice_res.w.turn, in_slice_res.w.skip, in_slice_res.w.left);
+  IVE_DEBUG("Out slice info:\n");
+  IVE_DEBUG("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", out_slice_res.h.slice,
+            out_slice_res.h.turn, out_slice_res.h.skip, out_slice_res.h.left);
+  IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", out_slice_res.w.slice,
+            out_slice_res.w.turn, out_slice_res.w.skip, out_slice_res.w.left);
+
+  // Dummy gaurd for buffer overflow
+  ret |= checkIsBufferOverflow(input, *output, fmt_input_vec, fmt_output_vec, bm_src_addr,
+                               bm_dest_addr, m_kernel_info.pad[0], m_kernel_info.pad[2], false);
+  if (ret == BM_SUCCESS) {
+    bmruntime_bmkernel_submit(*ctx);
+  }
+
+  freeTLMems(bk_ctx);
+  freeChildTGMem(ctx);
+  return BM_SUCCESS;
 }
 
 int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
@@ -450,7 +914,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
 
   // allocate tl shape and get input/ output indices.
   std::vector<u32> tl_in_idx, tl_out_idx;
-  runSetup(ctx, bk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx);
+  runSetup(ctx, bk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
 
   // Find and create input/ output fmt size pair.
   std::vector<bmk1880v2_tensor_lmem_t *> tl_in, tl_out;
@@ -650,26 +1114,8 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
     }
   }
   int ret = BM_SUCCESS;
-  for (size_t k = 0; k < input.size(); k++) {
-    u64 bm_start_addr = input[k].GetPAddr();
-    u64 jumped_value = bm_src_addr[k] - bm_start_addr;
-    u64 total_addr = input[k].m_tg.stride.n;
-    if (jumped_value != total_addr) {
-      printf("Error! Input %lu jumped value not align to image size %lu, original %lu\n", k,
-             jumped_value, total_addr);
-      ret = BM_ERR_FAILURE;
-    }
-  }
-  for (size_t k = 0; k < output->size(); k++) {
-    u64 bm_des_addr = (*output)[k].GetPAddr();
-    u64 jumped_value = bm_dest_addr[k] - bm_des_addr;
-    u64 total_addr = (*output)[k].m_tg.stride.n;
-    if (jumped_value != total_addr) {
-      printf("Error! Output %lu jumped value not align to image size %lu, original %lu\n", k,
-             jumped_value, total_addr);
-      ret = BM_ERR_FAILURE;
-    }
-  }
+  ret |= checkIsBufferOverflow(input, *output, fmt_input_vec, fmt_output_vec, bm_src_addr,
+                               bm_dest_addr, m_kernel_info.pad[0], m_kernel_info.pad[2], true);
   if (ret == BM_SUCCESS) {
     if (m_write_cdbuf) {
       u32 len;

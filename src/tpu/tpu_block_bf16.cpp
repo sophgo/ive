@@ -37,7 +37,8 @@ int IveTPUBlockBF16::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceR
 int IveTPUBlockBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                               const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
                               const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
-                              std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx) {
+                              std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                              const bool enable_cext) {
   if (m_channel != tg_in_slices[0].c) {
     std::cerr << "Channel changed, slicing result may not be suitable." << std::endl;
   }

@@ -9,9 +9,12 @@
 class IveCore {
  public:
   IveCore();
+  const unsigned int getNpuNum() const { return m_chip_info.npu_num; }
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) = 0;
   int runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
-                          std::vector<CviImg> *output);
+                          std::vector<CviImg> *output, bool enable_min_max = false);
+  int runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+                             std::vector<CviImg> *output, bool enable_min_max = false);
   int runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
                   std::vector<CviImg> *output, bool enable_min_max = false);
 
@@ -23,7 +26,8 @@ class IveCore {
   virtual int runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
-                       std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx) = 0;
+                       std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                       const bool enable_cext) = 0;
   virtual void operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) = 0;
   virtual int freeChildTGMem(bmctx_t *ctx);
 
@@ -36,7 +40,8 @@ class IveCore {
  private:
   int getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32 fixed_lmem_size,
                const u32 n, const u32 c, const u32 h, const u32 w, const u32 table_size,
-               const kernelInfo kernel_info, sliceUnit *unit_h, sliceUnit *unit_w);
+               const kernelInfo kernel_info, const int npu_num, sliceUnit *unit_h,
+               sliceUnit *unit_w, const bool enable_cext);
   int freeTLMems(bmk1880v2_context_t *bk_ctx);
 
   bool m_write_cdbuf = false;

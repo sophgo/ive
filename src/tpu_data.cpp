@@ -45,7 +45,7 @@ const bool CviImg::IsInit() { return this->m_bmmem == NULL ? false : true; }
 
 uint8_t *CviImg::GetVAddr() { return m_vaddr; }
 
-uint64_t CviImg::GetPAddr() { return m_paddr; }
+uint64_t CviImg::GetPAddr() const { return m_paddr; }
 
 const u64 CviImg::GetImgSize() { return m_size; }
 

@@ -53,6 +53,7 @@ struct sliceUnit {
   u32 skip;
   u32 turn;
   u32 left;
+  u32 c_multiplier = 1;
 };
 
 /**
@@ -60,6 +61,7 @@ struct sliceUnit {
  *
  */
 struct SliceInfo {
+  fmt_t io_fmt = FMT_INVALID;
   u32 ping_pong_size = 1;
   u32 ping_pong_share_tl = 0;
   u32 nums_of_tl = 2;
@@ -70,6 +72,21 @@ struct SliceInfo {
 struct SliceRes {
   sliceUnit h;
   sliceUnit w;
+};
+
+struct TLMemInfo {
+  bmk1880v2_tensor_lmem_shape_t shape;
+  bmk1880v2_tensor_lmem_stride_t stride;
+};
+struct TGMemInfo {
+  bmk1880v2_tensor_tgmem_shape_t shape;
+  bmk1880v2_tensor_tgmem_stride_t stride;
+};
+struct TensorSliceInfo {
+  TLMemInfo tl_load;
+  TLMemInfo tl_store;
+  TGMemInfo tg_load;
+  TGMemInfo tg_store;
 };
 
 /**
@@ -181,7 +198,7 @@ class CviImg {
    *
    * @return const uint64_t Address offset
    */
-  uint64_t GetPAddr();
+  uint64_t GetPAddr() const;
 
   /**
    * @brief Get the size of the image in bytes.

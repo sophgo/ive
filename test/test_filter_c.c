@@ -36,6 +36,7 @@ int main(int argc, char **argv) {
   printf("Run TPU Filter.\n");
   CVI_S8 arr[] = {1, 2, 1, 2, 4, 2, 1, 2, 1};
   IVE_FILTER_CTRL_S iveFltCtrl;
+  iveFltCtrl.maskSize = 3;
   memcpy(iveFltCtrl.as8Mask, arr, 9 * sizeof(CVI_S8));
   iveFltCtrl.u8Norm = 16;
   struct timeval t0, t1;

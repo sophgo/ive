@@ -10,7 +10,8 @@ int IveTPUXOr::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
 int IveTPUXOr::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                         const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
                         const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
-                        std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx) {
+                        std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                        const bool enable_cext) {
   bmk1880v2_tensor_lmem_shape_t tl_shape;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;
