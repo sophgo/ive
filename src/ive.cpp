@@ -556,19 +556,20 @@ CVI_S32 CVI_IVE_Dilate(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  CviImg cimg(&handle_ctx->ctx, cpp_src->m_tg.shape.c, 5, 5, FMT_U8);
+  u32 npu_num = handle_ctx->t_h.t_erode.getNpuNum();
+  CviImg cimg(&handle_ctx->ctx, npu_num, 5, 5, FMT_U8);
   IveKernel kernel;
   kernel.img = cimg;
   kernel.img.GetVAddr();
-  for (size_t i = 0; i < cpp_src->m_tg.shape.c; i++) {
+  for (size_t i = 0; i < npu_num; i++) {
     memcpy(kernel.img.GetVAddr() + i * 25, pstDilateCtrl->au8Mask, 25);
   }
   kernel.multiplier.f = 1.f;
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_filter.setKernel(kernel);
-  handle_ctx->t_h.t_filter.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                               &outputs);
+  handle_ctx->t_h.t_filter.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
+                                                  &outputs);
   kernel.img.Free(&handle_ctx->ctx);
   return CVI_SUCCESS;
 }
@@ -582,19 +583,20 @@ CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  CviImg cimg(&handle_ctx->ctx, cpp_src->m_tg.shape.c, 5, 5, FMT_U8);
+  u32 npu_num = handle_ctx->t_h.t_erode.getNpuNum();
+  CviImg cimg(&handle_ctx->ctx, npu_num, 5, 5, FMT_U8);
   IveKernel kernel;
   kernel.img = cimg;
   kernel.img.GetVAddr();
-  for (size_t i = 0; i < cpp_src->m_tg.shape.c; i++) {
+  for (size_t i = 0; i < npu_num; i++) {
     memcpy(kernel.img.GetVAddr() + i * 25, pstErodeCtrl->au8Mask, 25);
   }
   kernel.multiplier.f = 1.f;
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_erode.setKernel(kernel);
-  handle_ctx->t_h.t_erode.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                              &outputs);
+  handle_ctx->t_h.t_erode.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
+                                                 &outputs);
   kernel.img.Free(&handle_ctx->ctx);
   return CVI_SUCCESS;
 }
