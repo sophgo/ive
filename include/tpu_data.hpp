@@ -5,6 +5,7 @@
 #include <libbmruntime/bmruntime_bmkernel.h>
 #include <string.h>
 #include <iostream>
+#include <vector>
 
 typedef struct cvi_chip_info {
   u32 version;
@@ -257,29 +258,29 @@ struct IveKernel {
   img_multiplier multiplier;
 };
 
-/**
- * @brief FMT pair for IveCore TG/ TL flow control.
- *
- */
-class FmtPair {
+class FmtnSize {
  public:
-  void setTGFmt(fmt_t fmt) {
-    m_tg_fmt = fmt;
-    m_tg_fmt_size = getFmtSize(m_tg_fmt);
-  }
-  void setTLFmt(fmt_t fmt) {
-    m_tl_fmt = fmt;
-    m_tl_fmt_size = getFmtSize(m_tl_fmt);
+  FmtnSize() {}
+  FmtnSize(fmt_t fmt) { setFmt(fmt); }
+  void setFmt(fmt_t fmt) {
+    m_fmt = fmt;
+    m_fmt_size = getFmtSize(m_fmt);
   }
 
-  const fmt_t getTGFmt() { return m_tg_fmt; }
-  const fmt_t getTLFmt() { return m_tl_fmt; }
-  const u32 getTGFmtSize() { return m_tg_fmt_size; }
-  const u32 getTLFmtSize() { return m_tl_fmt_size; }
+  const fmt_t getFmt() const { return m_fmt; }
+  const u32 getSize() const { return m_fmt_size; }
 
  private:
-  fmt_t m_tg_fmt = FMT_U8;
-  u32 m_tg_fmt_size = 1;
-  fmt_t m_tl_fmt = FMT_U8;
-  u32 m_tl_fmt_size = 1;
+  fmt_t m_fmt = FMT_U8;
+  u32 m_fmt_size = 1;
+};
+
+struct BMAddrInfo {
+  std::vector<u64> addr_vec;
+  std::vector<FmtnSize> fns_vec;
+};
+
+struct TLInfo {
+  std::vector<bmk1880v2_tensor_lmem_t *> lmem_vec;
+  std::vector<FmtnSize> fns_vec;
 };
