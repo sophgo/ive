@@ -307,6 +307,18 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
                    IVE_DST_IMAGE_S *pstDst, bool bInstant);
 
 /**
+ * @brief Run sigmoid of an input image.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc Input image.
+ * @param pstDst Output image.
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Sigmoid(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                        bool bInstant);
+
+/**
  * @brief Calculate SAD result with two same size input image.
  *
  * @param pIveHandle Ive instance handler.

@@ -18,6 +18,7 @@
 #include "tpu/tpu_morph.hpp"
 #include "tpu/tpu_or.hpp"
 #include "tpu/tpu_sad.hpp"
+#include "tpu/tpu_sigmoid.hpp"
 #include "tpu/tpu_sobel.hpp"
 #include "tpu/tpu_sub.hpp"
 #include "tpu/tpu_threshold.hpp"
@@ -38,6 +39,7 @@ struct TPU_HANDLE {
   IveTPUMagAndAng t_magandang;
   IveTPUOr t_or;
   IveTPUSAD t_sad;
+  IveTPUSigmoid t_sig;
   IveTPUSobelGradOnly t_sobel_gradonly;
   IveTPUSobel t_sobel;
   IveTPUSubAbs t_sub_abs;
@@ -849,6 +851,19 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
 
   handle_ctx->t_h.t_or.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_Sigmoid(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                        bool bInstant) {
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  handle_ctx->t_h.t_add.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
+
+  handle_ctx->t_h.t_sig.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  return BM_SUCCESS;
 }
 
 CVI_S32 CVI_IVE_SAD(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
