@@ -218,7 +218,6 @@ typedef struct IVE_SOBEL_CTRL {
 typedef enum hiIVE_SUB_MODE_E {
   IVE_SUB_MODE_NORMAL = 0x0,
   IVE_SUB_MODE_ABS = 0x1,
-  IVE_SUB_MODE_SHIFT = 0x2,
   IVE_SUB_MODE_BUTT
 } IVE_SUB_MODE_E;
 
