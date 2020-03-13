@@ -965,16 +965,15 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs;
   if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_BOTH) {
+    int npu_num = handle_ctx->t_h.t_sobel_gradonly.getNpuNum();
     outputs.emplace_back(*cpp_dstv);
     outputs.emplace_back(*cpp_dsth);
-    IveKernel kernel_w =
-        createKernel(&handle_ctx->ctx, cpp_src->m_tg.shape.c, 3, 3, IVE_KERNEL::SOBEL_X);
-    IveKernel kernel_h =
-        createKernel(&handle_ctx->ctx, cpp_src->m_tg.shape.c, 3, 3, IVE_KERNEL::SOBEL_Y);
+    IveKernel kernel_w = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_X);
+    IveKernel kernel_h = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_sobel_gradonly.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_sobel_gradonly.setKernel(kernel_w, kernel_h);
-    handle_ctx->t_h.t_sobel_gradonly.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx,
-                                                         inputs, &outputs);
+    handle_ctx->t_h.t_sobel_gradonly.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx,
+                                                            inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
     kernel_h.img.Free(&handle_ctx->ctx);
   } else if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_HOR) {
