@@ -216,7 +216,7 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   pstDst->u16Height = cpp_img->m_tg.shape.h;
   pstDst->u16Reserved = pstSrc->u16Reserved;
 
-  int img_sz = cpp_img->m_tg.stride.h * pstDst->u16Height * pstSrc->u16Reserved;
+  int img_sz = cpp_img->m_tg.stride.h * pstSrc->u16Height * pstSrc->u16Reserved;
   for (size_t i = 0; i < cpp_img->m_tg.shape.c; i++) {
     pstDst->pu8VirAddr[i] = cpp_img->GetVAddr() + i * img_sz;
     pstDst->u64PhyAddr[i] = cpp_img->GetPAddr() + i * img_sz;
