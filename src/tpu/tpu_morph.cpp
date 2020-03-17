@@ -12,6 +12,7 @@ void IveTPUErode::setKernel(IveKernel &kernel) {
 }
 
 int IveTPUErode::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_cmdbuf_subfix = "morph";
   m_slice_info.io_fmt = FMT_U8;
   m_slice_info.nums_of_tl = 3;
   m_kernel_info.nums_of_kernel = 1;

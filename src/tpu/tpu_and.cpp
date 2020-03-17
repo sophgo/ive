@@ -2,6 +2,7 @@
 #include <string.h>
 
 int IveTPUAnd::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_cmdbuf_subfix = "and";
   m_slice_info.ping_pong_size = 2;
   m_slice_info.nums_of_tl = 2;
 

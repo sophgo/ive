@@ -7,6 +7,7 @@ void IveTPUCopyInterval::setInvertal(u32 hori, u32 verti) {
 }
 
 int IveTPUCopyInterval::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_cmdbuf_subfix = "intCopy";
   m_slice_info.nums_of_tl = 1 + m_hori * m_verti;
 
   return BM_SUCCESS;

@@ -16,6 +16,7 @@ void IveTPUMagAndAng::exportOption(bool mag_value, bool ang_value) {
 void IveTPUMagAndAng::noNegative(bool value) { m_no_negative = value; }
 
 int IveTPUMagAndAng::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_cmdbuf_subfix = "magnang";
   // 2 input tl
   // 6 tmp buf
   // 1 atan & 1 final sqrt result

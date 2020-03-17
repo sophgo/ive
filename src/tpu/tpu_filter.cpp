@@ -114,6 +114,7 @@ void IveTPUFilterBF16::setKernel(const IveKernel &kernel) {
 }
 
 int IveTPUFilterBF16::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_cmdbuf_subfix = "filter";
   m_slice_info.nums_of_tl = 2 * 2;
   m_kernel_info.nums_of_kernel = 1;
   return BM_SUCCESS;

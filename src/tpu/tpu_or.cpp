@@ -2,6 +2,7 @@
 #include <string.h>
 
 int IveTPUOr::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_cmdbuf_subfix = "or";
   m_slice_info.nums_of_tl = 2;
 
   return BM_SUCCESS;

@@ -36,6 +36,7 @@ class IveCore {
   SliceInfo m_slice_info;
   kernelInfo m_kernel_info;
   std::vector<bmk1880v2_tensor_lmem_t *> m_tl_vec;
+  std::string m_cmdbuf_subfix;
 
  private:
   int getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32 fixed_lmem_size,
@@ -44,7 +45,7 @@ class IveCore {
                sliceUnit *unit_w, const bool enable_cext);
   int freeTLMems(bmk1880v2_context_t *bk_ctx);
 
-  bool m_write_cdbuf = false;
+  bool m_write_cmdbuf = false;
   cvi_chip_info_s m_chip_info;
   u32 m_table_per_channel_size = 0;
 };

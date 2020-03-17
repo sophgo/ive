@@ -650,7 +650,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], false);
   if (ret == BM_SUCCESS) {
-    bmruntime_bmkernel_submit(*ctx);
+    submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
   freeTLMems(bk_ctx);
   freeChildTGMem(ctx);
@@ -1066,7 +1066,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], false);
   if (ret == BM_SUCCESS) {
-    bmruntime_bmkernel_submit(*ctx);
+    submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
 
   freeTLMems(bk_ctx);
@@ -1311,20 +1311,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], true);
   if (ret == BM_SUCCESS) {
-    if (m_write_cdbuf) {
-      u32 len;
-      u8 *buf = bmk1880v2_acquire_cmdbuf(bk_ctx, &len);
-      printf("Cmdbuf length %u\n", len);
-      FILE *pFile;
-      pFile = fopen("cmdbuf.bin", "wb");
-      fwrite(buf, sizeof(char), len, pFile);
-      fclose(pFile);
-      uint16_t seq_no;
-      bmerr_t ret = bm_send_cmdbuf(*ctx, buf, (size_t)len, &seq_no);
-      bmk1880v2_reset(bk_ctx);
-    } else {
-      bmruntime_bmkernel_submit(*ctx);
-    }
+    submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
 
   freeTLMems(bk_ctx);

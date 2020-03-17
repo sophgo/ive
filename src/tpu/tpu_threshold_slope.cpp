@@ -9,6 +9,7 @@ void IveTPUThresholdSlope::setThreshold(int low, int high) {
 }
 
 int IveTPUThresholdSlope::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_cmdbuf_subfix = "threshSlope";
   m_slice_info.nums_of_tl = 1;
 
   return BM_SUCCESS;

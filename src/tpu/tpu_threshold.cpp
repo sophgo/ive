@@ -6,6 +6,7 @@
 void IveTPUThreshold::setThreshold(int threshold) { m_threshold = threshold; }
 
 int IveTPUThreshold::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_cmdbuf_subfix = "thresh";
   m_slice_info.nums_of_tl = 3;
 
   return BM_SUCCESS;

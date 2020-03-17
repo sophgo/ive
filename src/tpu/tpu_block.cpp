@@ -16,6 +16,7 @@ void IveTPUBlock::setCellSize(const int cell_size, const int channel) {
 }
 
 int IveTPUBlock::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_cmdbuf_subfix = "block";
   m_slice_info.nums_of_tl = 2;
   // Reserved for rgb multiplier
   m_slice_info.fix_lmem_size = m_channel * MULTIPLIER_ONLY_PACKED_DATA_SIZE;

@@ -30,6 +30,24 @@ inline void destroyHandle(bmctx_t *ctx) {
   bm_exit(*ctx);
 }
 
+inline void submitCmdbuf(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
+                         const std::string &cmdbuf_subfix, bool write_cmdbuf = false) {
+  if (write_cmdbuf) {
+    u32 len;
+    u8 *buf = bmk1880v2_acquire_cmdbuf(bk_ctx, &len);
+    printf("Cmdbuf length %u\n", len);
+    FILE *pFile;
+    std::string name = cmdbuf_subfix == "" ? "cmdbuf.bin" : "cmdbuf_" + cmdbuf_subfix + ".bin";
+    pFile = fopen(name.c_str(), "wb");
+    fwrite(buf, sizeof(char), len, pFile);
+    fclose(pFile);
+    uint16_t seq_no;
+    bmerr_t ret = bm_send_cmdbuf(*ctx, buf, (size_t)len, &seq_no);
+    bmk1880v2_reset(bk_ctx);
+  } else {
+    bmruntime_bmkernel_submit(*ctx);
+  }
+}
 
 inline void genTableBF16(const bmk1880v2_tensor_lmem_shape_t &table_shape, const float min_value,
                          const float max_value, u16 *table_pos_neg) {

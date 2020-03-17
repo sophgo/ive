@@ -16,6 +16,7 @@ void IveTPUSobel::setKernel(IveKernel &kernel_x, IveKernel &kernel_y) {
 }
 
 int IveTPUSobel::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_cmdbuf_subfix = "sobel";
   // 1 input tl
   // 2 conv result
   // 0 a^2 + b^2 result (reuse input tl)

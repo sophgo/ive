@@ -4,6 +4,7 @@
 #include <string.h>
 
 int IveTPUSubAbs::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_cmdbuf_subfix = "subAbs";
   // 2 - in
   // 1 -tmp
   // 1 -high bit

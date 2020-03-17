@@ -26,6 +26,7 @@ void IveTPUSAD::setWindowSize(const int window_size) {
 }
 
 int IveTPUSAD::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_cmdbuf_subfix = "sad";
   if (m_do_threshold) {
     m_slice_info.nums_of_tl = 5 * 2;
     m_slice_info.nums_of_table = 1 * 2;
