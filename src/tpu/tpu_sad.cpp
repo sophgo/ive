@@ -14,7 +14,7 @@ void IveTPUSAD::setThreshold(const u16 threshold, const u8 min_val, const u8 max
   m_max_value = max_val;
 }
 
-void IveTPUSAD::setWindowSize(const int window_size, const int channel) {
+void IveTPUSAD::setWindowSize(const int window_size) {
   m_kernel_info.size = window_size;
   m_kernel_info.default_stride_x = 1;
   m_kernel_info.default_stride_y = 1;
@@ -23,7 +23,6 @@ void IveTPUSAD::setWindowSize(const int window_size, const int channel) {
   m_kernel_info.pad[1] = pad + 1;
   m_kernel_info.pad[2] = pad;
   m_kernel_info.pad[3] = pad + 1;
-  m_channel = channel;
 }
 
 int IveTPUSAD::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
@@ -44,9 +43,6 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                         const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
                         std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                         const bool enable_cext) {
-  if (m_channel != tg_in_slices[0].c) {
-    std::cerr << "Channel changed, slicing result may not be suitable." << std::endl;
-  }
   bmk1880v2_tensor_lmem_shape_t tl_shape;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;

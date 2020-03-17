@@ -9,7 +9,7 @@ class IveTPUSAD : public IveCore {
   void outputThresholdOnly(bool value);
   void doThreshold(bool value);
   void setThreshold(const u16 threshold, const u8 min_val, const u8 max_val);
-  void setWindowSize(const int window_size, const int channel = 3);
+  void setWindowSize(const int window_size);
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) override;
 
  protected:
@@ -29,7 +29,6 @@ class IveTPUSAD : public IveCore {
   u16 m_threshold = 0;
   u8 m_min_value = 0;
   u8 m_max_value = 255;
-  u32 m_channel = 3;
   bmk1880v2_tiu_element_wise_max_param_t m_p_max;
   bmk1880v2_tiu_element_wise_min_param_t m_p_min;
   bmk1880v2_tiu_element_wise_sub_param_t m_p_sub;
