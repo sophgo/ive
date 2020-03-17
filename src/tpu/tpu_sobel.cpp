@@ -17,6 +17,7 @@ void IveTPUSobel::setKernel(IveKernel &kernel_x, IveKernel &kernel_y) {
 
 int IveTPUSobel::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_cmdbuf_subfix = "sobel";
+  m_slice_info.io_fmt = FMT_BF16;
   // 1 input tl
   // 2 conv result
   // 0 a^2 + b^2 result (reuse input tl)
@@ -32,17 +33,21 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                           const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
                           std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                           const bool enable_cext) {
-  bmk1880v2_tensor_lmem_shape_t tl_shape;
+  bmk1880v2_tensor_lmem_shape_t tl_shape, tl_shape_out;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;
   tl_shape.h = tg_in_slices[0].h;
   tl_shape.w = tg_in_slices[0].w;
+  tl_shape_out.n = tg_out_slices[0].n;
+  tl_shape_out.c = tg_out_slices[0].c;
+  tl_shape_out.h = tg_out_slices[0].h;
+  tl_shape_out.w = tg_out_slices[0].w;
   auto *tl_input = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_gx = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_gy = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_res = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+  auto *tl_gx = allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
+  auto *tl_gy = allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
+  auto *tl_res = allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
 
-  bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size,
+  bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, m_kernel_x->img.m_tg.shape.c, m_kernel_info.size,
                                                m_kernel_info.size};
   auto *tl_kernel_gx = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1, IVETLType::KERNEL);
   auto *tl_kernel_gy = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1, IVETLType::KERNEL);
@@ -59,8 +64,13 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     cviImg2TL(ctx, bk_ctx, *table_data_mantissa, tl_table_data_mantissa);
   }
 
-  m_p_conv.pad_top = m_kernel_info.pad[2];
-  m_p_conv.pad_bottom = m_kernel_info.pad[3];
+  if (enable_cext) {
+    m_p_conv.pad_top = 0;
+    m_p_conv.pad_bottom = 0;
+  } else {
+    m_p_conv.pad_top = m_kernel_info.pad[2];
+    m_p_conv.pad_bottom = m_kernel_info.pad[3];
+  }
   m_p_conv.pad_left = m_kernel_info.pad[0];
   m_p_conv.pad_right = m_kernel_info.pad[1];
   m_p_conv.stride_w = 1;
@@ -100,7 +110,7 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   m_p_sqrt.a = tl_res;
   m_p_sqrt.res = tl_gx;
-  m_p_sqrt.buf = tl_input;
+  m_p_sqrt.buf = tl_gy;
   m_p_sqrt.sqrt_table_answer = tl_table_data;
   m_p_sqrt.sqrt_table_answer_mantissa = tl_table_data_mantissa;
 

@@ -27,6 +27,7 @@ void IveTPUSAD::setWindowSize(const int window_size) {
 
 int IveTPUSAD::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_cmdbuf_subfix = "sad";
+  m_slice_info.io_fmt = FMT_BF16;
   if (m_do_threshold) {
     m_slice_info.nums_of_tl = 5 * 2;
     m_slice_info.nums_of_table = 1 * 2;
@@ -90,8 +91,13 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_sub.res_low = tl_input;
   m_p_sub.rshift_bits = 0;
 
-  m_p_conv.pad_top = m_kernel_info.pad[2];
-  m_p_conv.pad_bottom = m_kernel_info.pad[3];
+  if (enable_cext) {
+    m_p_conv.pad_top = 0;
+    m_p_conv.pad_bottom = 0;
+  } else {
+    m_p_conv.pad_top = m_kernel_info.pad[2];
+    m_p_conv.pad_bottom = m_kernel_info.pad[3];
+  }
   m_p_conv.pad_left = m_kernel_info.pad[0];
   m_p_conv.pad_right = m_kernel_info.pad[1];
   m_p_conv.stride_w = 1;
