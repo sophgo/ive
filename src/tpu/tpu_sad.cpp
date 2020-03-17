@@ -152,18 +152,7 @@ void IveTPUSAD::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_id
   bmk1880v2_tiu_bf16_depthwise_convolution(bk_ctx, &m_p_conv);
   if (m_do_threshold) {
     bmk1880v2_tiu_bf16_element_wise_add(bk_ctx, &m_p_add_thresh);
-    bmk1880v2_tdma_l2l_tensor_copy_param_t p10;
-    p10.dst = m_p_mask.ofmap;
-    p10.src = m_p_mask.ifmap;
-    p10.mv_lut_idx = true;
-    bmk1880v2_tdma_l2l_bf16_tensor_copy(bk_ctx, &p10);
-    p10.mv_lut_idx = false;
-
-    bmk1880v2_tiu_lookup_table_param_t p12;
-    p12.ofmap = m_p_mask.ofmap;
-    p12.ifmap = m_p_mask.ofmap;
-    p12.table = m_p_mask.pos_neg_table;
-    bmk1880v2_tiu_lookup_table(bk_ctx, &p12);
+    bf16LookupTable(bk_ctx, &m_p_mask);
   }
 }
 

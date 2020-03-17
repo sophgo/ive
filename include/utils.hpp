@@ -1,4 +1,5 @@
 #pragma once
+#include "bmkernel_non_atomic.h"
 #include "debug.hpp"
 #include "tpu_data.hpp"
 
@@ -85,6 +86,28 @@ inline void constantFillTL(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, const u16 
   p_fill.dst = lmem;
 
   bmk1880v2_tdma_tg2l_bf16_tensor_fill_constant(bk_ctx, &p_fill);
+}
+
+inline void bf16LookupTable(bmk1880v2_context_t *bk_ctx,
+                            const bmk1880v2_tiu_non_atomic_mask_param_t *mask) {
+  bmk1880v2_tdma_l2l_tensor_copy_param_t p10;
+  bmk1880v2_tensor_lmem_t lmem = *mask->ofmap;
+  lmem.fmt = FMT_I8;
+  lmem.shape.h *= lmem.shape.w;
+  lmem.shape.w = 1;
+  lmem.stride = bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem.shape, 1, FMT_I8);
+  lmem.stride.h *= 2;
+  p10.dst = &lmem;
+  p10.src = mask->ifmap;
+  p10.mv_lut_idx = true;
+  bmk1880v2_tdma_l2l_bf16_tensor_copy(bk_ctx, &p10);
+  p10.mv_lut_idx = false;
+
+  bmk1880v2_tiu_lookup_table_param_t p12;
+  p12.ofmap = mask->ofmap;
+  p12.ifmap = mask->ifmap;
+  p12.table = mask->pos_neg_table;
+  bmk1880v2_tiu_lookup_table(bk_ctx, &p12);
 }
 
 inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, u32 *quantized_multiplier,
