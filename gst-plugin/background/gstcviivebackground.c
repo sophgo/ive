@@ -73,13 +73,62 @@ enum
 /* pad templates */
 
 /* FIXME: add/remove formats you can handle */
+// FIXME: Support GRAY8 after HW aupports color conversion.
 #define VIDEO_SRC_CAPS \
-    GST_VIDEO_CAPS_MAKE("{ GRAY8 }")
+    GST_VIDEO_CAPS_MAKE("{ I420 }")
 
 /* FIXME: add/remove formats you can handle */
 #define VIDEO_SINK_CAPS \
     GST_VIDEO_CAPS_MAKE("{ GRAY8 }")
 
+static GstCaps *gst_cvi_ive_background_transform_caps(GstBaseTransform * btrans,
+    GstPadDirection direction, GstCaps * caps, GstCaps * filter)
+{
+  GstCaps *result;
+  GstStructure *st;
+  GstCapsFeatures *f;
+  gint i, n;
+  printf("[cviivebackground] transform caps.\n");
+  GST_DEBUG_OBJECT (btrans, "Transformed %" GST_PTR_FORMAT, caps);
+  GST_DEBUG_OBJECT (btrans, "Filter %" GST_PTR_FORMAT, filter);
+  result = gst_caps_new_empty();
+  n = gst_caps_get_size(caps);
+  // printf("Size of Caps: %d\n", n);
+
+  for (i = 0; i < n; i++)
+  {
+    st = gst_caps_get_structure(caps, i);
+    f = gst_caps_get_features(caps, i);
+
+    /* If this is already expressed by the existing caps
+     * skip this structure */
+    if (i > 0 && gst_caps_is_subset_structure_full (result, st, f))
+      continue;
+
+    st = gst_structure_copy (st);
+    /* Only remove format info for the cases when we can actually convert */
+    if (!gst_caps_features_is_any (f)
+        && gst_caps_features_is_equal (f,
+            GST_CAPS_FEATURES_MEMORY_SYSTEM_MEMORY)) {
+      gst_structure_set (st,
+        "width",  GST_TYPE_INT_RANGE, 1, 2048,
+        "height", GST_TYPE_INT_RANGE, 1, 2048, NULL);
+
+      /* if pixel aspect ratio, make a range of it */
+      if (gst_structure_has_field (st, "pixel-aspect-ratio")) {
+        gst_structure_set (st, "pixel-aspect-ratio",
+        GST_TYPE_FRACTION_RANGE, 1, 2048, 2048, 1, NULL);
+      }
+      gst_structure_remove_fields (st, "format", "colorimetry", "chroma-site", NULL);
+    }
+
+    gst_caps_append_structure_full (result, st, gst_caps_features_copy (f));
+  }
+  GST_DEBUG_OBJECT (btrans, "Into %" GST_PTR_FORMAT, result);
+  // GST_DEBUG_OBJECT (btrans, "Transformed %" GST_PTR_FORMAT "Into %"
+  //     GST_PTR_FORMAT, caps, result);
+  return result;
+}
 
 /* class initialization */
 
@@ -113,6 +162,7 @@ gst_cvi_ive_background_class_init (GstCviIveBackgroundClass * klass)
   gobject_class->finalize = gst_cvi_ive_background_finalize;
   base_transform_class->start = GST_DEBUG_FUNCPTR (gst_cvi_ive_background_start);
   base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_cvi_ive_background_stop);
+  base_transform_class->transform_caps = GST_DEBUG_FUNCPTR (gst_cvi_ive_background_transform_caps);
   video_filter_class->set_info = GST_DEBUG_FUNCPTR (gst_cvi_ive_background_set_info);
   video_filter_class->transform_frame = GST_DEBUG_FUNCPTR (gst_cvi_ive_background_transform_frame);
   video_filter_class->transform_frame_ip = GST_DEBUG_FUNCPTR (gst_cvi_ive_background_transform_frame_ip);
@@ -250,12 +300,16 @@ gst_cvi_ive_background_set_info (GstVideoFilter * filter, GstCaps * incaps,
   return TRUE;
 }
 
+#include <time.h>
 static void run_background_subtraction(GstCviIveBackground *cviivebackground, guchar *in_buf,
                                        guchar *out_buf) {
+  struct timeval t0, t1;
+  gettimeofday(&t0, NULL);
   GST_CVI_IVE_BACKGROUND_HANDLE_S *bk_handle = cviivebackground->bk_handle;
   guint total_sz = bk_handle->src[bk_handle->count].u16Height *
                    bk_handle->src[bk_handle->count].u16Stride[0];
   memcpy(bk_handle->src[bk_handle->count].pu8VirAddr[0], in_buf, total_sz);
+  CVI_IVE_BufFlush(bk_handle->handle, &bk_handle->src[bk_handle->count]);
   if (bk_handle->i_count > 0) {
     // Sub - threshold - dilate
     IVE_SUB_CTRL_S iveSubCtrl;
@@ -279,6 +333,7 @@ static void run_background_subtraction(GstCviIveBackground *cviivebackground, gu
       // And two dilated images
       CVI_IVE_And(bk_handle->handle, &bk_handle->andframe[bk_handle->count],
                   &bk_handle->andframe[1 - bk_handle->count], &bk_handle->dst, 0);
+      CVI_IVE_BufRequest(bk_handle->handle, &bk_handle->dst);
       memcpy(out_buf, bk_handle->dst.pu8VirAddr[0], total_sz);
     }
   }
@@ -287,6 +342,10 @@ static void run_background_subtraction(GstCviIveBackground *cviivebackground, gu
   if ( bk_handle->i_count < 2) {
     bk_handle->i_count++;
   }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_tpu =
+      ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec);
+  printf("BK subtraction run %u\n", elapsed_tpu);
 }
 
 /* transform */
@@ -297,6 +356,13 @@ gst_cvi_ive_background_transform_frame (GstVideoFilter * filter, GstVideoFrame *
   GstCviIveBackground *cviivebackground = GST_CVI_IVE_BACKGROUND (filter);
   guchar *in_buf = GST_VIDEO_FRAME_PLANE_DATA (inframe, 0);
   guchar *out_buf = GST_VIDEO_FRAME_PLANE_DATA (outframe, 0);
+  guchar *out_buf2 = GST_VIDEO_FRAME_PLANE_DATA(outframe, 1);
+  guchar *out_buf3 = GST_VIDEO_FRAME_PLANE_DATA(outframe, 2);
+  int width_s_u = GST_VIDEO_FRAME_PLANE_STRIDE(outframe, 1);
+  int width_s_v = GST_VIDEO_FRAME_PLANE_STRIDE(outframe, 2);
+  int height = GST_VIDEO_FRAME_HEIGHT(outframe);
+  memset(out_buf2, 0, sizeof(width_s_u * height));
+  memset(out_buf3, 0, sizeof(width_s_v * height));
   run_background_subtraction(cviivebackground, in_buf, out_buf);
 
   GST_DEBUG_OBJECT (cviivebackground, "transform_frame");
