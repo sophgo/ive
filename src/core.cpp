@@ -719,12 +719,14 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   // Convert to API acceptance input.
   const int vertical_pad_total = m_kernel_info.pad[2] + m_kernel_info.pad[3];
   out_slice_res.h.slice -= vertical_pad_total;
-  out_slice_res.h.left -= vertical_pad_total;
+  out_slice_res.h.left = out_slice_res.h.left == 0 ? 0 : out_slice_res.h.left - vertical_pad_total;
   // channel ext supports w, so no need to change out_slice_res.w
   // out_slice_res.w.slice -= (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
   // out_slice_res.w.left -= (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
-  fmt_t tgin_fmt_type = input[0].m_tg.fmt;
-  fmt_t tgout_fmt_type = (*output)[0].m_tg.fmt;
+  // Input/ output types may varies, so we calculate all the stride using FMT_U8 then multiply the
+  // stride manually.
+  fmt_t tgin_fmt_type = FMT_U8;
+  fmt_t tgout_fmt_type = FMT_U8;
   TensorSliceInfo out_info, out_w_info, out_h_info, out_wh_info;
   channelExtension(bk_ctx, w_from_stride, w_from_stride_out, channel, out_slice_res.h.slice,
                    out_slice_res.w.slice, out_slice_res.h.c_multiplier, m_kernel_info.pad[0],
@@ -828,11 +830,11 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   if (out_slice_res_h_left_pixels != 0) {
     updateTSIInfo(bk_ctx, 1, channel, in_slice_res_h_left_pixels, in_slice_res.w.slice, 1, channel,
                   out_slice_res_h_left_pixels, out_slice_res.w.slice, m_slice_info.io_fmt,
-                  input[0].m_tg.fmt, (*output)[0].m_tg.fmt, &out_hlp_w_info);
+                  tgin_fmt_type, tgout_fmt_type, &out_hlp_w_info);
     if (out_slice_res.w.left != 0) {
       updateTSIInfo(bk_ctx, 1, channel, in_slice_res_h_left_pixels, in_slice_res.w.left, 1, channel,
                     out_slice_res_h_left_pixels, out_slice_res.w.left, m_slice_info.io_fmt,
-                    input[0].m_tg.fmt, (*output)[0].m_tg.fmt, &out_hlp_w_left_info);
+                    tgin_fmt_type, tgout_fmt_type, &out_hlp_w_left_info);
     } else {
       out_hlp_w_left_info = out_hlp_w_info;
     }
@@ -847,11 +849,11 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   if (out_slice_res_w_left_pixels != 0) {
     updateTSIInfo(bk_ctx, 1, channel, in_slice_res.h.slice, in_slice_res_w_left_pixels, 1, channel,
                   out_slice_res.h.slice, out_slice_res_w_left_pixels, m_slice_info.io_fmt,
-                  input[0].m_tg.fmt, (*output)[0].m_tg.fmt, &out_wlp_h_info);
+                  tgin_fmt_type, tgout_fmt_type, &out_wlp_h_info);
     if (out_slice_res.h.left != 0) {
       updateTSIInfo(bk_ctx, 1, channel, in_slice_res.h.left, in_slice_res_w_left_pixels, 1, channel,
                     out_slice_res.h.left, out_slice_res_w_left_pixels, m_slice_info.io_fmt,
-                    input[0].m_tg.fmt, (*output)[0].m_tg.fmt, &out_wlp_h_left_info);
+                    tgin_fmt_type, tgout_fmt_type, &out_wlp_h_left_info);
     } else {
       out_wlp_h_left_info = out_wlp_h_info;
     }
@@ -866,7 +868,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   if (out_slice_res_h_left_pixels != 0 && out_slice_res_w_left_pixels != 0) {
     updateTSIInfo(bk_ctx, 1, channel, in_slice_res_h_left_pixels, in_slice_res_w_left_pixels, 1,
                   channel, out_slice_res_h_left_pixels, out_slice_res_w_left_pixels,
-                  m_slice_info.io_fmt, input[0].m_tg.fmt, (*output)[0].m_tg.fmt, &out_wlp_hlp_info);
+                  m_slice_info.io_fmt, tgin_fmt_type, tgout_fmt_type, &out_wlp_hlp_info);
   } else if (out_slice_res_h_left_pixels != 0 && out_slice_res_w_left_pixels == 0) {
     out_wlp_hlp_info = out_hlp_w_left_info;
   } else if (out_slice_res_h_left_pixels == 0 && out_slice_res_w_left_pixels != 0) {
@@ -985,7 +987,9 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         auto &tl_in = tl_in_info.lmem_vec;
         tg_in.start_address = bm_src_addr_w[k];
         tg_in.shape = tsi->tg_load.shape;
-        tg_in.stride = tsi->tg_load.stride;
+        tg_in.stride.n = tsi->tg_load.stride.n * bm_src_info.fns_vec[k].getSize();
+        tg_in.stride.c = tsi->tg_load.stride.c * bm_src_info.fns_vec[k].getSize();
+        tg_in.stride.h = tsi->tg_load.stride.h * bm_src_info.fns_vec[k].getSize();
         tg_in.fmt = bm_src_info.fns_vec[k].getFmt();
 
         // clang-format off
@@ -1022,7 +1026,9 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         // Note: Channel extension does not support h padding.
         // tg_out.shape.h = tl_out[k]->shape.h - (m_kernel_info.pad[2] + m_kernel_info.pad[3]);
         tg_out.shape.w = tg_out.shape.w - (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
-        tg_out.stride = tsi->tg_store.stride;
+        tg_out.stride.n = tsi->tg_store.stride.n * bm_dest_info.fns_vec[k].getSize();
+        tg_out.stride.c = tsi->tg_store.stride.c * bm_dest_info.fns_vec[k].getSize();
+        tg_out.stride.h = tsi->tg_store.stride.h * bm_dest_info.fns_vec[k].getSize();
         auto &tl_out = tl_out_info.lmem_vec;
         bmk1880v2_tensor_lmem_t out_shape;
         // printf("st addr%d, tg st addr %lu\n", tl_out[k]->start_address, bm_dest_addr_w[k]);
