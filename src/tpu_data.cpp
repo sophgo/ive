@@ -9,15 +9,27 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) 
   this->m_tg = img.m_tg;
   this->m_bmmem = img.m_bmmem;
   this->m_size = img.m_size;
+  if (x1 > x2) {
+    u32 tmp = x1;
+    x1 = x2;
+    x2 = tmp;
+  }
+  if (y1 > y2) {
+    u32 tmp = y1;
+    y1 = y2;
+    y2 = tmp;
+  }
+  u32 x1_new = x1 < 0 ? 0 : x1;
+  u32 y1_new = y1 < 0 ? 0 : y1;
   u32 x2_new = x2 > img.m_tg.shape.w ? img.m_tg.shape.w : x2;
   u32 y2_new = y2 > img.m_tg.shape.h ? img.m_tg.shape.h : y2;
-  u32 new_width = x2_new - x1;
-  u32 new_height = y2_new - y1;
+  u32 new_width = x2_new - x1_new;
+  u32 new_height = y2_new - y1_new;
 
   // Update subimage shape
   this->m_tg.shape.h = new_height;
   this->m_tg.shape.w = new_width;
-  u32 start_offset = y1 * img.m_tg.stride.h + x1 * getFmtSize(img.m_tg.fmt);
+  u32 start_offset = y1_new * img.m_tg.stride.h + x1_new * getFmtSize(img.m_tg.fmt);
   this->m_tg.start_address = img.m_tg.start_address + start_offset;
   this->m_paddr = img.m_paddr + start_offset;
   this->m_vaddr = img.m_vaddr + start_offset;
