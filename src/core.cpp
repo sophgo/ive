@@ -337,7 +337,8 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32
   // Here the default value for kernel size is 1. The h_slice should never smaller than kernel size.
   h_tmp_slice = available_lmem_per_tl / w_length;
   w_num++;
-  if (kernel_info.size == 1) {
+  if (kernel_info.size == 1 || (kernel_info.size == kernel_info.default_stride_x &&
+                                kernel_info.size == kernel_info.default_stride_y)) {
     while (h_tmp_slice < kernel_info.size) {
       w_length = w / w_num;
       u32 h_tmp_res = available_lmem_per_tl / w_length;
