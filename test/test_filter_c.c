@@ -34,11 +34,12 @@ int main(int argc, char **argv) {
   CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
 
   printf("Run TPU Filter.\n");
-  CVI_S8 arr[] = {1, 2, 1, 2, 4, 2, 1, 2, 1};
+  CVI_S8 arr[] = {1,  4,  7, 4, 1,  4,  16, 26, 16, 4, 7, 26, 26,
+                  41, 26, 7, 4, 16, 26, 16, 4,  1,  4, 7, 4,  1};
   IVE_FILTER_CTRL_S iveFltCtrl;
-  iveFltCtrl.maskSize = 3;
-  memcpy(iveFltCtrl.as8Mask, arr, 9 * sizeof(CVI_S8));
-  iveFltCtrl.u8Norm = 16;
+  iveFltCtrl.maskSize = 5;
+  memcpy(iveFltCtrl.as8Mask, arr, 5 * sizeof(CVI_S8));
+  iveFltCtrl.u8Norm = 273;
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < total_run; i++) {
