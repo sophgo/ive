@@ -124,8 +124,10 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_BF16);  // 32 * 8
     auto *tl_pos_neg_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1);
     {
-      const CviImg *table_pos_neg = mp_tblmgr->mask(TBLMASK::TBLMASK_POSNEG);
-      cviImg2TL(ctx, bk_ctx, *table_pos_neg, tl_pos_neg_table);
+      mp_table_pos_neg = new CviImg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
+      genTableBF16(tl_table_s, (float)m_min_value, (float)m_max_value,
+                   (u16 *)mp_table_pos_neg->GetVAddr());
+      cviImgFlush2TL(ctx, bk_ctx, *mp_table_pos_neg, tl_pos_neg_table);
     }
 
     m_p_add_thresh.a_high = NULL;
@@ -166,4 +168,13 @@ void IveTPUSAD::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_id
     p12.table = m_p_mask.pos_neg_table;
     bmk1880v2_tiu_lookup_table(bk_ctx, &p12);
   }
+}
+
+int IveTPUSAD::freeChildTGMem(bmctx_t *ctx) {
+  if (mp_table_pos_neg) {
+    mp_table_pos_neg->Free(ctx);
+    delete mp_table_pos_neg;
+    mp_table_pos_neg = nullptr;
+  }
+  return BM_SUCCESS;
 }

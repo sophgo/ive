@@ -29,10 +29,11 @@ inline void destroyHandle(bmctx_t *ctx) {
   bm_exit(*ctx);
 }
 
-inline void genTableBF16(u16 *table_pos_neg, bmk1880v2_tensor_lmem_shape_t *table_shape,
-                         float min_value, float max_value) {
-  u32 half = table_shape->h * table_shape->w / 2;
-  int table_hw = table_shape->h * table_shape->w;
+
+inline void genTableBF16(const bmk1880v2_tensor_lmem_shape_t &table_shape, const float min_value,
+                         const float max_value, u16 *table_pos_neg) {
+  u32 half = table_shape.h * table_shape.w / 2;
+  int table_hw = table_shape.h * table_shape.w;
 
   // data >= 0
   for (u32 i = 0; i < half; i++) {
@@ -46,7 +47,7 @@ inline void genTableBF16(u16 *table_pos_neg, bmk1880v2_tensor_lmem_shape_t *tabl
 
   // duplicate channel #1 to #31
   // TODO: tensor copy
-  for (u64 i = 1; i < table_shape->c; i++) {
+  for (u64 i = 1; i < table_shape.c; i++) {
     memcpy(&table_pos_neg[table_hw * i], &table_pos_neg[0], sizeof(u16) * table_hw);
   }
 }
