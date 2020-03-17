@@ -12,15 +12,16 @@ int cpu_ref(const int channels, const int x_sz, const int y_sz, IVE_SRC_IMAGE_S 
             IVE_DST_IMAGE_S *dst_copy, IVE_DST_IMAGE_S *dst_interval);
 
 int main(int argc, char **argv) {
-  if (argc != 2) {
-    printf("Incorrect loop value. Usage: test_add_c <loop in value (1-1000)>\n");
+  if (argc != 3) {
+    printf("Incorrect loop value. Usage: %s <file_name> <loop in value (1-1000)>\n", argv[0]);
     return CVI_FAILURE;
   }
   CVI_SYS_LOGGING(argv[0]);
-  size_t total_run = atoi(argv[1]);
+  const char *file_name = argv[1];
+  size_t total_run = atoi(argv[2]);
   printf("Loop value: %lu\n", total_run);
   if (total_run > 1000 || total_run == 0) {
-    printf("Incorrect loop value. Usage: test_add_c <loop in value (1-1000)>\n");
+    printf("Incorrect loop value. Usage: %s <file_name> <loop in value (1-1000)>\n", argv[0]);
     return CVI_FAILURE;
   }
   // Create instance
@@ -28,7 +29,7 @@ int main(int argc, char **argv) {
   printf("BM Kernel init.\n");
 
   // Fetch image information
-  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, "cat.png", IVE_IMAGE_TYPE_U8C1);
+  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, file_name, IVE_IMAGE_TYPE_U8C1);
   int nChannels = 1;
   int width = src.u16Width;
   int height = src.u16Height;
@@ -66,7 +67,7 @@ int main(int argc, char **argv) {
   IVE_DST_IMAGE_S src_crop;
   CVI_IVE_SubImage(handle, &src, &src_crop, 100, 100, 1380, 820);
   IVE_DST_IMAGE_S dst3;
-  CVI_IVE_CreateImage(handle, &dst3, IVE_IMAGE_TYPE_U8C1, 1280, 720);
+  CVI_IVE_CreateImage(handle, &dst3, IVE_IMAGE_TYPE_U8C1, src_crop.u16Width, src_crop.u16Height);
 
   printf("Run TPU Sub Direct Copy.\n");
   iveDmaCtrl.enMode = IVE_DMA_MODE_DIRECT_COPY;

@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
+#ifdef __ARM_ARCH
+#include "arm_neon.h"
+#endif
 
 // clang-format off
 static char test_array[] = {
@@ -61,7 +65,17 @@ int cpu_ref(const int width, const int height, const int window_size,
             IVE_DST_IMAGE_S *dst, IVE_DST_IMAGE_S *dst_thresh);
 
 int main(int argc, char **argv) {
+  if (argc != 2) {
+    printf("Incorrect loop value. Usage: %s <loop in value (1-1000)>\n", argv[0]);
+    return CVI_FAILURE;
+  }
   CVI_SYS_LOGGING(argv[0]);
+  size_t total_run = atoi(argv[1]);
+  printf("Loop value: %lu\n", total_run);
+  if (total_run > 1000 || total_run == 0) {
+    printf("Incorrect loop value. Usage: %s <loop in value (1-1000)>\n", argv[0]);
+    return CVI_FAILURE;
+  }
   // Create instance
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
   printf("BM Kernel init.\n");
@@ -101,7 +115,14 @@ int main(int argc, char **argv) {
   CVI_IVE_CreateImage(handle, &dst_thresh, IVE_IMAGE_TYPE_U8C1, TEST_W, TEST_H);
 
   printf("Run TPU SAD.\n");
-  CVI_IVE_SAD(handle, &src, &src2, &dst, &dst_thresh, &iveSadCtrl, 0);
+  struct timeval t0, t1;
+  gettimeofday(&t0, NULL);
+  for (size_t i = 0; i < total_run; i++) {
+    CVI_IVE_SAD(handle, &src, &src2, &dst, &dst_thresh, &iveSadCtrl, 0);
+  }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_tpu =
+      ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
 
   CVI_IVE_BufRequest(handle, &src);
   CVI_IVE_BufRequest(handle, &src2);
@@ -109,6 +130,19 @@ int main(int argc, char **argv) {
   CVI_IVE_BufRequest(handle, &dst_thresh);
   int ret = cpu_ref(TEST_W, TEST_H, window_size, iveSadCtrl.u16Thr, iveSadCtrl.u8MinVal,
                     iveSadCtrl.u8MaxVal, &src, &src2, &dst, &dst_thresh);
+
+  if (total_run == 1) {
+    printf("TPU avg time %lu\n", elapsed_tpu);
+#ifdef __ARM_ARCH
+    printf("CPU NEON time %s\n", "NA");
+    printf("CPU time %s\n", "NA");
+#endif
+  }
+#ifdef __ARM_ARCH
+  else {
+    printf("OOO %-10s %10lu %10s %10s\n", "SAD", elapsed_tpu, "NA", "NA");
+  }
+#endif
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);

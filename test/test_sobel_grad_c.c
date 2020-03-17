@@ -57,10 +57,10 @@ int main(int argc, char **argv) {
   IVE_SOBEL_CTRL_S iveSblCtrl;
   iveSblCtrl.enOutCtrl = IVE_SOBEL_OUT_CTRL_BOTH;
   IVE_MAG_AND_ANG_CTRL_S pstMaaCtrl;
-  pstMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG;
+  pstMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_ANG;
   pstMaaCtrl.no_negative = true;
-  unsigned long long total_s = 0;
-  unsigned long long total_mag = 0;
+  unsigned long total_s = 0;
+  unsigned long total_mag = 0;
   struct timeval t0, t1, t2;
   for (size_t i = 0; i < total_run; i++) {
     gettimeofday(&t0, NULL);
@@ -75,8 +75,6 @@ int main(int argc, char **argv) {
   }
   total_s /= total_run;
   total_mag /= total_run;
-  printf("TPU Sobel avg time %llu\n", total_s);
-  printf("TPU MagAndAng avg time %llu\n", total_mag);
 
   printf("Normalize result to 0-255.\n");
   IVE_ITC_CRTL_S iveItcCtrl;
@@ -93,12 +91,22 @@ int main(int argc, char **argv) {
   CVI_IVE_BufRequest(handle, &dstAng);
   int ret = cpu_ref(nChannels, &src, &dstH, &dstV, &dstMag, &dstAng);
 
-  // write result to disk
-  printf("Save to image.\n");
-  CVI_IVE_WriteImage(handle, "test_sobelV_c.png", &dstV_u8);
-  CVI_IVE_WriteImage(handle, "test_sobelH_c.png", &dstH_u8);
-  CVI_IVE_WriteImage(handle, "test_mag_c.png", &dstMag_u8);
-  CVI_IVE_WriteImage(handle, "test_ang_c.png", &dstAng_u8);
+  if (total_run == 1) {
+    printf("TPU Sobel avg time %lu\n", total_s);
+    printf("TPU MagAndAng avg time %lu\n", total_mag);
+    // write result to disk
+    printf("Save to image.\n");
+    CVI_IVE_WriteImage(handle, "test_sobelV_c.png", &dstV_u8);
+    CVI_IVE_WriteImage(handle, "test_sobelH_c.png", &dstH_u8);
+    CVI_IVE_WriteImage(handle, "test_mag_c.png", &dstMag_u8);
+    CVI_IVE_WriteImage(handle, "test_ang_c.png", &dstAng_u8);
+  }
+#ifdef __ARM_ARCH
+  else {
+    printf("OOO %-10s %10lu %10s %10s\n", "SOBEL GRAD", total_s, "NA", "NA");
+    printf("OOO %-10s %10lu %10s %10s\n", "MagnAng", total_mag, "NA", "NA");
+  }
+#endif
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);

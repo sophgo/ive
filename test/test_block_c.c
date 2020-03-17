@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 // clang-format off
 static char test_array[] = {
@@ -38,7 +39,17 @@ int cpu_ref(const int res_w, const int res_h, const CVI_U32 bin_size,
             IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dst_u8, IVE_DST_IMAGE_S *dst_fp32);
 
 int main(int argc, char **argv) {
+  if (argc != 2) {
+    printf("Incorrect loop value. Usage: %s <file_name> <loop in value (1-1000)>\n", argv[0]);
+    return CVI_FAILURE;
+  }
   CVI_SYS_LOGGING(argv[0]);
+  size_t total_run = atoi(argv[1]);
+  printf("Loop value: %lu\n", total_run);
+  if (total_run > 1000 || total_run == 0) {
+    printf("Incorrect loop value. Usage: %s <file_name> <loop in value (1-1000)>\n", argv[0]);
+    return CVI_FAILURE;
+  }
   // Create instance
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
   printf("BM Kernel init.\n");
@@ -59,8 +70,21 @@ int main(int argc, char **argv) {
   IVE_BLOCK_CTRL_S iveBlkCtrl;
   iveBlkCtrl.bin_num = 2;
   iveBlkCtrl.cell_size = CELL_SZ;
-  CVI_IVE_BLOCK(handle, &src, &dst, &iveBlkCtrl, 0);
-  CVI_IVE_BLOCK(handle, &src, &dst_bf16, &iveBlkCtrl, 0);
+  struct timeval t0, t1;
+  gettimeofday(&t0, NULL);
+  for (size_t i = 0; i < total_run; i++) {
+    CVI_IVE_BLOCK(handle, &src, &dst, &iveBlkCtrl, 0);
+  }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_tpu =
+      ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
+  gettimeofday(&t0, NULL);
+  for (size_t i = 0; i < total_run; i++) {
+    CVI_IVE_BLOCK(handle, &src, &dst_bf16, &iveBlkCtrl, 0);
+  }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_tpu_bf16 =
+      ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
 
   IVE_ITC_CRTL_S iveItcCtrl;
   iveItcCtrl.enType = IVE_ITC_SATURATE;
@@ -70,6 +94,17 @@ int main(int argc, char **argv) {
   CVI_IVE_BufRequest(handle, &dst);
   CVI_IVE_BufRequest(handle, &dst_fp32);
   int ret = cpu_ref(res_w, res_h, iveBlkCtrl.bin_num, &src, &dst, &dst_fp32);
+
+  if (total_run == 1) {
+    printf("TPU avg time %lu\n", elapsed_tpu);
+    printf("TPU BF16 avg time %lu\n", elapsed_tpu_bf16);
+  }
+#ifdef __ARM_ARCH
+  else {
+    printf("OOO %-10s %10lu %10s %10s\n", "BLOCK", elapsed_tpu, "NA", "NA");
+    printf("OOO %-10s %10lu %10s %10s\n", "BLOCK BF16", elapsed_tpu_bf16, "NA", "NA");
+  }
+#endif
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);

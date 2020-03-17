@@ -3,6 +3,12 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/time.h>
+#ifdef __ARM_ARCH
+#include "arm_neon.h"
+#endif
 #include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 
 #define CELL_SIZE 5
@@ -12,13 +18,24 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE
             IVE_DST_IMAGE_S *dstAng);
 
 int main(int argc, char **argv) {
+  if (argc != 3) {
+    printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
+    return CVI_FAILURE;
+  }
   CVI_SYS_LOGGING(argv[0]);
+  const char *filename = argv[1];
+  size_t total_run = atoi(argv[2]);
+  printf("Loop value: %lu\n", total_run);
+  if (total_run > 1000 || total_run == 0) {
+    printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
+    return CVI_FAILURE;
+  }
   // Create instance
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
   printf("BM Kernel init.\n");
 
   // Fetch image information
-  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, "cat.png", IVE_IMAGE_TYPE_U8C1);
+  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, filename, IVE_IMAGE_TYPE_U8C1);
   int nChannels = 1;
   int width = src.u16Width;
   int height = src.u16Height;
@@ -48,7 +65,14 @@ int main(int argc, char **argv) {
   IVE_HOG_CTRL_S pstHogCtrl;
   pstHogCtrl.bin_num = BIN_NUM;
   pstHogCtrl.cell_size = CELL_SIZE;
-  CVI_IVE_HOG(handle, &src, &dstH, &dstV, NULL, &dstAng, &dstBlk, &dstHist, &pstHogCtrl, 0);
+  struct timeval t0, t1;
+  gettimeofday(&t0, NULL);
+  for (size_t i = 0; i < total_run; i++) {
+    CVI_IVE_HOG(handle, &src, &dstH, &dstV, NULL, &dstAng, &dstBlk, &dstHist, &pstHogCtrl, 0);
+  }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_tpu =
+      ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
 
   printf("Normalize result to 0-255.\n");
   IVE_ITC_CRTL_S iveItcCtrl;
@@ -62,12 +86,15 @@ int main(int argc, char **argv) {
   CVI_IVE_BufRequest(handle, &dstV);
   CVI_IVE_BufRequest(handle, &dstAng);
   int ret = cpu_ref(nChannels, &src, &dstH, &dstV, &dstAng);
-
-  // write result to disk
-  printf("Save to image.\n");
-  CVI_IVE_WriteImage(handle, "test_sobelV_c.png", &dstV_u8);
-  CVI_IVE_WriteImage(handle, "test_sobelH_c.png", &dstH_u8);
-  CVI_IVE_WriteImage(handle, "test_ang_c.png", &dstAng_u8);
+  if (total_run == 1) {
+    // write result to disk
+    printf("Save to image.\n");
+    CVI_IVE_WriteImage(handle, "test_sobelV_c.png", &dstV_u8);
+    CVI_IVE_WriteImage(handle, "test_sobelH_c.png", &dstH_u8);
+    CVI_IVE_WriteImage(handle, "test_ang_c.png", &dstAng_u8);
+  } else {
+    printf("OOO %-10s %10lu %10s %10s\n", "HOG", elapsed_tpu, "NA", "NA");
+  }
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);
