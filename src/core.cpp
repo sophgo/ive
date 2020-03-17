@@ -131,6 +131,25 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
 #endif
 }
 
+inline void updateTSIInfo(bmk1880v2_context_t *bk_ctx, const u32 load_n, const u32 load_c,
+                          const u32 load_h, const u32 load_w, const u32 store_n, const u32 store_c,
+                          const u32 store_h, const u32 store_w, const fmt_t io_fmt,
+                          const fmt_t tgin_fmt_type, const fmt_t tgout_fmt_type,
+                          TensorSliceInfo *tl_info) {
+  tl_info->tl_load.shape = {load_n, load_c, load_h, load_w};
+  tl_info->tl_load.stride =
+      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_info->tl_load.shape, 1, io_fmt);
+  tl_info->tg_load.shape = {load_n, load_c, load_h, load_w};
+  tl_info->tg_load.stride =
+      bmk1880v2_bf16_tensor_tgmem_default_stride(tl_info->tg_load.shape, tgin_fmt_type);
+  tl_info->tl_store.shape = {store_n, store_c, store_h, store_w};
+  tl_info->tl_store.stride =
+      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_info->tl_store.shape, 1, io_fmt);
+  tl_info->tg_store.shape = {store_n, store_c, store_h, store_w};
+  tl_info->tg_store.stride =
+      bmk1880v2_bf16_tensor_tgmem_default_stride(tl_info->tg_store.shape, tgout_fmt_type);
+}
+
 // For channel Ext mode
 inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, const u32 out_img_w,
                             const int ic, const int ih, const int iw, const int h_cext_multiplier,
@@ -139,6 +158,14 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
                             const int k_stride_w, const fmt_t tgin_fmt_type,
                             const fmt_t tgout_fmt_type, const fmt_t tl_fmt_type,
                             TensorSliceInfo *tsi) {
+  // FIXME: Temporarily hack for bm1880v2_reshape_channel_same not support "h_slice % c_multiplier
+  // != 0" cases.
+  if (h_cext_multiplier == 1) {
+    const u32 in_ih = ih + pad_top + pad_bottom;
+    updateTSIInfo(bk_ctx, 1, ic, in_ih, iw, 1, ic, ih, iw, tl_fmt_type, tgin_fmt_type,
+                  tgout_fmt_type, tsi);
+    return BM_SUCCESS;
+  }
   bmk1880v2_tensor_lmem_shape_t tl_weight_shape;
   bmk1880v2_tensor_lmem_shape_t tl_bias_shape;
 
@@ -236,24 +263,6 @@ inline bool updateIfExceedTLMem(const int &npu_num, const u32 &c_multiplier, con
   return false;
 }
 
-inline void updateTSIInfo(bmk1880v2_context_t *bk_ctx, const u32 load_n, const u32 load_c,
-                          const u32 load_h, const u32 load_w, const u32 store_n, const u32 store_c,
-                          const u32 store_h, const u32 store_w, const fmt_t io_fmt,
-                          const fmt_t img_fmt, TensorSliceInfo *tl_info) {
-  tl_info->tl_load.shape = {load_n, load_c, load_h, load_w};
-  tl_info->tl_load.stride =
-      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_info->tl_load.shape, 1, io_fmt);
-  tl_info->tg_load.shape = {load_n, load_c, load_h, load_w};
-  tl_info->tg_load.stride =
-      bmk1880v2_bf16_tensor_tgmem_default_stride(tl_info->tg_load.shape, img_fmt);
-  tl_info->tl_store.shape = {store_n, store_c, store_h, store_w};
-  tl_info->tl_store.stride =
-      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_info->tl_store.shape, 1, io_fmt);
-  tl_info->tg_store.shape = {store_n, store_c, store_h, store_w};
-  tl_info->tg_store.stride =
-      bmk1880v2_bf16_tensor_tgmem_default_stride(tl_info->tg_store.shape, img_fmt);
-}
-
 inline void updateLMemSize(
     bmk1880v2_context_t *bk_ctx, const int &npu_num, const fmt_t &io_fmt,
     const TensorSliceInfo &tsi,
@@ -349,16 +358,25 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32
   }
   // If enable channel extending feature
   if (enable_cext) {
-    // FIXME: Pass eu num here
-    int c_multiplier = (int)(npu_num / c) - 1;
+    u32 h_tmp_slice_save = h_tmp_slice;
+    if (h_tmp_slice >= h) {
+      h_tmp_slice = kernel_info.size;
+    }
+    int c_multiplier = (int)(npu_num / c);
     u32 unit_skip =
         h_tmp_slice - kernel_info.pad[2] - kernel_info.pad[3] + (kernel_info.default_stride_y - 1);
-    h_tmp_slice += unit_skip * c_multiplier;
+    h_tmp_slice += unit_skip * (c_multiplier - 1);
     while (h_tmp_slice > h) {
       h_tmp_slice -= unit_skip;
       c_multiplier--;
     }
-    unit_h->c_multiplier = c_multiplier;
+    u32 res = (h_tmp_slice - kernel_info.pad[2] - kernel_info.pad[3]);
+    if (res % c_multiplier != 0) {
+      h_tmp_slice = h_tmp_slice_save;
+      unit_h->c_multiplier = 1;
+    } else {
+      unit_h->c_multiplier = c_multiplier;
+    }
   }
 
   // FIXME: Logic error
@@ -801,16 +819,26 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     out_wh_info = out_info;
   }
 
+  // out_info       out_w_info          out_wlp_h_info
+  // out_h_info     out_wh_info         out_wlp_h_left_info
+  // out_hlp_w_info out_hlp_w_left_info out_wlp_hlp_info
   TensorSliceInfo out_hlp_w_info, out_hlp_w_left_info, out_wlp_h_info, out_wlp_h_left_info,
       out_wlp_hlp_info;
   if (out_slice_res_h_left_pixels != 0) {
     updateTSIInfo(bk_ctx, 1, channel, in_slice_res_h_left_pixels, in_slice_res.w.slice, 1, channel,
                   out_slice_res_h_left_pixels, out_slice_res.w.slice, m_slice_info.io_fmt,
-                  input[0].m_tg.fmt, &out_hlp_w_info);
+                  input[0].m_tg.fmt, (*output)[0].m_tg.fmt, &out_hlp_w_info);
     if (out_slice_res.w.left != 0) {
       updateTSIInfo(bk_ctx, 1, channel, in_slice_res_h_left_pixels, in_slice_res.w.left, 1, channel,
                     out_slice_res_h_left_pixels, out_slice_res.w.left, m_slice_info.io_fmt,
-                    input[0].m_tg.fmt, &out_hlp_w_left_info);
+                    input[0].m_tg.fmt, (*output)[0].m_tg.fmt, &out_hlp_w_left_info);
+    } else {
+      out_hlp_w_left_info = out_hlp_w_info;
+    }
+  } else {
+    out_hlp_w_info = out_h_info;
+    if (out_slice_res.w.left != 0) {
+      out_hlp_w_left_info = out_wh_info;
     } else {
       out_hlp_w_left_info = out_hlp_w_info;
     }
@@ -818,11 +846,18 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   if (out_slice_res_w_left_pixels != 0) {
     updateTSIInfo(bk_ctx, 1, channel, in_slice_res.h.slice, in_slice_res_w_left_pixels, 1, channel,
                   out_slice_res.h.slice, out_slice_res_w_left_pixels, m_slice_info.io_fmt,
-                  input[0].m_tg.fmt, &out_wlp_h_info);
+                  input[0].m_tg.fmt, (*output)[0].m_tg.fmt, &out_wlp_h_info);
     if (out_slice_res.h.left != 0) {
       updateTSIInfo(bk_ctx, 1, channel, in_slice_res.h.left, in_slice_res_w_left_pixels, 1, channel,
                     out_slice_res.h.left, out_slice_res_w_left_pixels, m_slice_info.io_fmt,
-                    input[0].m_tg.fmt, &out_wlp_h_left_info);
+                    input[0].m_tg.fmt, (*output)[0].m_tg.fmt, &out_wlp_h_left_info);
+    } else {
+      out_wlp_h_left_info = out_wlp_h_info;
+    }
+  } else {
+    out_wlp_h_info = out_w_info;
+    if (out_slice_res.w.left != 0) {
+      out_wlp_h_left_info = out_wh_info;
     } else {
       out_wlp_h_left_info = out_wlp_h_info;
     }
@@ -830,7 +865,13 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   if (out_slice_res_h_left_pixels != 0 && out_slice_res_w_left_pixels != 0) {
     updateTSIInfo(bk_ctx, 1, channel, in_slice_res_h_left_pixels, in_slice_res_w_left_pixels, 1,
                   channel, out_slice_res_h_left_pixels, out_slice_res_w_left_pixels,
-                  m_slice_info.io_fmt, input[0].m_tg.fmt, &out_wlp_hlp_info);
+                  m_slice_info.io_fmt, input[0].m_tg.fmt, (*output)[0].m_tg.fmt, &out_wlp_hlp_info);
+  } else if (out_slice_res_h_left_pixels != 0 && out_slice_res_w_left_pixels == 0) {
+    out_wlp_hlp_info = out_hlp_w_left_info;
+  } else if (out_slice_res_h_left_pixels == 0 && out_slice_res_w_left_pixels != 0) {
+    out_wlp_hlp_info = out_wlp_h_left_info;
+  } else {
+    out_wlp_hlp_info = out_wh_info;
   }
 
   // Setup slice input/ output shapes and left shapes
