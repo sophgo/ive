@@ -647,15 +647,21 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     }
     // Change src/ dest head addr
     for (size_t k = 0; k < bm_src_info.addr_vec.size(); k++) {
-      auto jump_val = (i == in_slice_res.h.turn - 1 && in_slice_res.h.left != 0)
-                          ? in_slice_res.h.left
-                          : in_slice_res.h.skip;
+      u32 jump_val = 0;
+      if (i == in_slice_res.h.turn - 1) {
+        jump_val = in_slice_res.h.left == 0 ? in_slice_res.h.slice : in_slice_res.h.left;
+      } else {
+        jump_val = in_slice_res.h.skip;
+      }
       bm_src_info.addr_vec[k] += 1 * input[k].m_tg.stride.h * jump_val;
     }
     for (size_t k = 0; k < bm_dest_info.addr_vec.size(); k++) {
-      auto jump_val = (i == out_slice_res.h.turn - 1 && out_slice_res.h.left != 0)
-                          ? out_slice_res.h.left
-                          : out_slice_res.h.skip;
+      u32 jump_val = 0;
+      if (i == out_slice_res.h.turn - 1) {
+        jump_val = out_slice_res.h.left == 0 ? out_slice_res.h.slice : out_slice_res.h.left;
+      } else {
+        jump_val = out_slice_res.h.skip;
+      }
       bm_dest_info.addr_vec[k] += 1 * (*output)[k].m_tg.stride.h * jump_val;
     }
   }
@@ -1076,8 +1082,11 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
           jump_val = in_slice_res.h.skip;
         }
       } else {
-        jump_val = (i == in_slice_res.h.turn - 1 && in_slice_res.h.left != 0) ? in_slice_res.h.left
-                                                                              : in_slice_res.h.skip;
+        if (i == in_slice_res.h.turn - 1) {
+          jump_val = in_slice_res.h.left == 0 ? in_slice_res.h.slice : in_slice_res.h.left;
+        } else {
+          jump_val = in_slice_res.h.skip;
+        }
       }
       bm_src_info.addr_vec[k] += 1 * input[k].m_tg.stride.h * jump_val;
     }
@@ -1092,9 +1101,12 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
           jump_val = out_slice_res.h.skip;
         }
       } else {
-        jump_val = (i == out_slice_res.h.turn - 1 && out_slice_res.h.left != 0)
-                       ? out_slice_res.h.left + vertical_pad_total
-                       : out_slice_res.h.skip;
+        if (i == out_slice_res.h.turn - 1) {
+          jump_val = (out_slice_res.h.left == 0 ? out_slice_res.h.slice : out_slice_res.h.left) +
+                     vertical_pad_total;
+        } else {
+          jump_val = out_slice_res.h.skip;
+        }
       }
       bm_dest_info.addr_vec[k] += 1 * (*output)[k].m_tg.stride.h * jump_val;
     }
