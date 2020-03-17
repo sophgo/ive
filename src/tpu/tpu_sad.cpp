@@ -134,6 +134,7 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     m_p_add_thresh.res_high = NULL;
     m_p_add_thresh.res_low = tl_output_thresh;
     m_p_add_thresh.rshift_bits = 0;
+    m_p_add_thresh.relu_enable = 0;
     m_p_mask.ifmap = tl_output_thresh;
     m_p_mask.ofmap = tl_output_thresh;
     m_p_mask.pos_neg_table = tl_pos_neg_table;
