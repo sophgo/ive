@@ -42,7 +42,7 @@ int IveTPUErode::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size,
                                                m_kernel_info.size};
   bmk1880v2_tensor_lmem_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
-  auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, FMT_U8, 1);
+  auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, FMT_U8, 1, IVETLType::KERNEL);
   int tmp_c = m_kernel->img.m_tg.shape.c;
   m_kernel->img.m_tg.shape.c = tl_shape.c;
   cviImgFlush2TL(ctx, bk_ctx, m_kernel->img, tl_kernel);

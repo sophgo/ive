@@ -265,10 +265,10 @@ inline bool updateIfExceedTLMem(const int &npu_num, const u32 &c_multiplier, con
 
 inline void updateLMemSize(
     bmk1880v2_context_t *bk_ctx, const int &npu_num, const fmt_t &io_fmt,
-    const TensorSliceInfo &tsi,
+    const TensorSliceInfo &tsi, const std::vector<IVETLType> &tl_type,
     std::vector<std::pair<int, bmk1880v2_tensor_lmem_t *>> *tl_in_shape_lmem_vec,
     std::vector<std::pair<int, bmk1880v2_tensor_lmem_t *>> *tl_out_shape_lmem_vec,
-    std::vector<bmk1880v2_tensor_lmem_t *> *m_tl_vec) {
+    std::vector<bmk1880v2_tensor_lmem_t *> *tl_vec) {
   for (size_t k = 0; k < tl_in_shape_lmem_vec->size(); k++) {
     int &index = (*tl_in_shape_lmem_vec)[k].first;
     auto *lmem = (*tl_in_shape_lmem_vec)[k].second;
@@ -289,11 +289,11 @@ inline void updateLMemSize(
       lmem->stride = bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
     }
   }
-  for (size_t k = 0; k < m_tl_vec->size(); k++) {
-    auto *lmem = (*m_tl_vec)[k];
+  for (size_t k = 0; k < tl_vec->size(); k++) {
+    auto *lmem = (*tl_vec)[k];
     u64 &&align_up_res = align_up(lmem->shape.c, npu_num) / npu_num;
     int is_align = (lmem->stride.n != align_up_res) ? 1 : 0;
-    if (lmem->shape.c != tsi.tl_load.shape.c) {
+    if (lmem->shape.c != tsi.tl_load.shape.c && tl_type[k] != IVETLType::TABLE) {
       lmem->shape.c = tsi.tl_load.shape.c;
       lmem->stride =
           bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, is_align, lmem->fmt);
@@ -394,13 +394,15 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32
 
 bmk1880v2_tensor_lmem_t *IveCore::allocTLMem(bmk1880v2_context_t *bk_ctx,
                                              bmk1880v2_tensor_lmem_shape_t tl_shape, fmt_t fmt,
-                                             int eu_align) {
+                                             int eu_align, IVETLType tl_type) {
   bmk1880v2_tensor_lmem_t *lmem = bmk1880v2_lmem_alloc_bf16_tensor(bk_ctx, tl_shape, fmt, eu_align);
   if (lmem == NULL) {
     std::cerr << "Tensor allocate failed. Shape: " << tl_shape.n << ", " << tl_shape.c << ", "
               << tl_shape.h << ", " << tl_shape.w << std::endl;
     return nullptr;
   }
+
+  m_tl_type.push_back(tl_type);
   m_tl_vec.emplace_back(lmem);
   return lmem;
 }
@@ -409,6 +411,7 @@ int IveCore::freeTLMems(bmk1880v2_context_t *bk_ctx) {
   for (int i = m_tl_vec.size() - 1; i >= 0; i--) {
     bmk1880v2_lmem_free_tensor(bk_ctx, m_tl_vec[i]);
   }
+  m_tl_type.clear();
   m_tl_vec.clear();
   return BM_SUCCESS;
 }
@@ -939,51 +942,51 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
       // Change H TL size to fit left shape in last turn
       // out_info       out_w_info          out_wlp_h_info
       // out_h_info     out_wh_info         out_wlp_h_left_info
-      // out_hlp_w_info out_wlp_w_left_info out_wlp_hlp_info
+      // out_hlp_w_info out_hlp_w_left_info out_wlp_hlp_info
       if (i == in_slice_res.h.turn - 1 && out_slice_res_h_left_pixels != 0) {
         if (j == 0) {
           tsi = &out_hlp_w_info;
-          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi,
+          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                          &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
         } else if (j == in_slice_res.w.turn - 1 && out_slice_res_w_left_pixels != 0) {
           tsi = &out_wlp_hlp_info;
-          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi,
+          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                          &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
         } else if ((j == in_slice_res.w.turn - 1 && out_slice_res_w_left_pixels == 0) ||
                    (j == in_slice_res.w.turn - 2 && out_slice_res_w_left_pixels != 0)) {
           tsi = &out_wlp_h_left_info;
-          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi,
+          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                          &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
         }
       } else if ((i == in_slice_res.h.turn - 1 && out_slice_res_h_left_pixels == 0) ||
                  (i == in_slice_res.h.turn - 2 && out_slice_res_h_left_pixels != 0)) {
         if (j == 0) {
           tsi = &out_h_info;
-          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi,
+          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                          &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
         } else if (j == in_slice_res.w.turn - 1 && out_slice_res_w_left_pixels != 0) {
           tsi = &out_wlp_h_left_info;
-          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi,
+          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                          &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
         } else if ((j == in_slice_res.w.turn - 1 && out_slice_res_w_left_pixels == 0) ||
                    (j == in_slice_res.w.turn - 2 && out_slice_res_w_left_pixels != 0)) {
           tsi = &out_wh_info;
-          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi,
+          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                          &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
         }
       } else {
         if (j == 0) {
           tsi = &out_info;
-          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi,
+          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                          &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
         } else if (j == in_slice_res.w.turn - 1 && out_slice_res_w_left_pixels != 0) {
           tsi = &out_wlp_h_info;
-          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi,
+          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                          &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
         } else if ((j == in_slice_res.w.turn - 1 && out_slice_res_w_left_pixels == 0) ||
                    (j == in_slice_res.w.turn - 2 && out_slice_res_w_left_pixels != 0)) {
           tsi = &out_w_info;
-          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi,
+          updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                          &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
         }
       }

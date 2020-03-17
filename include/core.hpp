@@ -6,6 +6,8 @@
 #include <iostream>
 #include <vector>
 
+enum IVETLType { DATA, KERNEL, TABLE };
+
 class IveCore {
  public:
   IveCore();
@@ -21,7 +23,7 @@ class IveCore {
  protected:
   bmk1880v2_tensor_lmem_t *allocTLMem(bmk1880v2_context_t *bk_ctx,
                                       bmk1880v2_tensor_lmem_shape_t tl_shape, fmt_t fmt,
-                                      int eu_align);
+                                      int eu_align, IVETLType type = IVETLType::DATA);
   virtual int sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res);
   virtual int runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
@@ -35,6 +37,7 @@ class IveCore {
   u32 m_nums_of_output = 1;
   SliceInfo m_slice_info;
   kernelInfo m_kernel_info;
+  std::vector<IVETLType> m_tl_type;
   std::vector<bmk1880v2_tensor_lmem_t *> m_tl_vec;
   std::string m_cmdbuf_subfix;
 

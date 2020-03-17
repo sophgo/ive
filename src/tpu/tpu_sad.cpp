@@ -66,7 +66,7 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_block_shape.c = tg_out_slices[0].c;
   tl_block_shape.h = m_kernel_info.size;
   tl_block_shape.w = m_kernel_info.size;
-  auto *block_kernel = allocTLMem(bk_ctx, tl_block_shape, FMT_BF16, 1);
+  auto *block_kernel = allocTLMem(bk_ctx, tl_block_shape, FMT_BF16, 1, IVETLType::KERNEL);
   constantFillTL(ctx, bk_ctx, convert_fp32_bf16(1.f), block_kernel);
 
   m_p_min.a = tl_input;
@@ -117,9 +117,8 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   }
 
   if (m_do_threshold) {
-    bmk1880v2_tensor_lmem_shape_t tl_table_s;
-    bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_BF16);  // 32 * 8
-    auto *tl_pos_neg_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1);
+    const bmk1880v2_tensor_lmem_shape_t tl_table_s = mp_tblmgr->getTblTLShape();
+    auto *tl_pos_neg_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
     {
       mp_table_pos_neg = new CviImg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
       genTableBF16(tl_table_s, (float)m_min_value, (float)m_max_value,

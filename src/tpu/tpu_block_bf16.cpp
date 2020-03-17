@@ -62,7 +62,7 @@ int IveTPUBlockBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_block_shape.c = tg_out_slices[0].c;
   tl_block_shape.h = m_kernel_info.size;
   tl_block_shape.w = m_kernel_info.size;
-  auto *block_kernel = allocTLMem(bk_ctx, tl_block_shape, FMT_BF16, 1);
+  auto *block_kernel = allocTLMem(bk_ctx, tl_block_shape, FMT_BF16, 1, IVETLType::KERNEL);
   constantFillTL(ctx, bk_ctx, convert_fp32_bf16(1.f), block_kernel);
   float real_multiplier = 1.f / (m_kernel_info.size * m_kernel_info.size * m_bin_num);
 

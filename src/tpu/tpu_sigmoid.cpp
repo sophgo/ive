@@ -35,8 +35,8 @@ int IveTPUSigmoid::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   float scale = bf16_sigmoid_scale(range_start, range_end);
 
   bmk1880v2_tensor_lmem_shape_t tl_table_s = {1, 32, 32, 8};
-  auto *tl_table_answer = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1);
-  auto *tl_table_answer_slope = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1);
+  auto *tl_table_answer = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+  auto *tl_table_answer_slope = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
   table = new CviImg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
   table_slope = new CviImg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);
   bf16_sigmoid_tbl((u16 *)table->GetVAddr(), (u16 *)table_slope->GetVAddr(), &tl_table_s,

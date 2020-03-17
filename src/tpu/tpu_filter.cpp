@@ -42,7 +42,7 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size,
                                                m_kernel_info.size};
   bmk1880v2_tensor_lmem_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
-  auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, FMT_U8, 1);
+  auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, FMT_U8, 1, IVETLType::KERNEL);
   if (m_kernel->img.m_tg.shape.c < tl_shape.c) {
     std::cerr << "kernel size must larger than tl_shape.c" << std::endl;
     return BM_ERR_FAILURE;
@@ -140,7 +140,7 @@ int IveTPUFilterBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size,
                                                m_kernel_info.size};
   bmk1880v2_tensor_lmem_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
-  auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1);
+  auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1, IVETLType::KERNEL);
   {
     bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
     p.src = &m_kernel->img.m_tg;

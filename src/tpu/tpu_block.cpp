@@ -61,7 +61,7 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_block_shape.c = tg_out_slices[0].c;
   tl_block_shape.h = m_kernel_info.size;
   tl_block_shape.w = m_kernel_info.size;
-  auto *block_kernel = allocTLMem(bk_ctx, tl_block_shape, FMT_U8, 1);
+  auto *block_kernel = allocTLMem(bk_ctx, tl_block_shape, FMT_U8, 1, IVETLType::KERNEL);
   constantFillTL(ctx, bk_ctx, 1, block_kernel);
   float real_multiplier = 1.f / (m_kernel_info.size * m_kernel_info.size * m_bin_num);
   bmk1880v2_tensor_lmem_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};

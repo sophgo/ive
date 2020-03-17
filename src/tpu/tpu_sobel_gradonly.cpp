@@ -46,8 +46,8 @@ int IveTPUSobelGradOnly::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, m_kernel_x->img.m_tg.shape.c, m_kernel_info.size,
                                                m_kernel_info.size};
-  auto *tl_kernel_gx = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1);
-  auto *tl_kernel_gy = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1);
+  auto *tl_kernel_gx = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1, IVETLType::KERNEL);
+  auto *tl_kernel_gy = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1, IVETLType::KERNEL);
   cviImgFlush2TL(ctx, bk_ctx, m_kernel_x->img, tl_kernel_gx);
   cviImgFlush2TL(ctx, bk_ctx, m_kernel_y->img, tl_kernel_gy);
 
