@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
   IVE_SOBEL_CTRL_S iveSblCtrl;
   iveSblCtrl.enOutCtrl = IVE_SOBEL_OUT_CTRL_BOTH;
   IVE_MAG_AND_ANG_CTRL_S pstMaaCtrl;
-  pstMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_ANG;
+  pstMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG;
   pstMaaCtrl.no_negative = true;
   unsigned long total_s = 0;
   unsigned long total_mag = 0;
