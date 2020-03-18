@@ -21,6 +21,7 @@ int IveTPUNormalize::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                               const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
                               std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                               const bool enable_cext) {
+  m_input.clear();
   if (m_fmt != FMT_U8 && m_fmt != FMT_I8) {
     std::cerr << "TPUT normalize only supports U8/ I8." << std::endl;
   }
