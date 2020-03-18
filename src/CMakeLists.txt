@@ -21,6 +21,7 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_filter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_magandang.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_morph.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_normalize.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_or.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sad.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sigmoid.cpp
