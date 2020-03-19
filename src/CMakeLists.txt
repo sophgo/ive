@@ -37,9 +37,9 @@ set(SRC
 
 add_library(cvi_ive_tpu SHARED ${SRC})
 target_link_libraries(cvi_ive_tpu ${BM_LIBS})
-set_target_properties(${FEXT_NAME} PROPERTIES
-                     VERSION ${QNN_VERSION_STRING}
-                     SOVERSION ${QNN_VERSION_MAJOR})
+set_target_properties(cvi_ive_tpu PROPERTIES
+                     VERSION ${CVI_IVE_MAJOR_VERSION}
+                     SOVERSION ${CVI_IVE_SO_VERSION})
 add_library(cvi_ive_tpu-static ${SRC})
 target_link_libraries(cvi_ive_tpu-static ${BM_LIBS})
 install(TARGETS cvi_ive_tpu DESTINATION lib)

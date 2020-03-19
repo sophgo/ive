@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.2.2)
 
+set(CVI_IVE_SO_VERSION 0)
+set(CVI_IVE_MAJOR_VERSION "${CVI_IVE_SO_VERSION}.0.5")
+
 set(CMAKE_BUILD_TYPE "Release")
 if("${BM_TARGET}" STREQUAL "soc")
   set(BMTAP2_TARGET_BASENAME soc_bm1880v2)
