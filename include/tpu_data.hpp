@@ -206,7 +206,15 @@ class CviImg {
    *
    * @return const u64 image size
    */
-  const u64 GetImgSize();
+  const u64 GetImgSize() const;
+
+  /**
+   * @brief Tells if this image instance is a sub-image of an image.
+   *
+   * @return true Is sub-image.
+   * @return false Not a sub-image.
+   */
+  const bool IsSubImg() const;
 
   /**
    * @brief Release allocated device memory.
@@ -247,6 +255,7 @@ class CviImg {
   uint64_t m_paddr = -1;          // Set to maximum of uint64_t if not initaulized
   uint8_t *m_vaddr = nullptr;     // Set to nullptr if not initualized
   u64 m_size = 0;                 // Total size of memory
+  bool m_is_sub_img = false;      // Is sub-image flag.
 };
 
 /**

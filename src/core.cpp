@@ -312,6 +312,28 @@ IveCore::IveCore() {
   m_chip_info.version = chip_info.version;
 }
 
+int IveCore::run(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+                 std::vector<CviImg> *output, bool legacy_mode) {
+  int ret = CVI_SUCCESS;
+  if (legacy_mode) {
+    ret = runSingleSizeKernel(ctx, bk_ctx, input, output);
+  } else {
+    bool has_sub_image = false;
+    for (const auto &img : input) {
+      has_sub_image |= img.IsSubImg();
+    }
+    for (const auto &img : (*output)) {
+      has_sub_image |= img.IsSubImg();
+    }
+    if (has_sub_image || m_kernel_info.size != 1) {
+      ret = runSingleSizeExtKernel(ctx, bk_ctx, input, output);
+    } else {
+      ret = runNoKernel(ctx, bk_ctx, input, output);
+    }
+  }
+  return ret;
+}
+
 int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32 fixed_lmem_size,
                       const u32 n, const u32 c, const u32 h, const u32 w, const u32 table_size,
                       const kernelInfo kernel_info, const int npu_num, sliceUnit *unit_h,

@@ -13,12 +13,8 @@ class IveCore {
   IveCore();
   const unsigned int getNpuNum() const { return m_chip_info.npu_num; }
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) = 0;
-  int runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
-                          std::vector<CviImg> *output, bool enable_min_max = false);
-  int runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
-                             std::vector<CviImg> *output, bool enable_min_max = false);
-  int runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
-                  std::vector<CviImg> *output, bool enable_min_max = false);
+  int run(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+          std::vector<CviImg> *output, bool legacy_mode = false);
 
  protected:
   bmk1880v2_tensor_lmem_t *allocTLMem(bmk1880v2_context_t *bk_ctx,
@@ -47,6 +43,12 @@ class IveCore {
                const kernelInfo kernel_info, const int npu_num, sliceUnit *unit_h,
                sliceUnit *unit_w, const bool enable_cext);
   int freeTLMems(bmk1880v2_context_t *bk_ctx);
+  int runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+                          std::vector<CviImg> *output, bool enable_min_max = false);
+  int runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+                             std::vector<CviImg> *output, bool enable_min_max = false);
+  int runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+                  std::vector<CviImg> *output, bool enable_min_max = false);
 
   bool m_write_cmdbuf = false;
   cvi_chip_info_s m_chip_info;

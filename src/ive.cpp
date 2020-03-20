@@ -327,8 +327,7 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
     std::vector<CviImg> inputs = {*cpp_src};
     std::vector<CviImg> outputs = {*cpp_dst};
 
-    handle_ctx->t_h.t_copy_int.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                   &outputs);
+    handle_ctx->t_h.t_copy_int.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs, true);
   }
   return ret;
 }
@@ -452,7 +451,7 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
       std::vector<CviImg> inputs = {*cpp_src};
       std::vector<CviImg> outputs = {*cpp_dst};
-      handle_ctx->t_h.t_norm.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+      handle_ctx->t_h.t_norm.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     }
   } else if (pstItcCtrl->enType == IVE_ITC_SATURATE) {
     if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_F32) {
@@ -526,7 +525,7 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
     std::vector<CviImg> outputs = {*cpp_dst};
 
-    handle_ctx->t_h.t_add.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    handle_ctx->t_h.t_add.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   }
   return ret;
 }
@@ -541,7 +540,7 @@ CVI_S32 CVI_IVE_And(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  handle_ctx->t_h.t_and.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  handle_ctx->t_h.t_and.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return CVI_SUCCESS;
 }
 
@@ -573,14 +572,12 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     handle_ctx->t_h.t_block.setBinNum(pstBlkCtrl->bin_num);
     handle_ctx->t_h.t_block.setCellSize(cell_size, cpp_src->m_tg.shape.c);
     handle_ctx->t_h.t_block.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-    handle_ctx->t_h.t_block.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                &outputs);
+    handle_ctx->t_h.t_block.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs, true);
   } else {
     handle_ctx->t_h.t_block_bf16.setBinNum(pstBlkCtrl->bin_num);
     handle_ctx->t_h.t_block_bf16.setCellSize(cell_size, cpp_src->m_tg.shape.c);
     handle_ctx->t_h.t_block_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-    handle_ctx->t_h.t_block_bf16.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                     &outputs);
+    handle_ctx->t_h.t_block_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs, true);
   }
   return CVI_SUCCESS;
 }
@@ -606,8 +603,7 @@ CVI_S32 CVI_IVE_Dilate(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_filter.setKernel(kernel);
-  handle_ctx->t_h.t_filter.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                  &outputs);
+  handle_ctx->t_h.t_filter.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   kernel.img.Free(&handle_ctx->ctx);
   return CVI_SUCCESS;
 }
@@ -633,8 +629,7 @@ CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_erode.setKernel(kernel);
-  handle_ctx->t_h.t_erode.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                 &outputs);
+  handle_ctx->t_h.t_erode.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   kernel.img.Free(&handle_ctx->ctx);
   return CVI_SUCCESS;
 }
@@ -664,8 +659,7 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_filter.setKernel(kernel);
-  handle_ctx->t_h.t_filter.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                  &outputs);
+  handle_ctx->t_h.t_filter.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   kernel.img.Free(&handle_ctx->ctx);
   return CVI_SUCCESS;
 }
@@ -778,7 +772,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
   handle_ctx->t_h.t_magandang.noNegative(pstMaaCtrl->no_negative);
   handle_ctx->t_h.t_magandang.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
 
-  handle_ctx->t_h.t_magandang.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  handle_ctx->t_h.t_magandang.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return CVI_SUCCESS;
 }
 
@@ -804,8 +798,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DS
     IveKernel kernel_h = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_sobel_gradonly.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_sobel_gradonly.setKernel(kernel_w, kernel_h);
-    handle_ctx->t_h.t_sobel_gradonly.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx,
-                                                            inputs, &outputs);
+    handle_ctx->t_h.t_sobel_gradonly.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
     kernel_h.img.Free(&handle_ctx->ctx);
     IVE_ITC_CRTL_S iveItcCtrl;
@@ -823,8 +816,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DS
     IveKernel kernel_h = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_filter_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_h);
-    handle_ctx->t_h.t_filter_bf16.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx,
-                                                         inputs, &outputs);
+    handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_h.img.Free(&handle_ctx->ctx);
     IVE_ITC_CRTL_S iveItcCtrl;
     iveItcCtrl.enType = IVE_ITC_NORMALIZE;
@@ -839,8 +831,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DS
     IveKernel kernel_w = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_X);
     handle_ctx->t_h.t_filter_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_w);
-    handle_ctx->t_h.t_filter_bf16.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx,
-                                                         inputs, &outputs);
+    handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
     IVE_ITC_CRTL_S iveItcCtrl;
     iveItcCtrl.enType = IVE_ITC_NORMALIZE;
@@ -857,8 +848,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DS
     handle_ctx->t_h.t_sobel.setTblMgr(&handle_ctx->t_h.t_tblmgr);
     handle_ctx->t_h.t_sobel.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_sobel.setKernel(kernel_w, kernel_h);
-    handle_ctx->t_h.t_sobel.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                   &outputs);
+    handle_ctx->t_h.t_sobel.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
     kernel_h.img.Free(&handle_ctx->ctx);
     IVE_ITC_CRTL_S iveItcCtrl;
@@ -881,7 +871,7 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
   std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  handle_ctx->t_h.t_or.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  handle_ctx->t_h.t_or.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return CVI_SUCCESS;
 }
 
@@ -894,7 +884,7 @@ CVI_S32 CVI_IVE_Sigmoid(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  handle_ctx->t_h.t_sig.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  handle_ctx->t_h.t_sig.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return BM_SUCCESS;
 }
 
@@ -978,8 +968,7 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IM
                                      pstSadCtrl->u8MaxVal);
   handle_ctx->t_h.t_sad.setWindowSize(window_size);
   handle_ctx->t_h.t_sad.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-  handle_ctx->t_h.t_sad.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                               &outputs);
+  handle_ctx->t_h.t_sad.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   if (!is_output_u8) {
     IVE_ITC_CRTL_S iveItcCtrl;
     iveItcCtrl.enType = IVE_ITC_SATURATE;
@@ -1006,8 +995,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     IveKernel kernel_h = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_sobel_gradonly.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_sobel_gradonly.setKernel(kernel_w, kernel_h);
-    handle_ctx->t_h.t_sobel_gradonly.runSingleSizeExtKernel(&handle_ctx->ctx, handle_ctx->bk_ctx,
-                                                            inputs, &outputs);
+    handle_ctx->t_h.t_sobel_gradonly.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
     kernel_h.img.Free(&handle_ctx->ctx);
   } else if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_HOR) {
@@ -1016,8 +1004,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
         createKernel(&handle_ctx->ctx, cpp_src->m_tg.shape.c, 3, 3, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_filter_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_h);
-    handle_ctx->t_h.t_filter_bf16.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                      &outputs);
+    handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_h.img.Free(&handle_ctx->ctx);
   } else if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_VER) {
     outputs.emplace_back(*cpp_dstv);
@@ -1025,8 +1012,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
         createKernel(&handle_ctx->ctx, cpp_src->m_tg.shape.c, 3, 3, IVE_KERNEL::SOBEL_X);
     handle_ctx->t_h.t_filter_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_w);
-    handle_ctx->t_h.t_filter_bf16.runSingleSizeKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                                      &outputs);
+    handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
   } else {
     return CVI_NOT_SUPPORTED;
@@ -1047,7 +1033,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
     std::vector<CviImg> outputs = {*cpp_dst};
 
-    handle_ctx->t_h.t_sub.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    handle_ctx->t_h.t_sub.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   } else if (ctrl->enMode == IVE_SUB_MODE_ABS) {
     ret = CVI_SUCCESS;
     handle_ctx->t_h.t_sub_abs.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
@@ -1057,7 +1043,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
     std::vector<CviImg> outputs = {*cpp_dst};
 
-    handle_ctx->t_h.t_sub_abs.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    handle_ctx->t_h.t_sub_abs.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   }
   return ret;
 }
@@ -1076,12 +1062,11 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
     if (ctrl->u8MinVal == 0 && ctrl->u8MaxVal == 255) {
       handle_ctx->t_h.t_thresh.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
       handle_ctx->t_h.t_thresh.setThreshold(ctrl->u8LowThr);
-      handle_ctx->t_h.t_thresh.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+      handle_ctx->t_h.t_thresh.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     } else {
       handle_ctx->t_h.t_thresh_hl.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
       handle_ctx->t_h.t_thresh_hl.setThreshold(ctrl->u8LowThr, ctrl->u8MinVal, ctrl->u8MaxVal);
-      handle_ctx->t_h.t_thresh_hl.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
-                                              &outputs);
+      handle_ctx->t_h.t_thresh_hl.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     }
   }
   return ret;
@@ -1097,6 +1082,6 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  handle_ctx->t_h.t_xor.runNoKernel(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  handle_ctx->t_h.t_xor.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return CVI_SUCCESS;
 }

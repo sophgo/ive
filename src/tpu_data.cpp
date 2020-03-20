@@ -33,6 +33,7 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) 
   this->m_tg.start_address = img.m_tg.start_address + start_offset;
   this->m_paddr = img.m_paddr + start_offset;
   this->m_vaddr = img.m_vaddr + start_offset;
+  this->m_is_sub_img = true;
 }
 
 CviImg::CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, bmmem_device_t bmmem) {
@@ -59,7 +60,9 @@ uint8_t *CviImg::GetVAddr() { return m_vaddr; }
 
 uint64_t CviImg::GetPAddr() const { return m_paddr; }
 
-const u64 CviImg::GetImgSize() { return m_size; }
+const u64 CviImg::GetImgSize() const { return m_size; }
+
+const bool CviImg::IsSubImg() const { return m_is_sub_img; }
 
 int CviImg::AllocateDevice(bmctx_t *ctx) {
   int ret = 1;
