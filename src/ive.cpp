@@ -79,9 +79,12 @@ CVI_S32 CVI_IVE_DestroyHandle(IVE_HANDLE pIveHandle) {
 
 CVI_S32 CVI_IVE_BufFlush(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  auto *img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
-  if (img->Flush(&handle_ctx->ctx) != BM_SUCCESS) {
-    return CVI_FAILURE;
+  // FIXME: Hack for U32 images.
+  if (pstImg->tpu_block != NULL) {
+    auto *img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
+    if (img->Flush(&handle_ctx->ctx) != BM_SUCCESS) {
+      return CVI_FAILURE;
+    }
   }
   return CVI_SUCCESS;
 }
@@ -89,9 +92,12 @@ CVI_S32 CVI_IVE_BufFlush(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
 CVI_S32 CVI_IVE_BufRequest(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
   ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  auto *img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
-  if (img->Invld(&handle_ctx->ctx) != BM_SUCCESS) {
-    return CVI_FAILURE;
+  // FIXME: Hack for U32 images.
+  if (pstImg->tpu_block != NULL) {
+    auto *img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
+    if (img->Invld(&handle_ctx->ctx) != BM_SUCCESS) {
+      return CVI_FAILURE;
+    }
   }
   return CVI_SUCCESS;
 }
