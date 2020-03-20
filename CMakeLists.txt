@@ -3,6 +3,18 @@ cmake_minimum_required(VERSION 3.2.2)
 set(CVI_IVE_SO_VERSION 0)
 set(CVI_IVE_MAJOR_VERSION "${CVI_IVE_SO_VERSION}.0.5")
 
+# Options
+option(ENABLE_SYSTRACE "Use systrace" OFF)
+
+if (ENABLE_SYSTRACE)
+  if(EXISTS "${CMAKE_SOURCE_DIR}/3rdparty/tracer")
+    message("Tracer folder found.")
+  else()
+    message(FATAL_ERROR "Tracer folder not found. Git clone to 3rdparty at http://10.34.33.3:8480/sys_app/tracer.")
+  endif()
+  add_definitions(-DENABLE_TRACE)
+endif()
+
 set(CMAKE_BUILD_TYPE "Release")
 if("${BM_TARGET}" STREQUAL "soc")
   set(BMTAP2_TARGET_BASENAME soc_bm1880v2)
@@ -52,6 +64,7 @@ message("CXX compiler ${CMAKE_CXX_COMPILER}")
 message("Target       ${BM_TARGET}")
 message("Build type   ${CMAKE_BUILD_TYPE}")
 message("Install dir  ${CMAKE_INSTALL_PREFIX}")
+message("Use Systrace ${ENABLE_SYSTRACE}")
 message("==================================================")
 
 # add_subdirectory(tpu_math)

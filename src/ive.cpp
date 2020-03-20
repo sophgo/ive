@@ -4,6 +4,7 @@
 #include "stb/stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb/stb_image_write.h"
+#include "tracer/tracer.h"
 
 #include "kernel_generator.hpp"
 #include "table_manager.hpp"
@@ -86,6 +87,7 @@ CVI_S32 CVI_IVE_BufFlush(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
 }
 
 CVI_S32 CVI_IVE_BufRequest(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   auto *img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
   if (img->Invld(&handle_ctx->ctx) != BM_SUCCESS) {
@@ -95,6 +97,7 @@ CVI_S32 CVI_IVE_BufRequest(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
 }
 
 CVI_S32 CVI_IVE_CmdFlush(IVE_HANDLE pIveHandle) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   bmruntime_bmkernel_submit(handle_ctx->ctx);
   return CVI_SUCCESS;
@@ -300,6 +303,7 @@ CVI_S32 CVI_SYS_FreeI(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
 
 CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                     IVE_DMA_CTRL_S *pstDmaCtrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   int ret = CVI_NOT_SUPPORTED;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   if (pstDmaCtrl->enMode == IVE_DMA_MODE_DIRECT_COPY) {
@@ -335,6 +339,7 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
 CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                                  IVE_DST_IMAGE_S *pstDst, IVE_ITC_CRTL_S *pstItcCtrl,
                                  bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
@@ -511,6 +516,7 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
 
 CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_IMAGE_S *pstDst, IVE_ADD_CTRL_S *ctrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   int ret = CVI_NOT_SUPPORTED;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
 
@@ -532,6 +538,7 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 
 CVI_S32 CVI_IVE_And(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_IMAGE_S *pstDst, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_and.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
@@ -546,6 +553,7 @@ CVI_S32 CVI_IVE_And(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 
 CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                       IVE_BLOCK_CTRL_S *pstBlkCtrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   CVI_U32 cell_size = pstBlkCtrl->cell_size;
   if (pstDst->u16Width != (pstSrc->u16Width / cell_size)) {
     std::cerr << "Dst block width not match! Src: " << pstSrc->u16Width
@@ -584,6 +592,7 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
 
 CVI_S32 CVI_IVE_Dilate(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_DILATE_CTRL_S *pstDilateCtrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_filter.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -610,6 +619,7 @@ CVI_S32 CVI_IVE_Dilate(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
 
 CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                       IVE_ERODE_CTRL_S *pstErodeCtrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_erode.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -636,6 +646,7 @@ CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
 
 CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_FILTER_CTRL_S *pstFltCtrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_filter.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -668,6 +679,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
                     IVE_DST_IMAGE_S *pstDstV, IVE_DST_IMAGE_S *pstDstMag,
                     IVE_DST_IMAGE_S *pstDstAng, IVE_DST_IMAGE_S *pstDstBlk,
                     IVE_DST_MEM_INFO_S *pstDstHist, IVE_HOG_CTRL_S *pstHogCtrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   if (pstDstHist->u32Size != pstHogCtrl->bin_num * 4) {
     std::cerr << "Histogram shape size not match the bin num! " << std::endl;
     return CVI_FAILURE;
@@ -725,6 +737,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
 CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_SRC_IMAGE_S *pstSrcV,
                           IVE_DST_IMAGE_S *pstDstMag, IVE_DST_IMAGE_S *pstDstAng,
                           IVE_MAG_AND_ANG_CTRL_S *pstMaaCtrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_magandang.setTblMgr(&handle_ctx->t_h.t_tblmgr);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrcH->tpu_block);
@@ -779,6 +792,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
 CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDstH,
                          IVE_DST_IMAGE_S *pstDstV, IVE_DST_IMAGE_S *pstDstHV,
                          IVE_NORM_GRAD_CTRL_S *pstNormGradCtrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   int npu_num = handle_ctx->t_h.t_sobel_gradonly.getNpuNum();
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -863,6 +877,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DS
 
 CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                    IVE_DST_IMAGE_S *pstDst, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_or.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
@@ -877,6 +892,7 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
 
 CVI_S32 CVI_IVE_Sigmoid(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                         bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_add.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -891,6 +907,7 @@ CVI_S32 CVI_IVE_Sigmoid(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
 CVI_S32 CVI_IVE_SAD(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_IMAGE_S *pstSad, IVE_DST_IMAGE_S *pstThr, IVE_SAD_CTRL_S *pstSadCtrl,
                     bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   if (pstSrc1->u16Width != pstSrc2->u16Width || pstSrc1->u16Height != pstSrc2->u16Height) {
     std::cerr << "Two input size must be the same!" << std::endl;
     return CVI_FAILURE;
@@ -980,6 +997,7 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IM
 
 CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDstH,
                       IVE_DST_IMAGE_S *pstDstV, IVE_SOBEL_CTRL_S *pstSobelCtrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_sobel.setTblMgr(&handle_ctx->t_h.t_tblmgr);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -1022,6 +1040,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
 
 CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_IMAGE_S *pstDst, IVE_SUB_CTRL_S *ctrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   int ret = CVI_NOT_SUPPORTED;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   if (ctrl->enMode == IVE_SUB_MODE_NORMAL) {
@@ -1050,6 +1069,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 
 CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_THRESH_CTRL_S *ctrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   int ret = CVI_NOT_SUPPORTED;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -1074,6 +1094,7 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
 
 CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_IMAGE_S *pstDst, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_xor.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);

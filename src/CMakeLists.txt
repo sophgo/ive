@@ -6,7 +6,15 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/middleware/include
 )
 
+if (ENABLE_SYSTRACE)
+  set(IVE_TRACER ${CMAKE_CURRENT_SOURCE_DIR}/ive_tracer.cpp)
+else()
+  set(IVE_TRACER)
+endif()
+
 set(SRC
+    ${IVE_TRACER}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/tracer/tracer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ive.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/kernel_generator.cpp
@@ -46,3 +54,6 @@ install(TARGETS cvi_ive_tpu DESTINATION lib)
 install(TARGETS cvi_ive_tpu-static DESTINATION lib)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/cvi_comm_ive.h DESTINATION include/ive)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/ive.h DESTINATION include/ive)
+if (ENABLE_SYSTRACE)
+  install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/ive_tracer.h DESTINATION include/ive)
+endif()
