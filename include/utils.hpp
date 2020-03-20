@@ -3,8 +3,8 @@
 #include "debug.hpp"
 #include "tpu_data.hpp"
 
-#include <bmkernel/bm1880v2/1880v2_fp_convert.h>
 #include <bmkernel/bm1880v2/bmkernel_1880v2.h>
+#include <bmtap2/1880v2_fp_convert.h>
 #include <libbmruntime/bmruntime_bmkernel.h>
 
 #include <assert.h>

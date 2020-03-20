@@ -1,4 +1,5 @@
 #include "bmkernel/bm_kernel.h"
+#include "bmtap2/1880v2_fp_convert.h"
 #include "ive.h"
 
 #include <math.h>
@@ -9,7 +10,6 @@
 #ifdef __ARM_ARCH
 #include "arm_neon.h"
 #endif
-#include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 
 int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE_DST_IMAGE_S *dstV,
             IVE_DST_IMAGE_S *dstMag, IVE_DST_IMAGE_S *dstAng);

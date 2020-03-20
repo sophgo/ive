@@ -1,7 +1,6 @@
 #include "tpu/tpu_block.hpp"
 
 #include <string.h>
-#include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 
 void IveTPUBlockBF16::setBinNum(const float bin_num) { m_bin_num = bin_num; }
 

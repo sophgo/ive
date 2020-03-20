@@ -11,8 +11,8 @@ endfunction()
 
 project(test-c)
 include_directories(
-    ${CMAKE_SOURCE_DIR}/../3rdparty
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_SOURCE_DIR}/3rdparty
+    ${CMAKE_SOURCE_DIR}/include
 )
 
 build_test(test_add_c)

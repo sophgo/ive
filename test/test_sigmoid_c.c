@@ -1,4 +1,5 @@
 #include "bmkernel/bm_kernel.h"
+#include "bmtap2/1880v2_fp_convert.h"
 #include "ive.h"
 
 #include <stdio.h>
@@ -6,7 +7,6 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
-#include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 #ifdef __ARM_ARCH
 #include "arm_neon.h"
 #endif

@@ -1,7 +1,6 @@
 #include "tpu/tpu_magandang.hpp"
 
 #include <string.h>
-#include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 #ifdef MAGnANG_DEBUG
 #include "../tpu_math/1880v2_utils.h"
 #endif

@@ -1,4 +1,5 @@
 #include "bmkernel/bm_kernel.h"
+#include "bmtap2/1880v2_fp_convert.h"
 #include "ive.h"
 
 #include <math.h>
@@ -9,8 +10,6 @@
 #ifdef __ARM_ARCH
 #include "arm_neon.h"
 #endif
-#include "bmkernel/bm1880v2/1880v2_fp_convert.h"
-
 #define CELL_SIZE 5
 #define BIN_NUM 9
 

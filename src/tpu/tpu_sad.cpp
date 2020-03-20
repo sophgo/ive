@@ -1,7 +1,6 @@
 #include "tpu/tpu_sad.hpp"
 
 #include <string.h>
-#include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 
 void IveTPUSAD::setTblMgr(TblMgr *tblmgr) { mp_tblmgr = tblmgr; }
 
