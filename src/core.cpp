@@ -106,7 +106,7 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
     u32 total_addr = is_1d ? input[k].m_tg.stride.n : input[k].m_tg.stride.c;
     if (jumped_value != total_addr) {
       printf(
-          "Error! Input %lu jumped value not align to image size %lu, original %u, start addr "
+          "Error! Input %lu jumped value %lu not align to image size %u, start addr "
           "%lu\n",
           k, jumped_value, total_addr, bm_start_addr);
       ret = BM_ERR_FAILURE;
@@ -121,7 +121,7 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
                  ((output[k].m_tg.stride.h * pad_t) + (pad_l * bm_dest_info.fns_vec[k].getSize())));
     if (jumped_value != total_addr) {
       printf(
-          "Error! Output %lu jumped value not align to image size %lu, original %u, start addr "
+          "Error! Output %lu jumped value %lu not align to image size %u, start addr "
           "%lu\n",
           k, jumped_value, total_addr, bm_des_addr);
       ret = BM_ERR_FAILURE;
@@ -229,7 +229,7 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
             tsi->tl_store.shape.n, tsi->tl_store.shape.c, tsi->tl_store.shape.h, tsi->tl_store.shape.w,
             tsi->tl_store.stride.n, tsi->tl_store.stride.c, tsi->tl_store.stride.h, tsi->tl_store.stride.w);
   // clang-format on
-  u32 h_input_single_lane = ih / h_cext_multiplier + pad_bottom + pad_top;
+  u32 h_input_single_lane = (ih / h_cext_multiplier) + pad_bottom + pad_top;
   if (tsi->tg_load.shape.h != h_input_single_lane) {
     std::cerr << "H extend c multiplier: " << h_cext_multiplier << std::endl;
     std::cerr << "Predicted h_slice not match. " << tsi->tg_load.shape.h << ", "
@@ -239,28 +239,54 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
   return BM_SUCCESS;
 }
 
-inline bool updateIfExceedTLMem(const int &npu_num, const u32 &c_multiplier, const int &img_c,
-                                const u32 &out_slice_max, const u32 &out_slice_left,
-                                const u32 &k_stride, u32 *new_c_multiplier,
-                                u32 *out_h_left_pixels) {
-  u32 tmp_h = out_slice_left / c_multiplier;
-  u32 &new_c_multiplier_a = *new_c_multiplier;
-  if (tmp_h > out_slice_max) {
-    u32 unit_skip = out_slice_max + (k_stride - 1);
-    new_c_multiplier_a = npu_num / img_c;
-    tmp_h = new_c_multiplier_a * unit_skip;
-    while (tmp_h > out_slice_left) {
-      new_c_multiplier_a--;
-      tmp_h = new_c_multiplier_a * unit_skip;
+inline bool calculateOutExtHSlice(const int &npu_num, const int &img_c, const u32 &max_slice,
+                                  const u32 &out_slice, u32 *c_multiplier, u32 *left_pixels,
+                                  bool channel_priority = true) {
+  u32 c_mul = npu_num / img_c;
+  if (channel_priority) {
+    u32 diff = out_slice;
+    u32 max_c_mul = c_mul;
+    while (c_mul > 0) {
+      u32 out_slice_tmp = out_slice + c_mul / 2;
+      s64 result = out_slice_tmp - (out_slice_tmp % c_mul);
+      if (result < 0) result = 0;
+      u32 tmp_diff = out_slice - result;
+      if (tmp_diff < diff) {
+        if ((result / c_mul) <= max_slice) {
+          max_c_mul = c_mul;
+          diff = tmp_diff;
+          if (diff == 0) {
+            break;
+          }
+        }
+      }
+      c_mul--;
     }
-    u32 new_h_left = out_slice_max * new_c_multiplier_a;
-    *out_h_left_pixels = out_slice_left - new_h_left;
-    return true;
+    *c_multiplier = max_c_mul * img_c;
+    *left_pixels = diff;
   } else {
-    new_c_multiplier_a = c_multiplier;
-    *out_h_left_pixels = 0;
+    while (out_slice % c_mul != 0) {
+      c_mul--;
+    }
+    u32 tmp_h = out_slice / c_mul;
+    if (tmp_h > max_slice) {
+      c_mul = npu_num / img_c;
+      u32 unit_skip = max_slice;
+      tmp_h = c_mul * unit_skip;
+      while (tmp_h > out_slice) {
+        c_mul--;
+        tmp_h = c_mul * unit_skip;
+      }
+      u32 new_h_left = max_slice * c_mul;
+      *c_multiplier = c_mul * img_c;
+      *left_pixels = out_slice - new_h_left;
+    } else {
+      auto res = c_mul * max_slice;
+      *c_multiplier = c_mul * img_c;
+      *left_pixels = (res < out_slice) ? (out_slice - res) : 0;
+    }
   }
-  return false;
+  return (*left_pixels > 0) ? true : false;
 }
 
 inline void updateLMemSize(
@@ -770,46 +796,20 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   u32 out_slice_res_w_left_pixels = 0;
   u32 in_slice_res_w_left_pixels = 0;
   if (slice_res.w.left != 0) {
-    int c_multiplier = m_chip_info.npu_num / channel;
-    while (out_slice_res.h.slice % c_multiplier != 0) {
-      c_multiplier--;
-    }
-    u32 out_w_left_pixels = 0, new_c_multiplier = 0;
-    if (updateIfExceedTLMem(m_chip_info.npu_num, c_multiplier, channel, out_info.tg_store.shape.w,
-                            out_slice_res.w.left, m_kernel_info.default_stride_x, &new_c_multiplier,
-                            &out_w_left_pixels)) {
-      c_multiplier = new_c_multiplier;
-      u32 in_w_left_pixels = out_w_left_pixels;
-      out_slice_res.w.left -= out_w_left_pixels;
-      out_slice_res.w.turn++;
-      in_slice_res.w.left -= in_w_left_pixels;
-      in_slice_res.w.turn++;
-      slice_res.w.left = in_slice_res.w.left;
-      slice_res.w.turn++;
-      if (in_w_left_pixels >= m_kernel_info.size) {
-        out_slice_res_w_left_pixels = out_w_left_pixels;
-        in_slice_res_w_left_pixels = in_w_left_pixels;
-      }
-    }
     channelExtension(bk_ctx, w_from_stride, w_from_stride_out, channel, out_slice_res.h.slice,
-                     out_slice_res.w.left, c_multiplier, m_kernel_info.pad[0], m_kernel_info.pad[1],
-                     m_kernel_info.pad[2], m_kernel_info.pad[3], m_kernel_info.size,
-                     m_kernel_info.size, m_kernel_info.default_stride_y,
+                     out_slice_res.w.left, out_slice_res.h.c_multiplier, m_kernel_info.pad[0],
+                     m_kernel_info.pad[1], m_kernel_info.pad[2], m_kernel_info.pad[3],
+                     m_kernel_info.size, m_kernel_info.size, m_kernel_info.default_stride_y,
                      m_kernel_info.default_stride_x, tgin_fmt_type, tgout_fmt_type,
                      m_slice_info.io_fmt, &out_w_info);
   } else {
     out_w_info = out_info;
   }
   if (out_slice_res.h.left != 0) {
-    u32 c_multiplier = m_chip_info.npu_num / channel;
-    while (out_slice_res.h.left % c_multiplier != 0) {
-      c_multiplier--;
-    }
-    u32 out_h_left_pixels = 0, new_c_multiplier = 0;
-    if (updateIfExceedTLMem(m_chip_info.npu_num, c_multiplier, channel, out_info.tg_store.shape.h,
-                            out_slice_res.h.left, m_kernel_info.default_stride_y, &new_c_multiplier,
-                            &out_h_left_pixels)) {
-      c_multiplier = new_c_multiplier;
+    u32 c_multiplier = 0;
+    u32 out_h_left_pixels = 0;
+    if (calculateOutExtHSlice(m_chip_info.npu_num, channel, out_info.tg_store.shape.h,
+                              out_slice_res.h.left, &c_multiplier, &out_h_left_pixels)) {
       u32 in_h_left_pixels = out_h_left_pixels + vertical_pad_total;
       out_slice_res.h.left -= out_h_left_pixels;
       out_slice_res.h.turn++;
@@ -834,9 +834,6 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   if (out_slice_res.h.left != 0 && out_slice_res.w.left != 0) {
     int c_multiplier = m_chip_info.npu_num / channel;
     while (out_slice_res.h.left % c_multiplier != 0) {
-      c_multiplier--;
-    }
-    while (out_slice_res.w.left % c_multiplier != 0) {
       c_multiplier--;
     }
     channelExtension(bk_ctx, w_from_stride, w_from_stride_out, channel, out_slice_res.h.left,
