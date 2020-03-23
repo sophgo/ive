@@ -672,7 +672,7 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   for (size_t i = 0; i < npu_num; i++) {
     memcpy(kernel.img.GetVAddr() + i * mask_length, pstFltCtrl->as8Mask, mask_length);
   }
-  kernel.multiplier.f = 1.f / pstFltCtrl->u8Norm;
+  kernel.multiplier.f = 1.f / pstFltCtrl->u32Norm;
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_filter.setKernel(kernel);
@@ -717,7 +717,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   memset(hog_ptr, 0, pstDstHist->u32Size);
   u16 div = 360 / pstHogCtrl->bin_num;
   if (iveMaaCtrl.no_negative) {
-    for (u64 i = 0; i < pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
+    for (u32 i = 0; i < (u32)pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
       float degree = convert_bf16_fp32(blk_ptr[i]);
       u32 index = (u32)(degree / div);
       if (index > pstHogCtrl->bin_num) {
@@ -727,7 +727,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
       hog_ptr[index]++;
     }
   } else {
-    for (u64 i = 0; i < pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
+    for (u32 i = 0; i < (u32)pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
       float degree = convert_bf16_fp32(blk_ptr[i]);
       u32 index = degree < 0 ? (u32)((360 + degree) / div) : (u32)(degree / div);
       if (index > pstHogCtrl->bin_num) {

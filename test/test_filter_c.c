@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
   IVE_FILTER_CTRL_S iveFltCtrl;
   iveFltCtrl.maskSize = 5;
   memcpy(iveFltCtrl.as8Mask, arr, 5 * sizeof(CVI_S8));
-  iveFltCtrl.u8Norm = 273;
+  iveFltCtrl.u32Norm = 273;
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < total_run; i++) {

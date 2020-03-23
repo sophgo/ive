@@ -1227,7 +1227,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
     input_stride_vec.push_back(
         bmk1880v2_bf16_tensor_tgmem_default_stride(shape, input[i].m_tg.fmt));
   }
-  for (size_t i = 0; i < bm_src_info.addr_vec.size(); i++) {
+  for (size_t i = 0; i < bm_dest_info.addr_vec.size(); i++) {
     output_stride_vec.push_back(
         bmk1880v2_bf16_tensor_tgmem_default_stride(shape, (*output)[i].m_tg.fmt));
   }
