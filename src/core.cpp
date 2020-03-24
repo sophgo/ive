@@ -1,6 +1,7 @@
 #include "core.hpp"
 
 #include <cmath>
+#include <memory>
 #include <iostream>
 #include "debug.hpp"
 
@@ -451,7 +452,10 @@ bmk1880v2_tensor_lmem_t *IveCore::allocTLMem(bmk1880v2_context_t *bk_ctx,
   }
 
   m_tl_type.push_back(tl_type);
-  m_tl_vec.emplace_back(lmem);
+  // A safer way to pass pointer to vector of pointers.
+  auto ptr = std::unique_ptr<bmk1880v2_tensor_lmem_t>(lmem);
+  m_tl_vec.emplace_back(ptr.get());
+  ptr.release();
   return lmem;
 }
 

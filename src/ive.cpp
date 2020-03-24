@@ -74,6 +74,7 @@ CVI_S32 CVI_IVE_DestroyHandle(IVE_HANDLE pIveHandle) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_tblmgr.free(&handle_ctx->ctx);
   destroyHandle(&handle_ctx->ctx);
+  delete handle_ctx;
   return CVI_SUCCESS;
 }
 
@@ -905,7 +906,7 @@ CVI_S32 CVI_IVE_Sigmoid(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
-
+  handle_ctx->t_h.t_sig.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   handle_ctx->t_h.t_sig.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return BM_SUCCESS;
 }

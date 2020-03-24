@@ -64,9 +64,15 @@ void IveTPUSigmoid::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 pin
 }
 
 int IveTPUSigmoid::freeChildTGMem(bmctx_t *ctx) {
-  delete table;
-  table = nullptr;
-  delete table_slope;
-  table_slope = nullptr;
+  if (table) {
+    table->Free(ctx);
+    delete table;
+    table = nullptr;
+  }
+  if (table_slope) {
+    table_slope->Free(ctx);
+    delete table_slope;
+    table_slope = nullptr;
+  }
   return BM_SUCCESS;
 }
