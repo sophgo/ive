@@ -43,6 +43,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <ive_tracer.h>
+
 GST_DEBUG_CATEGORY_STATIC (gst_cvi_ive_background_debug_category);
 #define GST_CAT_DEFAULT gst_cvi_ive_background_debug_category
 
@@ -172,11 +174,13 @@ gst_cvi_ive_background_class_init (GstCviIveBackgroundClass * klass)
 static void
 gst_cvi_ive_background_init (GstCviIveBackground *cviivebackground)
 {
+  CVI_SYS_TraceBegin("cvi_ive_init");
   CVI_SYS_LOGGING("gstcviivebackground");
   cviivebackground->bk_handle = malloc(sizeof(GST_CVI_IVE_BACKGROUND_HANDLE_S));
   cviivebackground->bk_handle->handle = CVI_IVE_CreateHandle();
   cviivebackground->bk_handle->count = 0;
   cviivebackground->bk_handle->i_count = 0;
+  CVI_SYS_TraceEnd();
 }
 
 void
@@ -288,6 +292,7 @@ gst_cvi_ive_background_set_info (GstVideoFilter * filter, GstCaps * incaps,
   GST_CVI_IVE_BACKGROUND_HANDLE_S *bk_handle = cviivebackground->bk_handle;
   gint src_width = GST_VIDEO_INFO_WIDTH(in_info);
   gint src_height = GST_VIDEO_INFO_HEIGHT(in_info);
+  CVI_SYS_TraceBegin("Init buffer");
   printf("src w, h %d, %d\n", src_width, src_height);
   CVI_IVE_CreateImage(bk_handle->handle, &bk_handle->src[0], IVE_IMAGE_TYPE_U8C1, src_width, src_height);
   CVI_IVE_CreateImage(bk_handle->handle, &bk_handle->src[1], IVE_IMAGE_TYPE_U8C1, src_width, src_height);
@@ -295,7 +300,7 @@ gst_cvi_ive_background_set_info (GstVideoFilter * filter, GstCaps * incaps,
   CVI_IVE_CreateImage(bk_handle->handle, &bk_handle->andframe[0], IVE_IMAGE_TYPE_U8C1, src_width, src_height);
   CVI_IVE_CreateImage(bk_handle->handle, &bk_handle->andframe[1], IVE_IMAGE_TYPE_U8C1, src_width, src_height);
   CVI_IVE_CreateImage(bk_handle->handle, &bk_handle->dst, IVE_IMAGE_TYPE_U8C1, src_width, src_height);
-
+  CVI_SYS_TraceEnd();
   GST_DEBUG_OBJECT (cviivebackground, "set_info");
   return TRUE;
 }
@@ -303,8 +308,7 @@ gst_cvi_ive_background_set_info (GstVideoFilter * filter, GstCaps * incaps,
 #include <time.h>
 static void run_background_subtraction(GstCviIveBackground *cviivebackground, guchar *in_buf,
                                        guchar *out_buf) {
-  struct timeval t0, t1;
-  gettimeofday(&t0, NULL);
+  CVI_SYS_TraceBegin("bk_sub");
   GST_CVI_IVE_BACKGROUND_HANDLE_S *bk_handle = cviivebackground->bk_handle;
   guint total_sz = bk_handle->src[bk_handle->count].u16Height *
                    bk_handle->src[bk_handle->count].u16Stride[0];
@@ -342,10 +346,7 @@ static void run_background_subtraction(GstCviIveBackground *cviivebackground, gu
   if ( bk_handle->i_count < 2) {
     bk_handle->i_count++;
   }
-  gettimeofday(&t1, NULL);
-  unsigned long elapsed_tpu =
-      ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec);
-  printf("BK subtraction run %u\n", elapsed_tpu);
+  CVI_SYS_TraceEnd();
 }
 
 /* transform */
