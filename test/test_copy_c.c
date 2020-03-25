@@ -79,23 +79,20 @@ int main(int argc, char **argv) {
   unsigned long elapsed_tpu_scopy =
       ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
 
-  gettimeofday(&t0, NULL);
-  int total_size = nChannels * width * height;
-  CVI_U8 *cpu_dst = malloc(sizeof(CVI_U8) * total_size);
-  for (size_t i = 0; i < total_run; i++) {
-    CVI_IVE_DMA(handle, &src, &dst, &iveDmaCtrl, 0);
-  }
-  memcpy(cpu_dst, src.pu8VirAddr[0], sizeof(CVI_U8) * total_size);
-  gettimeofday(&t1, NULL);
-  unsigned long elapsed_tpu_dcopy_cpu =
-      ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
-  free(cpu_dst);
-
   CVI_IVE_BufRequest(handle, &src);
   CVI_IVE_BufRequest(handle, &dst);
   CVI_IVE_BufRequest(handle, &dst2);
   CVI_IVE_BufRequest(handle, &dst3);
   int ret = cpu_ref(nChannels, iveDmaCtrl.u8HorSegSize, iveDmaCtrl.u8VerSegRows, &src, &dst, &dst2);
+
+  int total_size = nChannels * width * height;
+  CVI_U8 *cpu_dst = malloc(sizeof(CVI_U8) * total_size);
+  gettimeofday(&t0, NULL);
+  memcpy(cpu_dst, src.pu8VirAddr[0], sizeof(CVI_U8) * total_size);
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_tpu_dcopy_cpu =
+      ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
+  free(cpu_dst);
 
   if (total_run == 1) {
     // write result to disk

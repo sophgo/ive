@@ -34,10 +34,11 @@ int main(int argc, char **argv) {
   int nChannels = 1;
   int width = src1.u16Width;
   int height = src1.u16Height;
+  u32 img_sz = nChannels * width * height;
   printf("Image size is %d X %d\n", width, height);
   IVE_SRC_IMAGE_S src2;
   CVI_IVE_CreateImage(handle, &src2, IVE_IMAGE_TYPE_U8C1, width, height);
-  memset(src2.pu8VirAddr[0], 255, nChannels * width * height);
+  memset(src2.pu8VirAddr[0], 255, img_sz);
   for (int j = height / 10; j < height * 9 / 10; j++) {
     for (int i = width / 10; i < width * 9 / 10; i++) {
       src2.pu8VirAddr[0][i + j * width] = 0;
@@ -65,6 +66,7 @@ int main(int argc, char **argv) {
   CVI_IVE_BufRequest(handle, &src2);
   CVI_IVE_BufRequest(handle, &dst);
   int ret = cpu_ref(nChannels, &src1, &src2, &dst);
+
 #ifdef __ARM_ARCH
   IVE_DST_IMAGE_S dst_cpu;
   CVI_IVE_CreateImage(handle, &dst_cpu, IVE_IMAGE_TYPE_U8C1, width, height);
@@ -72,8 +74,7 @@ int main(int argc, char **argv) {
   uint8_t *ptr2 = src2.pu8VirAddr[0];
   uint8_t *ptr3 = dst_cpu.pu8VirAddr[0];
   gettimeofday(&t0, NULL);
-  size_t total_size = nChannels * width * height;
-  size_t neon_turn = total_size / 16;
+  size_t neon_turn = img_sz / 16;
   for (size_t i = 0; i < neon_turn; i++) {
     uint8x16_t val = vld1q_u8(ptr1);
     uint8x16_t val2 = vld1q_u8(ptr2);
@@ -83,27 +84,39 @@ int main(int argc, char **argv) {
     ptr2 += 16;
     ptr3 += 16;
   }
-  size_t neon_left = total_size - (neon_turn * 16);
+  size_t neon_left = neon_turn * 16;
   ptr1 = src1.pu8VirAddr[0];
   ptr2 = src2.pu8VirAddr[0];
   ptr3 = dst_cpu.pu8VirAddr[0];
-  for (size_t i = neon_left; i < width * height; i++) {
+  for (size_t i = neon_left; i < img_sz; i++) {
     int res = ptr1[i] + ptr2[i];
     res = res > 255 ? 255 : res;
     ptr3[i] = res;
   }
   gettimeofday(&t1, NULL);
   unsigned long elapsed_neon = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
-  gettimeofday(&t0, NULL);
   ptr1 = src1.pu8VirAddr[0];
   ptr2 = src2.pu8VirAddr[0];
   ptr3 = dst_cpu.pu8VirAddr[0];
-  for (size_t i = 0; i < nChannels * src1.u16Width * src1.u16Height; i++) {
-    int res = ptr1[i] + ptr2[i];
+  gettimeofday(&t0, NULL);
+  for (size_t i = 0; i < img_sz; i++) {
+    int res = (int)ptr1[i] + ptr2[i];
     ptr3[i] = res > 255 ? 255 : res;
   }
   gettimeofday(&t1, NULL);
   unsigned long elapsed_cpu = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
+  unsigned char *ptr4 = malloc(width * height * sizeof(unsigned char));
+  gettimeofday(&t0, NULL);
+  for (size_t i = 0; i < img_sz; i++) {
+    int res = (int)ptr1[i] + ptr2[i];
+    ptr4[i] = res > 255 ? 255 : res;
+  }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_cpu_malloc = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
+  printf("ptr3 addr %p, ptr4 addr %p\n", ptr3, ptr4);
+  printf("Input bm devie memory. Output 1. bm device memory %lu, 2. cpu malloc %lu\n", elapsed_cpu,
+         elapsed_cpu_malloc);
+  free(ptr4);
   CVI_SYS_FreeI(handle, &dst_cpu);
 #endif
   if (total_run == 1) {

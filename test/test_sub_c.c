@@ -83,11 +83,11 @@ int main(int argc, char **argv) {
     ptr2 += 16;
     ptr3 += 16;
   }
-  size_t neon_left = total_size - (neon_turn * 16);
+  size_t neon_left = neon_turn * 16;
   ptr1 = src1.pu8VirAddr[0];
   ptr2 = src2.pu8VirAddr[0];
   ptr3 = dst_cpu.pu8VirAddr[0];
-  for (size_t i = neon_left; i < width * height; i++) {
+  for (size_t i = neon_left; i < total_size; i++) {
     ptr3[i] = abs((int)ptr1[i] - (int)ptr2[i]);
   }
   gettimeofday(&t1, NULL);
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
   ptr1 = src1.pu8VirAddr[0];
   ptr2 = src2.pu8VirAddr[0];
   ptr3 = dst_cpu.pu8VirAddr[0];
-  for (size_t i = 0; i < nChannels * src1.u16Width * src1.u16Height; i++) {
+  for (size_t i = 0; i < total_size; i++) {
     ptr3[i] = abs((int)ptr1[i] - (int)ptr2[i]);
   }
   gettimeofday(&t1, NULL);
