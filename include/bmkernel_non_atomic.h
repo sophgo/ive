@@ -32,6 +32,8 @@ typedef struct bmk1880v2_tiu_non_atomic_atan2_param {
   bmk1880v2_tensor_lmem_t *sqrt_table_answer_mantissa;
   bmk1880v2_tensor_lmem_t *idx_0_table;
   fmt_t fmt;
+  bool output_degree;
+  bool high_acc;
 } bmk1880v2_tiu_non_atomic_atan2_param_t;
 
 typedef struct bmk1880v2_tiu_non_atomic_mask_param {

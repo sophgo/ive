@@ -5,6 +5,11 @@ TblMgr::~TblMgr() {}
 
 int TblMgr::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   bf16_lut_tbl_bytesize(bk_ctx, &m_table_s, FMT_BF16);  // 32 * 8
+  if (mp_atan_y0_degree == nullptr) {
+    mp_atan_y0_degree = new CviImg(ctx, m_table_s.c, m_table_s.h, m_table_s.w, FMT_BF16);
+    bf16_atan_fast_degree_y0((u16 *)mp_atan_y0_degree->GetVAddr(), &m_table_s);
+    mp_atan_y0_degree->Flush(ctx);
+  }
   if (mp_atan_y0 == nullptr) {
     mp_atan_y0 = new CviImg(ctx, m_table_s.c, m_table_s.h, m_table_s.w, FMT_BF16);
     bf16_atan_y0((u16 *)mp_atan_y0->GetVAddr(), &m_table_s);
@@ -57,6 +62,11 @@ int TblMgr::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
 }
 
 int TblMgr::free(bmctx_t *ctx) {
+  if (mp_atan_y0_degree) {
+    mp_atan_y0_degree->Free(ctx);
+    delete mp_atan_y0_degree;
+    mp_atan_y0_degree = nullptr;
+  }
   if (mp_atan_y0) {
     mp_atan_y0->Free(ctx);
     delete mp_atan_y0;
@@ -115,6 +125,9 @@ const CviImg *TblMgr::atan(enum TBLATAN tblatan) {
   switch (tblatan) {
     case TBLATAN::TBLATAN_Y0: {
       img = mp_atan_y0;
+    } break;
+    case TBLATAN::TBLATAN_Y0_DEGREE: {
+      img = mp_atan_y0_degree;
     } break;
     case TBLATAN::TBLATAN_SLOPE: {
       img = mp_atan_slope;

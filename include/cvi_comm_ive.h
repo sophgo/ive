@@ -167,7 +167,6 @@ typedef struct IVE_MAG_AND_ANG_CTRL {
   IVE_MAG_AND_ANG_OUT_CTRL_E enOutCtrl;
   CVI_U16 u16Thr;
   CVI_S8 as8Mask[25];
-  CVI_BOOL no_negative;
 } IVE_MAG_AND_ANG_CTRL_S;
 
 /*

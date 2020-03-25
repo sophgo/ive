@@ -7,7 +7,8 @@
 class IveTPUMagAndAng : public IveCore {
  public:
   void setTblMgr(TblMgr *tblmgr);
-  void exportOption(bool mag_value, bool ang_value);
+  void exportOption(bool mag_value, bool ang_value, bool output_degree = true,
+                    bool use_accurate_atan2 = false);
   void noNegative(bool value);
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) override;
   virtual int runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -25,7 +26,6 @@ class IveTPUMagAndAng : public IveCore {
   bmk1880v2_tiu_non_atomic_sqrt_param_t m_p_sqrt;
   bool m_export_ang = true;
   bmk1880v2_tiu_non_atomic_atan2_param_t m_p_atan2;
-  bmk1880v2_tiu_element_wise_mul_param_t m_p_mul_const;
 
   bool m_no_negative = false;
   bmk1880v2_tiu_non_atomic_mask_param_t m_p_mask;

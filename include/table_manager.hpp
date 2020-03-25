@@ -1,7 +1,7 @@
 #pragma once
 #include "tpu_data.hpp"
 
-enum TBLATAN { TBLATAN_Y0, TBLATAN_SLOPE, TBLATAN_INVERT, TBLATAN_POSNEG };
+enum TBLATAN { TBLATAN_Y0, TBLATAN_Y0_DEGREE, TBLATAN_SLOPE, TBLATAN_INVERT, TBLATAN_POSNEG };
 
 enum TBLRECIPROCAL { TBLRECIPROCAL_DATA, TBLRECIPROCAL_MANTISSA };
 
@@ -24,6 +24,7 @@ class TblMgr {
  private:
   bmk1880v2_tensor_lmem_shape_t m_table_s;
   // atan2 CviImg
+  CviImg *mp_atan_y0_degree = nullptr;
   CviImg *mp_atan_y0 = nullptr;
   CviImg *mp_atan_slope = nullptr;
   CviImg *mp_atan_invert = nullptr;

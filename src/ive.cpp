@@ -698,7 +698,6 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   }
   IVE_MAG_AND_ANG_CTRL_S iveMaaCtrl;
   iveMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_ANG;
-  iveMaaCtrl.no_negative = true;
   if (CVI_IVE_MagAndAng(pIveHandle, pstDstH, pstDstV, pstDstMag, pstDstAng, &iveMaaCtrl, 0) !=
       CVI_SUCCESS) {
     return CVI_FAILURE;
@@ -717,7 +716,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   u32 *hog_ptr = (u32 *)pstDstHist->pu8VirAddr;
   memset(hog_ptr, 0, pstDstHist->u32Size);
   u16 div = 360 / pstHogCtrl->bin_num;
-  if (iveMaaCtrl.no_negative) {
+  if (0) {
     for (u32 i = 0; i < (u32)pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
       float degree = convert_bf16_fp32(blk_ptr[i]);
       u32 index = (u32)(degree / div);
@@ -730,7 +729,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   } else {
     for (u32 i = 0; i < (u32)pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
       float degree = convert_bf16_fp32(blk_ptr[i]);
-      u32 index = degree < 0 ? (u32)((360 + degree) / div) : (u32)(degree / div);
+      u32 index = degree < 0 ? (u32)((360.f + degree) / div) : (u32)(degree / div);
       if (index > pstHogCtrl->bin_num) {
         std::cout << "Histogram index out of range. Original degree " << degree << std::endl;
         return CVI_FAILURE;
@@ -789,9 +788,9 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
       return CVI_FAILURE;
       break;
   }
-  handle_ctx->t_h.t_magandang.noNegative(pstMaaCtrl->no_negative);
+  // True accuracy too low.
+  handle_ctx->t_h.t_magandang.noNegative(false);
   handle_ctx->t_h.t_magandang.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-
   handle_ctx->t_h.t_magandang.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return CVI_SUCCESS;
 }

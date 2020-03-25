@@ -7,9 +7,12 @@
 
 void IveTPUMagAndAng::setTblMgr(TblMgr *tblmgr) { mp_tblmgr = tblmgr; }
 
-void IveTPUMagAndAng::exportOption(bool mag_value, bool ang_value) {
+void IveTPUMagAndAng::exportOption(bool mag_value, bool ang_value, bool output_degree,
+                                   bool use_accurate_atan2) {
   m_export_mag = mag_value;
   m_export_ang = ang_value;
+  m_p_atan2.high_acc = use_accurate_atan2;
+  m_p_atan2.output_degree = output_degree;
 }
 
 void IveTPUMagAndAng::noNegative(bool value) { m_no_negative = value; }
@@ -19,8 +22,20 @@ int IveTPUMagAndAng::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   // 2 input tl
   // 6 tmp buf
   // 1 atan & 1 final sqrt result
-  m_slice_info.nums_of_tl = 10 * 2;  // in bf16
-  m_slice_info.nums_of_table = 9 * 2;
+  int total_tls = 10;
+  int total_table = 9;
+  if (!m_p_atan2.high_acc) {
+    total_tls -= 3;
+    total_table -= 2;  // No slope and 0_idx
+  }
+  if (!m_export_mag) {
+    total_tls -= 1;
+  }
+  if (!m_export_ang) {
+    total_tls -= 1;
+  }
+  m_slice_info.nums_of_tl = total_tls * 2;
+  m_slice_info.nums_of_table = total_table * 2;
   m_kernel_info.nums_of_kernel = 0;  // 2 BF16 kernels
 
   return BM_SUCCESS;
@@ -38,32 +53,32 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_shape.w = tg_in_slices[0].w;
   auto *tl_input = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
   auto *tl_input2 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_mag = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_angle = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+  // FIXME: Should reuse.
+  auto *tl_mag = m_export_mag ? allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1) : NULL;
+  auto *tl_angle = m_export_ang ? allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1) : NULL;
 
   auto *tl_buf = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  // FIXME: Dirty workaround. Allocate a 1x1 tg also fixed in cmodel.
-  // May not work in soc mode.
-  // CviImg workaround_img(ctx, 1, 1, 1, FMT_BF16);
   auto *tl_buf2 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
   auto *tl_buf3 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_buf4 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_buf5 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_buf6 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+  bmk1880v2_tensor_lmem_t *tl_buf4 = NULL, *tl_buf5 = NULL, *tl_buf6 = NULL;
+  if (m_p_atan2.high_acc) {
+    tl_buf4 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+    tl_buf5 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+    tl_buf6 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+  }
 
   const bmk1880v2_tensor_lmem_shape_t tl_table_s = mp_tblmgr->getTblTLShape();
   // atan buf
   auto *tl_y0_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-  auto *tl_slope_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
   auto *tl_invert_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
   auto *tl_pos_neg_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
   {
-    const CviImg *table_data_atan_y0 = mp_tblmgr->atan(TBLATAN::TBLATAN_Y0);
-    const CviImg *table_data_atan_slope = mp_tblmgr->atan(TBLATAN::TBLATAN_SLOPE);
+    const CviImg *table_data_atan_y0 = m_p_atan2.output_degree
+                                           ? mp_tblmgr->atan(TBLATAN::TBLATAN_Y0_DEGREE)
+                                           : mp_tblmgr->atan(TBLATAN::TBLATAN_Y0);
     const CviImg *table_data_atan_invert = mp_tblmgr->atan(TBLATAN::TBLATAN_INVERT);
     const CviImg *table_data_atan_pos_neg = mp_tblmgr->atan(TBLATAN::TBLATAN_POSNEG);
     cviImg2TL(ctx, bk_ctx, *table_data_atan_y0, tl_y0_table);
-    cviImg2TL(ctx, bk_ctx, *table_data_atan_slope, tl_slope_table);
     cviImg2TL(ctx, bk_ctx, *table_data_atan_invert, tl_invert_table);
     cviImg2TL(ctx, bk_ctx, *table_data_atan_pos_neg, tl_pos_neg_table);
   }
@@ -87,8 +102,12 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     cviImg2TL(ctx, bk_ctx, *table_data_mantissa, tl_sqrt_table_answer_mantissa);
   }
 
-  auto *tl_idx_0_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-  {
+  bmk1880v2_tensor_lmem_t *tl_slope_table = NULL, *tl_idx_0_table = NULL;
+  if (m_p_atan2.high_acc) {
+    tl_slope_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+    const CviImg *table_data_atan_slope = mp_tblmgr->atan(TBLATAN::TBLATAN_SLOPE);
+    cviImg2TL(ctx, bk_ctx, *table_data_atan_slope, tl_slope_table);
+    tl_idx_0_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
     const CviImg *idx_0_table_data = mp_tblmgr->mask(TBLMASK::TBLMASK_ZERO);
     cviImg2TL(ctx, bk_ctx, *idx_0_table_data, tl_idx_0_table);
   }
@@ -124,10 +143,6 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_atan2.b = tl_input2;
   m_p_atan2.res = tl_angle;
   m_p_atan2.buf1 = tl_buf;
-  /** FIXME: Dirty workaround. tl polution.
-   *  m_p_atan2.buf2 = tl_buf2;
-   *  m_p_atan2.buf3 = tl_buf3;
-   */
   m_p_atan2.buf2 = tl_buf2;
   m_p_atan2.buf3 = tl_buf3;
   m_p_atan2.buf4 = tl_buf4;
@@ -143,15 +158,6 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_atan2.sqrt_table_answer_mantissa = tl_sqrt_table_answer_mantissa;
   m_p_atan2.idx_0_table = tl_idx_0_table;
   m_p_atan2.fmt = FMT_BF16;
-
-  m_p_mul_const.rshift_bits = 0;
-  m_p_mul_const.relu_enable = 0;
-  m_p_mul_const.bf16_enable = 1;
-  m_p_mul_const.res_high = NULL;
-  m_p_mul_const.res_low = tl_angle;
-  m_p_mul_const.a = tl_angle;
-  m_p_mul_const.b_is_const = 1;
-  m_p_mul_const.b_val = convert_fp32_bf16(180.f / M_PI);
 
   if (m_no_negative) {
     m_p_mask.ifmap = tl_angle;
@@ -178,7 +184,11 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     tl_out_idx->push_back(2);
   }
   if (m_export_ang) {
-    tl_out_idx->push_back(3);
+    if (m_export_mag) {
+      tl_out_idx->push_back(3);
+    } else {
+      tl_out_idx->push_back(2);
+    }
   }
 #ifdef MAGnANG_DEBUG
   counting = 0;
@@ -195,12 +205,28 @@ void IveTPUMagAndAng::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 p
   }
   if (m_export_ang) {
     // sqrt goes first cause atan2 changes y value
-    bf16_atan2_emit(bk_ctx, m_p_atan2.b, m_p_atan2.a, m_p_atan2.buf1, m_p_atan2.buf2,
-                    m_p_atan2.buf3, m_p_atan2.buf4, m_p_atan2.buf5, m_p_atan2.buf6, m_p_atan2.y0,
-                    m_p_atan2.slope, m_p_atan2.invert, m_p_atan2.pos_neg_table,
-                    m_p_atan2.reciprocal_table_answer, m_p_atan2.reciprocal_table_answer_mantissa,
-                    m_p_atan2.sqrt_table_answer, m_p_atan2.sqrt_table_answer_mantissa,
-                    m_p_atan2.idx_0_table, m_p_atan2.res, m_p_atan2.fmt);
+    if (m_p_atan2.high_acc) {
+      bf16_atan2_emit(bk_ctx, m_p_atan2.b, m_p_atan2.a, m_p_atan2.buf1, m_p_atan2.buf2,
+                      m_p_atan2.buf3, m_p_atan2.buf4, m_p_atan2.buf5, m_p_atan2.buf6, m_p_atan2.y0,
+                      m_p_atan2.slope, m_p_atan2.invert, m_p_atan2.pos_neg_table,
+                      m_p_atan2.reciprocal_table_answer, m_p_atan2.reciprocal_table_answer_mantissa,
+                      m_p_atan2.sqrt_table_answer, m_p_atan2.sqrt_table_answer_mantissa,
+                      m_p_atan2.idx_0_table, m_p_atan2.res, m_p_atan2.fmt);
+    } else {
+      if (m_p_atan2.output_degree) {
+        bf16_atan2_fast_degree_emit(bk_ctx, m_p_atan2.b, m_p_atan2.a, m_p_atan2.buf1,
+                                    m_p_atan2.buf2, m_p_atan2.buf3, m_p_atan2.y0, m_p_atan2.invert,
+                                    m_p_atan2.pos_neg_table, m_p_atan2.reciprocal_table_answer,
+                                    m_p_atan2.reciprocal_table_answer_mantissa, m_p_atan2.res,
+                                    m_p_atan2.fmt);
+      } else {
+        bf16_atan2_merge_emit(bk_ctx, m_p_atan2.b, m_p_atan2.a, m_p_atan2.buf1, m_p_atan2.buf2,
+                              m_p_atan2.buf3, m_p_atan2.y0, m_p_atan2.invert,
+                              m_p_atan2.pos_neg_table, m_p_atan2.reciprocal_table_answer,
+                              m_p_atan2.reciprocal_table_answer_mantissa, m_p_atan2.res,
+                              m_p_atan2.fmt);
+      }
+    }
 #ifdef MAGnANG_DEBUG
     u16 *input1 = (u16 *)get_bf16_tensor_l2g(ctx, bk_ctx, m_p_atan2.a, FMT_BF16);
     u16 *input2 = (u16 *)get_bf16_tensor_l2g(ctx, bk_ctx, m_p_atan2.b, FMT_BF16);
@@ -219,7 +245,6 @@ void IveTPUMagAndAng::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 p
     delete[] input2;
     delete[] res_ang;
 #endif
-    bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_const);
 
     if (m_no_negative) {
       // FIXME: Broken in TPU if no printf is inserted.

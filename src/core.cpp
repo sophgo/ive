@@ -1,8 +1,8 @@
 #include "core.hpp"
 
 #include <cmath>
-#include <memory>
 #include <iostream>
+#include <memory>
 #include "debug.hpp"
 
 inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int kernel_sz,
