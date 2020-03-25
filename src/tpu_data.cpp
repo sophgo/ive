@@ -19,12 +19,16 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) 
     y1 = y2;
     y2 = tmp;
   }
-  u32 x1_new = x1 < 0 ? 0 : x1;
-  u32 y1_new = y1 < 0 ? 0 : y1;
+  u32 x1_new = x1 > img.m_tg.shape.w ? img.m_tg.shape.w : x1;
+  u32 y1_new = y1 > img.m_tg.shape.h ? img.m_tg.shape.h : y1;
   u32 x2_new = x2 > img.m_tg.shape.w ? img.m_tg.shape.w : x2;
   u32 y2_new = y2 > img.m_tg.shape.h ? img.m_tg.shape.h : y2;
   u32 new_width = x2_new - x1_new;
   u32 new_height = y2_new - y1_new;
+  if (new_width == 0 || new_height == 0) {
+    std::cerr << "Error width " << new_width << " or height " << new_height << " cannot be 0."
+              << std::endl;
+  }
 
   // Update subimage shape
   this->m_tg.shape.h = new_height;
