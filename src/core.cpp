@@ -234,7 +234,7 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
     std::cerr << "H extend c multiplier: " << h_cext_multiplier << std::endl;
     std::cerr << "Predicted h_slice not match. " << tsi->tg_load.shape.h << ", "
               << h_input_single_lane << std::endl;
-    if (ic * ih == tsi->tg_store.shape.c * tsi->tg_store.shape.h) {
+    if ((u32)(ic * ih) == tsi->tg_store.shape.c * tsi->tg_store.shape.h) {
       std::cerr << "This is a dev warning only." << std::endl;
     } else {
       std::cerr << "Slice failed." << std::endl;
