@@ -725,6 +725,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
         std::cout << "Histogram index out of range. Original degree " << degree << std::endl;
         return CVI_FAILURE;
       }
+      blk_ptr[i] = convert_fp32_bf16(index);
       hog_ptr[index]++;
     }
   } else {
@@ -735,6 +736,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
         std::cout << "Histogram index out of range. Original degree " << degree << std::endl;
         return CVI_FAILURE;
       }
+      blk_ptr[i] = convert_fp32_bf16(index);
       hog_ptr[index]++;
     }
   }
