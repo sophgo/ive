@@ -28,10 +28,12 @@ int IveTPUBlock::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
 int IveTPUBlock::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res) {
   *tg_in_res = slice_res;
   *tg_out_res = slice_res;
-  tg_out_res->h.skip = tg_out_res->h.skip / m_kernel_info.size;
-  tg_out_res->w.skip = tg_out_res->w.skip / m_kernel_info.size;
-  tg_out_res->h.slice = tg_out_res->h.slice / m_kernel_info.size;
-  tg_out_res->w.slice = tg_out_res->w.slice / m_kernel_info.size;
+  tg_out_res->h.skip /= m_kernel_info.size;
+  tg_out_res->w.skip /= m_kernel_info.size;
+  tg_out_res->h.slice /= m_kernel_info.size;
+  tg_out_res->w.slice /= m_kernel_info.size;
+  tg_out_res->h.left /= m_kernel_info.size;
+  tg_out_res->w.left /= m_kernel_info.size;
   return BM_SUCCESS;
 }
 
