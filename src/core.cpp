@@ -235,7 +235,12 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
     std::cerr << "H extend c multiplier: " << h_cext_multiplier << std::endl;
     std::cerr << "Predicted h_slice not match. " << tsi->tg_load.shape.h << ", "
               << h_input_single_lane << std::endl;
-    return BM_ERR_FAILURE;
+    if (ic * ih == tsi->tg_store.shape.c * tsi->tg_store.shape.h) {
+      std::cerr << "This is a dev warning only." << std::endl;
+    } else {
+      std::cerr << "Slice failed." << std::endl;
+      return BM_ERR_FAILURE;
+    }
   }
   return BM_SUCCESS;
 }
@@ -248,17 +253,18 @@ inline bool calculateOutExtHSlice(const int &npu_num, const int &img_c, const u3
     u32 diff = out_slice;
     u32 max_c_mul = c_mul;
     while (c_mul > 0) {
-      u32 out_slice_tmp = out_slice + c_mul / 2;
+      u32 &&out_slice_tmp = out_slice + c_mul / 2;
       s64 result = out_slice_tmp - (out_slice_tmp % c_mul);
+      u32 &&result_limit = max_slice * c_mul;
+      // Boundary check. Must 0 < result max_slice * c_mul;
+      if (result > result_limit) result = result_limit;
       if (result < 0) result = 0;
       u32 tmp_diff = out_slice - result;
       if (tmp_diff < diff) {
-        if ((result / c_mul) <= max_slice) {
-          max_c_mul = c_mul;
-          diff = tmp_diff;
-          if (diff == 0) {
-            break;
-          }
+        max_c_mul = c_mul;
+        diff = tmp_diff;
+        if (diff == 0) {
+          break;
         }
       }
       c_mul--;
@@ -408,24 +414,41 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32
   }
   // If enable channel extending feature
   if (enable_cext) {
-    u32 h_tmp_slice_save = h_tmp_slice;
-    if (h_tmp_slice >= h) {
-      h_tmp_slice = kernel_info.size;
-    }
-    int c_multiplier = (int)(npu_num / c);
-    u32 unit_skip =
-        h_tmp_slice - kernel_info.pad[2] - kernel_info.pad[3] + (kernel_info.default_stride_y - 1);
-    h_tmp_slice += unit_skip * (c_multiplier - 1);
-    while (h_tmp_slice > h) {
-      h_tmp_slice -= unit_skip;
-      c_multiplier--;
-    }
-    u32 res = (h_tmp_slice - kernel_info.pad[2] - kernel_info.pad[3]);
-    if (res % c_multiplier != 0) {
-      h_tmp_slice = h_tmp_slice_save;
-      unit_h->c_multiplier = 1;
-    } else {
+    if (kernel_info.default_stride_y == 1) {
+      // Experimental
+      u32 v_total_pad = kernel_info.pad[2] + kernel_info.pad[3];
+      u32 c_multiplier = 0, left_pixels = 0;
+      u32 out_max_slice = h_tmp_slice - v_total_pad;
+      u32 out_h = (h - v_total_pad) / kernel_info.default_stride_y;
+      calculateOutExtHSlice(npu_num, c, out_max_slice, out_h, &c_multiplier, &left_pixels);
+      h_tmp_slice = (out_h * kernel_info.default_stride_y) - left_pixels + v_total_pad;
       unit_h->c_multiplier = c_multiplier;
+    } else {
+      // FIXME: Need better way to found best slice for channel ext.
+      u32 new_h_tmp_slice = h_tmp_slice;
+      if (new_h_tmp_slice >= h) {
+        new_h_tmp_slice = kernel_info.size;
+      }
+      int c_multiplier = (int)(npu_num / c);
+      u32 unit_skip = new_h_tmp_slice - kernel_info.pad[2] - kernel_info.pad[3] +
+                      (kernel_info.default_stride_y - 1);
+      new_h_tmp_slice += unit_skip * (c_multiplier - 1);
+      while (new_h_tmp_slice > h) {
+        new_h_tmp_slice -= unit_skip;
+        c_multiplier--;
+      }
+      u32 res = (new_h_tmp_slice - kernel_info.pad[2] - kernel_info.pad[3]);
+      if (res % c_multiplier != 0) {
+        unit_h->c_multiplier = 1;
+      } else {
+        // Channel priority.
+        c_multiplier = (int)(npu_num / c);
+        while (res % c_multiplier != 0) {
+          c_multiplier--;
+        }
+        h_tmp_slice = new_h_tmp_slice;
+        unit_h->c_multiplier = c_multiplier;
+      }
     }
   }
 
