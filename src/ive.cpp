@@ -673,6 +673,7 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   for (size_t i = 0; i < npu_num; i++) {
     memcpy(kernel.img.GetVAddr() + i * mask_length, pstFltCtrl->as8Mask, mask_length);
   }
+  kernel.img.Flush(&handle_ctx->ctx);
   kernel.multiplier.f = 1.f / pstFltCtrl->u32Norm;
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
                                    &kernel.multiplier.shift);

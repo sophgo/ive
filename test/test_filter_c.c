@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
                   41, 26, 7, 4, 16, 26, 16, 4,  1,  4, 7, 4,  1};
   IVE_FILTER_CTRL_S iveFltCtrl;
   iveFltCtrl.maskSize = 5;
-  memcpy(iveFltCtrl.as8Mask, arr, 5 * sizeof(CVI_S8));
+  memcpy(iveFltCtrl.as8Mask, arr, 25 * sizeof(CVI_S8));
   iveFltCtrl.u32Norm = 273;
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
