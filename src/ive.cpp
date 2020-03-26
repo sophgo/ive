@@ -562,12 +562,13 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
                       IVE_BLOCK_CTRL_S *pstBlkCtrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
   CVI_U32 cell_size = pstBlkCtrl->cell_size;
-  if (pstDst->u16Width != (pstSrc->u16Width / cell_size)) {
+  if (pstDst->u16Width != (pstSrc->u16Width / cell_size) || (pstSrc->u16Width % cell_size != 0)) {
     std::cerr << "Dst block width not match! Src: " << pstSrc->u16Width
               << ", dst: " << pstDst->u16Width << ", cell size: " << cell_size << std::endl;
     return CVI_FAILURE;
   }
-  if (pstDst->u16Height != (pstSrc->u16Height / cell_size)) {
+  if (pstDst->u16Height != (pstSrc->u16Height / cell_size) ||
+      (pstSrc->u16Height % cell_size != 0)) {
     std::cerr << "Dst block height not match! Src: " << pstSrc->u16Height
               << ", dst: " << pstDst->u16Height << ", cell size: " << cell_size << std::endl;
     return CVI_FAILURE;
