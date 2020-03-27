@@ -10,7 +10,10 @@
 #ifdef __ARM_ARCH
 #include "arm_neon.h"
 #endif
-#define CELL_SIZE 5
+#define CELL_SIZE 8
+#define BLOCK_SIZE 2
+#define STEP_X 2
+#define STEP_Y 2
 #define BIN_NUM 9
 
 int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE_DST_IMAGE_S *dstV,
@@ -53,21 +56,23 @@ int main(int argc, char **argv) {
   IVE_DST_IMAGE_S dstAng_u8;
   CVI_IVE_CreateImage(handle, &dstAng_u8, IVE_IMAGE_TYPE_U8C1, width, height);
 
-  IVE_DST_IMAGE_S dstBlk;
-  CVI_IVE_CreateImage(handle, &dstBlk, IVE_IMAGE_TYPE_BF16C1, width / CELL_SIZE,
-                      height / CELL_SIZE);
-
   IVE_DST_MEM_INFO_S dstHist;
-  CVI_IVE_CreateMemInfo(handle, &dstHist, BIN_NUM * sizeof(int));
+  CVI_U32 dstHistSize = 0;
+  CVI_IVE_GET_HOG_SIZE(dstAng.u16Width, dstAng.u16Height, BIN_NUM, CELL_SIZE, BLOCK_SIZE, STEP_X,
+                       STEP_Y, &dstHistSize);
+  CVI_IVE_CreateMemInfo(handle, &dstHist, dstHistSize);
 
   printf("Run TPU HOG.\n");
   IVE_HOG_CTRL_S pstHogCtrl;
   pstHogCtrl.bin_num = BIN_NUM;
   pstHogCtrl.cell_size = CELL_SIZE;
+  pstHogCtrl.block_size = BLOCK_SIZE;
+  pstHogCtrl.step_x = STEP_X;
+  pstHogCtrl.step_y = STEP_Y;
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < total_run; i++) {
-    CVI_IVE_HOG(handle, &src, &dstH, &dstV, NULL, &dstAng, &dstBlk, &dstHist, &pstHogCtrl, 0);
+    CVI_IVE_HOG(handle, &src, &dstH, &dstV, NULL, &dstAng, &dstHist, &pstHogCtrl, 0);
   }
   gettimeofday(&t1, NULL);
   unsigned long elapsed_tpu =
@@ -103,7 +108,6 @@ int main(int argc, char **argv) {
   CVI_SYS_FreeI(handle, &dstV_u8);
   CVI_SYS_FreeI(handle, &dstAng);
   CVI_SYS_FreeI(handle, &dstAng_u8);
-  CVI_SYS_FreeI(handle, &dstBlk);
   CVI_SYS_FreeM(handle, &dstHist);
   CVI_IVE_DestroyHandle(handle);
 

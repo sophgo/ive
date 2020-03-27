@@ -684,15 +684,78 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   return CVI_SUCCESS;
 }
 
-CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDstH,
-                    IVE_DST_IMAGE_S *pstDstV, IVE_DST_IMAGE_S *pstDstMag,
-                    IVE_DST_IMAGE_S *pstDstAng, IVE_DST_IMAGE_S *pstDstBlk,
-                    IVE_DST_MEM_INFO_S *pstDstHist, IVE_HOG_CTRL_S *pstHogCtrl, bool bInstant) {
-  ScopedTrace t(__PRETTY_FUNCTION__);
-  if (pstDstHist->u32Size != pstHogCtrl->bin_num * 4) {
-    std::cerr << "Histogram shape size not match the bin num! " << std::endl;
+inline void get_hog_feature_info(u16 width, u16 height, u16 cell_size, u16 blk_size,
+                                 u32 *width_cell, u32 *height_cell, u32 *width_block,
+                                 u32 *height_block) {
+  *height_cell = (u32)height / cell_size;
+  *width_cell = (u32)width / cell_size;
+  *height_block = (*height_cell - blk_size) + 1;
+  *width_block = (*width_cell - blk_size) + 1;
+}
+
+CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U16 u16Width, CVI_U16 u16Height, CVI_U8 u8BinSize,
+                             CVI_U16 u16CellSize, CVI_U16 u16BlkSize, CVI_U16 blkStepX,
+                             CVI_U16 blkStepY, CVI_U32 *u32HogSize) {
+  if (blkStepX == 0) {
+    std::cerr << "blkStepX cannot be 0." << std::endl;
     return CVI_FAILURE;
   }
+  if (blkStepY == 0) {
+    std::cerr << "blkStepX cannot be 0." << std::endl;
+    return CVI_FAILURE;
+  }
+  u32 height_cell = 0, width_cell = 0, height_block = 0, width_block = 0;
+  get_hog_feature_info(u16Width, u16Height, u16CellSize, u16BlkSize, &width_cell, &height_cell,
+                       &width_block, &height_block);
+  u32 block_length = u16BlkSize * u16BlkSize;
+  width_block = (width_block - 1) / blkStepX + 1;
+  height_block = (height_block - 1) / blkStepY + 1;
+  u32 num_of_block_data = height_block * width_block;
+  *u32HogSize = num_of_block_data * (block_length * u8BinSize) * sizeof(u32);
+  return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDstH,
+                    IVE_DST_IMAGE_S *pstDstV, IVE_DST_IMAGE_S *pstDstMag,
+                    IVE_DST_IMAGE_S *pstDstAng, IVE_DST_MEM_INFO_S *pstDstHist,
+                    IVE_HOG_CTRL_S *pstHogCtrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
+  if (pstDstAng->u16Width % pstHogCtrl->cell_size != 0) {
+    std::cerr << "Width " << pstDstAng->u16Width << " is not divisible by " << pstHogCtrl->cell_size
+              << std::endl;
+    return CVI_FAILURE;
+  }
+  if (pstDstAng->u16Height % pstHogCtrl->cell_size != 0) {
+    std::cerr << "Height " << pstDstAng->u16Height << " is not divisible by "
+              << pstHogCtrl->cell_size << std::endl;
+    return CVI_FAILURE;
+  }
+  if (pstHogCtrl->step_x == 0) {
+    std::cerr << "blkStepX cannot be 0." << std::endl;
+    return CVI_FAILURE;
+  }
+  if (pstHogCtrl->step_y == 0) {
+    std::cerr << "blkStepX cannot be 0." << std::endl;
+    return CVI_FAILURE;
+  }
+  u32 height_cell = 0, width_cell = 0, height_block = 0, width_block = 0;
+  get_hog_feature_info(pstDstAng->u16Width, pstDstAng->u16Height, pstHogCtrl->cell_size,
+                       pstHogCtrl->block_size, &width_cell, &height_cell, &width_block,
+                       &height_block);
+  u32 &&cell_length = pstHogCtrl->cell_size * pstHogCtrl->cell_size;
+  u32 &&cell_hist_length = height_cell * width_cell * pstHogCtrl->bin_num;
+  u32 &&block_length = pstHogCtrl->block_size * pstHogCtrl->block_size;
+  u32 &&num_of_block_data =
+      ((height_block - 1) / pstHogCtrl->step_y + 1) * ((width_block - 1) / pstHogCtrl->step_x + 1);
+  u32 &&hog_hist_length = num_of_block_data * (block_length * pstHogCtrl->bin_num);
+  u32 &&hog_hist_size = hog_hist_length * sizeof(u32);
+  if (pstDstHist->u32Size != hog_hist_size) {
+    std::cerr << "Histogram size not match! Given: " << pstDstHist->u32Size
+              << ", required: " << hog_hist_size << " (" << hog_hist_length << " * sizeof(u32))"
+              << std::endl;
+    return CVI_FAILURE;
+  }
+
   IVE_SOBEL_CTRL_S iveSblCtrl;
   iveSblCtrl.enOutCtrl = IVE_SOBEL_OUT_CTRL_BOTH;
   if (CVI_IVE_Sobel(pIveHandle, pstSrc, pstDstH, pstDstV, &iveSblCtrl, 0) != CVI_SUCCESS) {
@@ -705,41 +768,60 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
     return CVI_FAILURE;
   }
 
-  // Create Block
-  IVE_BLOCK_CTRL_S iveBlkCtrl;
-  iveBlkCtrl.bin_num = 1;
-  iveBlkCtrl.cell_size = pstHogCtrl->cell_size;
-  if (CVI_IVE_BLOCK(pIveHandle, pstDstAng, pstDstBlk, &iveBlkCtrl, 0) != CVI_SUCCESS) {
-    return CVI_FAILURE;
+  // Get Histogram here.
+  Tracer::TraceBegin("CPU histogram");
+  Tracer::TraceBegin("Generate cell histogram");
+  CVI_IVE_BufRequest(pIveHandle, pstDstAng);
+  u16 *cell_ptr = (u16 *)pstDstAng->pu8VirAddr[0];
+  u16 div = 360 / pstHogCtrl->bin_num;
+  u32 *cell_histogram = new u32[cell_hist_length];
+  memset(cell_histogram, 0, cell_hist_length * sizeof(int));
+  // Do Add & DIV while creating histogram. Slow.
+  for (u32 i = 0; i < pstDstAng->u16Height; i++) {
+    u32 &&row_skip = pstDstAng->u16Stride[0] * i;
+    for (u32 j = 0; j < pstDstAng->u16Width; j++) {
+      float degree = convert_bf16_fp32(cell_ptr[j + row_skip]);
+      u32 bin_index = degree < 0 ? (u32)((360.f + degree) / div) : (u32)(degree / div);
+      u32 &&cell_index =
+          (u32)((i / pstHogCtrl->cell_size) * width_cell + (u32)(j / pstHogCtrl->cell_size)) *
+          pstHogCtrl->bin_num;
+      if (bin_index > pstHogCtrl->bin_num) {
+        std::cerr << "Pixel value " << degree << " at " << i << ", " << j << " exceed bin size "
+                  << pstHogCtrl->bin_num << std::endl;
+        Tracer::TraceEnd();
+        Tracer::TraceEnd();
+        return CVI_FAILURE;
+      }
+      cell_histogram[cell_index + bin_index]++;
+    }
   }
-  // Get Histogram
-  CVI_IVE_BufRequest(pIveHandle, pstDstBlk);
-  u16 *blk_ptr = (u16 *)pstDstBlk->pu8VirAddr[0];
+  Tracer::TraceEnd();
+
+  Tracer::TraceBegin("Generate HOG histogram");
+  u32 &&copy_length = pstHogCtrl->bin_num * pstHogCtrl->block_size;
+  u32 &&copy_data_length = copy_length * sizeof(u32);
   u32 *hog_ptr = (u32 *)pstDstHist->pu8VirAddr;
   memset(hog_ptr, 0, pstDstHist->u32Size);
-  u16 div = 360 / pstHogCtrl->bin_num;
-  if (0) {
-    for (u32 i = 0; i < (u32)pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
-      float degree = convert_bf16_fp32(blk_ptr[i]);
-      u32 index = (u32)(degree / div);
-      if (index > pstHogCtrl->bin_num) {
-        std::cout << "Histogram index out of range. Original degree " << degree << std::endl;
-        return CVI_FAILURE;
+  u32 count = 0;
+  for (u32 i = 0; i < height_block; i += pstHogCtrl->step_y) {
+    u32 &&row_skip = i * width_block;
+    for (u32 j = 0; j < width_block; j += pstHogCtrl->step_x) {
+      u32 &&skip = j + row_skip;
+      for (u32 k = 0; k < pstHogCtrl->block_size; k++) {
+        u32 &&index = skip + k * width_block;
+        auto *cell_hist_ptr = cell_histogram + index;
+        auto *dst_hog_ptr = hog_ptr + count;
+        memcpy(hog_ptr, cell_hist_ptr, copy_data_length);
+        count += copy_length;
       }
-      blk_ptr[i] = convert_fp32_bf16(index);
-      hog_ptr[index]++;
     }
-  } else {
-    for (u32 i = 0; i < (u32)pstDstBlk->u16Width * pstDstBlk->u16Height; i++) {
-      float degree = convert_bf16_fp32(blk_ptr[i]);
-      u32 index = degree < 0 ? (u32)((360.f + degree) / div) : (u32)(degree / div);
-      if (index > pstHogCtrl->bin_num) {
-        std::cout << "Histogram index out of range. Original degree " << degree << std::endl;
-        return CVI_FAILURE;
-      }
-      blk_ptr[i] = convert_fp32_bf16(index);
-      hog_ptr[index]++;
-    }
+  }
+  Tracer::TraceEnd();
+  delete[] cell_histogram;
+  Tracer::TraceEnd();
+  if (count != hog_hist_length) {
+    std::cerr << "Hog histogram not aligned." << count << " " << hog_hist_length << std::endl;
+    return CVI_FAILURE;
   }
   return CVI_SUCCESS;
 }

@@ -242,6 +242,23 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
                        IVE_FILTER_CTRL_S *pstFltCtrl, bool bInstant);
 
 /**
+ * @brief Get size of the HOG histogram.
+ *
+ * @param u16Width Input image width.
+ * @param u16Height Input image height.
+ * @param u8BinSize Bin size.
+ * @param u16CellSize Cell size.
+ * @param u16BlkSize  Block size.
+ * @param blkStepX Block step in X dimension.
+ * @param blkStepY Block step in Y dimension.
+ * @param u32HogSize Output HOG size (length * sizeof(u32)).
+ * @return CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U16 u16Width, CVI_U16 u16Height, CVI_U8 u8BinSize,
+                             CVI_U16 u16CellSize, CVI_U16 u16BlkSize, CVI_U16 blkStepX,
+                             CVI_U16 blkStepY, CVI_U32 *u32HogSize);
+
+/**
  * @brief Calculate the HOG of an image. The gradient calculation uses Sobel gradient.
  *
  * @param pIveHandle Ive instance handler.
@@ -250,7 +267,6 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
  * @param pstDstV Output vertical gradient result.
  * @param pstDstMag Output L2 Norm magnitude result from Gradient V, H.
  * @param pstDstAng Output atan2 angular result from Gradient V / Gradient H.
- * @param pstDstBlk Output cell average result. Cell size = Size of the HOG block.
  * @param pstDstHist HOG histogram. result.
  * @param pstHogCtrl HOG control parameter.
  * @param bInstant DUmmy variable.
@@ -258,8 +274,8 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
  */
 CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDstH,
                     IVE_DST_IMAGE_S *pstDstV, IVE_DST_IMAGE_S *pstDstMag,
-                    IVE_DST_IMAGE_S *pstDstAng, IVE_DST_IMAGE_S *pstDstBlk,
-                    IVE_DST_MEM_INFO_S *pstDstHist, IVE_HOG_CTRL_S *pstHogCtrl, bool bInstant);
+                    IVE_DST_IMAGE_S *pstDstAng, IVE_DST_MEM_INFO_S *pstDstHist,
+                    IVE_HOG_CTRL_S *pstHogCtrl, bool bInstant);
 
 /**
  * @brief Calculate the Magnitude and Nagular result from given horizontal and vertical gradients.

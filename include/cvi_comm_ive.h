@@ -151,6 +151,9 @@ typedef struct IVE_NORM_GRAD_CTRL {
 typedef struct IVE_HOG_CTRL {
   CVI_U8 bin_num;
   CVI_U32 cell_size;
+  CVI_U16 block_size;
+  CVI_U16 step_x;
+  CVI_U16 step_y;
 } IVE_HOG_CTRL_S;
 
 typedef enum IVE_MAG_AND_ANG_OUT_CTRL {
