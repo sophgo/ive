@@ -392,6 +392,32 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
                        IVE_THRESH_CTRL_S *ctrl, bool bInstant);
 
 /**
+ * @brief Threshold an S16 image with high low threshold to U8 or S8.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc Input S16 image.
+ * @param pstDst Output U8/ S8 image.
+ * @param pstThrS16Ctrl S16 threshold control parameter.
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Thresh_S16(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                           IVE_THRESH_S16_CTRL_S *pstThrS16Ctrl, bool bInstant);
+
+/**
+ * @brief Threshold an U16 image with high low threshold to U8.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc Input U16 image.
+ * @param pstDst Output U8 image.
+ * @param pstThrU16Ctrl U16 threshold control parameter.
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Thresh_U16(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                           IVE_THRESH_U16_CTRL_S *pstThrU16Ctrl, bool bInstant);
+
+/**
  * @brief XOR two images and output the result.
  *
  * @param pIveHandle Ive instance handler.

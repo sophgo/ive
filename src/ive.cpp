@@ -1184,6 +1184,79 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   return ret;
 }
 
+CVI_S32 CVI_IVE_Thresh_S16(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                           IVE_THRESH_S16_CTRL_S *pstThrS16Ctrl, bool bInstant) {
+#ifdef __ARM_ARCH
+  if (pstSrc->enType != IVE_IMAGE_TYPE_S16C1) {
+    std::cerr << "Input only accepts S16C1 image format." << std::endl;
+    return CVI_FAILURE;
+  }
+  CVI_IVE_BufRequest(pIveHandle, pstSrc);
+  CVI_IVE_BufRequest(pIveHandle, pstDst);
+  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+  u64 data_size = cpp_src->m_tg.stride.n / getFmtSize(cpp_src->m_tg.fmt);
+  if (pstThrS16Ctrl->enMode == IVE_THRESH_S16_MODE_S16_TO_S8_MIN_MID_MAX ||
+      pstThrS16Ctrl->enMode == IVE_THRESH_S16_MODE_S16_TO_S8_MIN_ORI_MAX) {
+    if (pstDst->enType != IVE_IMAGE_TYPE_S8C1) {
+      std::cerr << "Output only accepts S8C1 image format." << std::endl;
+      return CVI_FAILURE;
+    }
+    bool is_mmm =
+        (pstThrS16Ctrl->enMode == IVE_THRESH_S16_MODE_S16_TO_S8_MIN_MID_MAX) ? true : false;
+    neonS162S8ThresholdLH((s16 *)pstSrc->pu8VirAddr[0], (s8 *)pstDst->pu8VirAddr[0], data_size,
+                          pstThrS16Ctrl->s16LowThr, pstThrS16Ctrl->s16HighThr,
+                          pstThrS16Ctrl->un8MinVal.s8Val, pstThrS16Ctrl->un8MidVal.s8Val,
+                          pstThrS16Ctrl->un8MaxVal.s8Val, is_mmm);
+  } else {
+    if (pstDst->enType != IVE_IMAGE_TYPE_U8C1) {
+      std::cerr << "Output only accepts U8C1 image format." << std::endl;
+      return CVI_FAILURE;
+    }
+    bool is_mmm =
+        (pstThrS16Ctrl->enMode == IVE_THRESH_S16_MODE_S16_TO_U8_MIN_MID_MAX) ? true : false;
+    neonS162U8ThresholdLH((s16 *)pstSrc->pu8VirAddr[0], (u8 *)pstDst->pu8VirAddr[0], data_size,
+                          pstThrS16Ctrl->s16LowThr, pstThrS16Ctrl->s16HighThr,
+                          pstThrS16Ctrl->un8MinVal.u8Val, pstThrS16Ctrl->un8MidVal.u8Val,
+                          pstThrS16Ctrl->un8MaxVal.u8Val, is_mmm);
+  }
+  CVI_IVE_BufFlush(pIveHandle, pstSrc);
+  CVI_IVE_BufFlush(pIveHandle, pstDst);
+  return CVI_SUCCESS;
+#else
+  std::cerr << "Cmodel does not support yet." << std::endl;
+  return CVI_NOT_SUPPORTED;
+#endif
+}
+
+CVI_S32 CVI_IVE_Thresh_U16(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                           IVE_THRESH_U16_CTRL_S *pstThrU16Ctrl, bool bInstant) {
+#ifdef __ARM_ARCH
+  if (pstSrc->enType != IVE_IMAGE_TYPE_U16C1) {
+    std::cerr << "Input only accepts U16C1 image format." << std::endl;
+    return CVI_FAILURE;
+  }
+  if (pstDst->enType != IVE_IMAGE_TYPE_U8C1) {
+    std::cerr << "Output only accepts U8C1 image format." << std::endl;
+    return CVI_FAILURE;
+  }
+  CVI_IVE_BufRequest(pIveHandle, pstSrc);
+  CVI_IVE_BufRequest(pIveHandle, pstDst);
+  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+  u64 data_size = cpp_src->m_tg.stride.n / getFmtSize(cpp_src->m_tg.fmt);
+  bool is_mmm = (pstThrU16Ctrl->enMode == IVE_THRESH_U16_MODE_U16_TO_U8_MIN_MID_MAX) ? true : false;
+  neonU162U8ThresholdLH((u16 *)pstSrc->pu8VirAddr[0], (u8 *)pstDst->pu8VirAddr[0], data_size,
+                        pstThrU16Ctrl->u16LowThr, pstThrU16Ctrl->u16HighThr,
+                        pstThrU16Ctrl->u8MinVal, pstThrU16Ctrl->u8MidVal, pstThrU16Ctrl->u8MaxVal,
+                        is_mmm);
+  CVI_IVE_BufFlush(pIveHandle, pstSrc);
+  CVI_IVE_BufFlush(pIveHandle, pstDst);
+  return CVI_SUCCESS;
+#else
+  std::cerr << "Cmodel does not support yet." << std::endl;
+  return CVI_NOT_SUPPORTED;
+#endif
+}
+
 CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_IMAGE_S *pstDst, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);

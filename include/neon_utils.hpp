@@ -307,3 +307,195 @@ inline void neonBF162F32(u16 *src_ptr, float *dst_ptr, const u64 arr_size) {
     dst_ptr[i] = convert_bf16_fp32(src_ptr[i]);
   }
 }
+
+inline void neonU162U8Threshold(u16 *src_ptr, u8 *dst_ptr, const u64 arr_size, const u16 threshold,
+                                const u8 min, const u8 max) {
+  u64 neon_turn = arr_size / 8;
+  uint16x8_t vu16thresh = vdupq_n_u16(threshold);
+  uint16x8_t v_u16min = vdupq_n_u16(min);
+  uint16x8_t v_u16max = vdupq_n_u16(max);
+  u16 *src_ptr1 = src_ptr;
+  u8 *dst_ptr1 = dst_ptr;
+  for (u64 i = 0; i < neon_turn; i++) {
+    uint16x8_t v16 = vld1q_u16(src_ptr1);
+    uint16x8_t mask = vcltq_u16(v16, vu16thresh);
+    v16 = vbslq_u16(mask, v_u16min, v_u16max);
+    vst1_u8(dst_ptr1, vqmovn_u16(v16));
+    src_ptr1 += 8;
+    dst_ptr1 += 8;
+  }
+  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+    u16 val = src_ptr[i] >= threshold ? max : min;
+    if (val > 255) val = 255;
+    dst_ptr[i] = val;
+  }
+}
+
+inline void neonS162S8Threshold(s16 *src_ptr, s8 *dst_ptr, const u64 arr_size, const s16 threshold,
+                                const s8 min, const s8 max) {
+  u64 neon_turn = arr_size / 8;
+  int16x8_t vs16thresh = vdupq_n_s16(threshold);
+  int16x8_t v_s16min = vdupq_n_s16(min);
+  int16x8_t v_s16max = vdupq_n_s16(max);
+  s16 *src_ptr1 = src_ptr;
+  s8 *dst_ptr1 = dst_ptr;
+  for (u64 i = 0; i < neon_turn; i++) {
+    int16x8_t v16 = vld1q_s16(src_ptr1);
+    uint16x8_t mask = vcltq_s16(v16, vs16thresh);
+    v16 = vbslq_s16(mask, v_s16min, v_s16max);
+    vst1_s8(dst_ptr1, vqmovn_s16(v16));
+    src_ptr1 += 8;
+    dst_ptr1 += 8;
+  }
+  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+    s16 val = src_ptr[i] >= threshold ? max : min;
+    if (val > 127) val = 127;
+    if (val < -128) val = -128;
+    dst_ptr[i] = val;
+  }
+}
+
+inline void neonU162U8ThresholdLH(u16 *src_ptr, u8 *dst_ptr, const u64 arr_size,
+                                  const u16 threshold_low, const u16 threshold_high, const u8 min,
+                                  const u8 mid, const u8 max, bool is_mmm = false) {
+  u64 neon_turn = arr_size / 8;
+  uint16x8_t vu16threshLow = vdupq_n_u16(threshold_low);
+  uint16x8_t vu16threshHigh = vdupq_n_u16(threshold_high);
+  uint16x8_t v_u16min = vdupq_n_u16(min);
+  uint16x8_t v_u16mid = vdupq_n_u16(mid);
+  uint16x8_t v_u16max = vdupq_n_u16(max);
+  u16 *src_ptr1 = src_ptr;
+  u8 *dst_ptr1 = dst_ptr;
+  if (is_mmm) {
+    for (u64 i = 0; i < neon_turn; i++) {
+      uint16x8_t v16 = vld1q_u16(src_ptr1);
+      uint16x8_t mask_low = vcltq_u16(v16, vu16threshLow);
+      uint16x8_t mask_high = vcgeq_u16(v16, vu16threshHigh);
+      v16 = vbslq_u16(mask_low, v_u16min, v_u16mid);
+      v16 = vbslq_u16(mask_high, v_u16max, v16);
+      vst1_u8(dst_ptr1, vqmovn_u16(v16));
+      src_ptr1 += 8;
+      dst_ptr1 += 8;
+    }
+    for (u64 i = neon_turn * 8; i < arr_size; i++) {
+      u16 val = src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : mid);
+      if (val > 255) val = 255;
+      dst_ptr[i] = val;
+    }
+  } else {
+    for (u64 i = 0; i < neon_turn; i++) {
+      uint16x8_t v16 = vld1q_u16(src_ptr1);
+      uint16x8_t mask_low = vcltq_u16(v16, vu16threshLow);
+      uint16x8_t mask_high = vcgeq_u16(v16, vu16threshHigh);
+      v16 = vbslq_u16(mask_low, v_u16min, v16);
+      v16 = vbslq_u16(mask_high, v_u16max, v16);
+      vst1_u8(dst_ptr1, vqmovn_u16(v16));
+      src_ptr1 += 8;
+      dst_ptr1 += 8;
+    }
+    for (u64 i = neon_turn * 8; i < arr_size; i++) {
+      u16 val =
+          src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : src_ptr[i]);
+      if (val > 255) val = 255;
+      dst_ptr[i] = val;
+    }
+  }
+}
+
+inline void neonS162S8ThresholdLH(s16 *src_ptr, s8 *dst_ptr, const u64 arr_size,
+                                  const s16 threshold_low, const s16 threshold_high, const s8 min,
+                                  const s8 mid, const s8 max, bool is_mmm = false) {
+  u64 neon_turn = arr_size / 8;
+  int16x8_t vs16threshLow = vdupq_n_s16(threshold_low);
+  int16x8_t vs16threshHigh = vdupq_n_s16(threshold_high);
+  int16x8_t v_s16min = vdupq_n_s16(min);
+  int16x8_t v_s16mid = vdupq_n_s16(mid);
+  int16x8_t v_s16max = vdupq_n_s16(max);
+  s16 *src_ptr1 = src_ptr;
+  s8 *dst_ptr1 = dst_ptr;
+  if (is_mmm) {
+    for (u64 i = 0; i < neon_turn; i++) {
+      int16x8_t v16 = vld1q_s16(src_ptr1);
+      uint16x8_t mask_low = vcltq_s16(v16, vs16threshLow);
+      uint16x8_t mask_high = vcgeq_s16(v16, vs16threshHigh);
+      v16 = vbslq_s16(mask_low, v_s16min, v_s16mid);
+      v16 = vbslq_s16(mask_high, v_s16max, v16);
+      vst1_s8(dst_ptr1, vqmovn_s16(v16));
+      src_ptr1 += 8;
+      dst_ptr1 += 8;
+    }
+    for (u64 i = neon_turn * 8; i < arr_size; i++) {
+      s16 val = src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : mid);
+      if (val > 127) val = 127;
+      if (val < -128) val = -128;
+      dst_ptr[i] = val;
+    }
+  } else {
+    for (u64 i = 0; i < neon_turn; i++) {
+      int16x8_t v16 = vld1q_s16(src_ptr1);
+      uint16x8_t mask_low = vcltq_s16(v16, vs16threshLow);
+      uint16x8_t mask_high = vcgeq_s16(v16, vs16threshHigh);
+      v16 = vbslq_s16(mask_low, v_s16min, v16);
+      v16 = vbslq_s16(mask_high, v_s16max, v16);
+      vst1_s8(dst_ptr1, vqmovn_s16(v16));
+      src_ptr1 += 8;
+      dst_ptr1 += 8;
+    }
+    for (u64 i = neon_turn * 8; i < arr_size; i++) {
+      s16 val =
+          src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : src_ptr[i]);
+      if (val > 127) val = 127;
+      if (val < -128) val = -128;
+      dst_ptr[i] = val;
+    }
+  }
+}
+
+inline void neonS162U8ThresholdLH(s16 *src_ptr, u8 *dst_ptr, const u64 arr_size,
+                                  const s16 threshold_low, const s16 threshold_high, const u8 min,
+                                  const u8 mid, const u8 max, bool is_mmm = false) {
+  u64 neon_turn = arr_size / 8;
+  int16x8_t vs16threshLow = vdupq_n_s16(threshold_low);
+  int16x8_t vs16threshHigh = vdupq_n_s16(threshold_high);
+  int16x8_t v_s16min = vdupq_n_s16(min);
+  int16x8_t v_s16mid = vdupq_n_s16(mid);
+  int16x8_t v_s16max = vdupq_n_s16(max);
+  s16 *src_ptr1 = src_ptr;
+  u8 *dst_ptr1 = dst_ptr;
+  if (is_mmm) {
+    for (u64 i = 0; i < neon_turn; i++) {
+      int16x8_t v16 = vld1q_s16(src_ptr1);
+      uint16x8_t mask_low = vcltq_s16(v16, vs16threshLow);
+      uint16x8_t mask_high = vcgeq_s16(v16, vs16threshHigh);
+      v16 = vbslq_s16(mask_low, v_s16min, v_s16mid);
+      v16 = vbslq_s16(mask_high, v_s16max, v16);
+      vst1_u8(dst_ptr1, vqmovn_u16(vreinterpretq_u16_s16(v16)));
+      src_ptr1 += 8;
+      dst_ptr1 += 8;
+    }
+    for (u64 i = neon_turn * 8; i < arr_size; i++) {
+      s16 val = src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : mid);
+      if (val > 255) val = 255;
+      if (val < 0) val = 0;
+      dst_ptr[i] = val;
+    }
+  } else {
+    for (u64 i = 0; i < neon_turn; i++) {
+      int16x8_t v16 = vld1q_s16(src_ptr1);
+      uint16x8_t mask_low = vcltq_s16(v16, vs16threshLow);
+      uint16x8_t mask_high = vcgeq_s16(v16, vs16threshHigh);
+      v16 = vbslq_s16(mask_low, v_s16min, v16);
+      v16 = vbslq_s16(mask_high, v_s16max, v16);
+      vst1_u8(dst_ptr1, vqmovn_u16(vreinterpretq_u16_s16(v16)));
+      src_ptr1 += 8;
+      dst_ptr1 += 8;
+    }
+    for (u64 i = neon_turn * 8; i < arr_size; i++) {
+      s16 val =
+          src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : src_ptr[i]);
+      if (val > 255) val = 255;
+      if (val < 0) val = 0;
+      dst_ptr[i] = val;
+    }
+  }
+}
