@@ -6,12 +6,13 @@ set(CVI_IVE_MAJOR_VERSION "${CVI_IVE_SO_VERSION}.0.5")
 # Options
 option(ENABLE_SYSTRACE "Use systrace" OFF)
 
+# Check if tracer exists.
+if(EXISTS "${CMAKE_SOURCE_DIR}/3rdparty/tracer")
+  message("Tracer folder found.")
+else()
+  message(FATAL_ERROR "Tracer folder not found. Git clone to 3rdparty at http://10.34.33.3:8480/sys_app/tracer.")
+endif()
 if (ENABLE_SYSTRACE)
-  if(EXISTS "${CMAKE_SOURCE_DIR}/3rdparty/tracer")
-    message("Tracer folder found.")
-  else()
-    message(FATAL_ERROR "Tracer folder not found. Git clone to 3rdparty at http://10.34.33.3:8480/sys_app/tracer.")
-  endif()
   add_definitions(-DENABLE_TRACE)
 endif()
 
