@@ -6,7 +6,13 @@ This is an Image Processing library using TPU on CVI1835.
 
 ## How to build
 
-You'll need Middleware headers and bmtap2 library to build this project. You can let CMake get it for you from FTP server with the following command.
+### Requirements
+
+1. Middleware headers
+2. Bmtap2 cmodel & soc prebuilt
+3. Tracer lib
+
+1 & 2 will be automatically downloaded from the FTP server when processing CMake. Tracer lib can be get from GitLab at ``http://10.34.33.3:8480/sys_app/tracer``. Put the Tracer lib under the ``3rdparty`` folder.
 
 ```
 $ mkdir build
@@ -45,24 +51,35 @@ $make install
 
 1. Add
 2. And
-3. Filter
-4. Morphology- Binary dilate/ erode
-5. Or
-6. Sobel X/ Y Gradient
-7. Sub
+3. Block
+4. Copy
+5. Filter
+6. HOG
+7. Morphology- Binary dilate/ erode
+8. Normalize gradient
+9. Or
+10. SAD
+11. Sigmoid
+12. Sobel X/ Y Gradient
+13. Sub
    1. a - b
    2. abs(a - b)
-8. Threshold
-   1. Binary threshold w/o high low value
-   2. Slope
-9. Xor
+14. Threshold
+   3. Binary threshold w/o high low value
+   4. Slope
+15. Xor
+
+## Currently supported NEON operations
+
+1. U16 related image conversion.
+2. U16, S16 to U8, S8 threshold.
 
 ## BMKernel known issues
 
 1. Currently ``memcpy`` is used to put data into ``IVE_IMAGE_S``.
 2. Currently TPU API does not support TL(BF16) to TG(FP32).
 3. Some required API is missing,
-   1. auto channel expansion
+   1. ~~auto channel expansion~~
    2. div
 4. Middleware include header ``cvi_type.h`` may miss some ``#define``
 
