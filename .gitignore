@@ -4,4 +4,6 @@ build_soc
 install
 install_soc
 prebuilt
+tmp
+ivesdk-*.tar.gz
 *.o

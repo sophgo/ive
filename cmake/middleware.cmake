@@ -24,5 +24,6 @@ endif()
 include_directories(
     ${LIBDEP_MIDDLEWARE_DIR}/include/
 )
-
-install(DIRECTORY ${LIBDEP_MIDDLEWARE_DIR}/include/ DESTINATION ${CMAKE_INSTALL_PREFIX}/include/)
+if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "SDKRelease")
+  install(DIRECTORY ${LIBDEP_MIDDLEWARE_DIR}/include/ DESTINATION ${CMAKE_INSTALL_PREFIX}/include/middleware)
+endif()
