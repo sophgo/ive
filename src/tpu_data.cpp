@@ -98,7 +98,11 @@ int CviImg::AllocateDevice(bmctx_t *ctx) {
     this->m_bmmem = bmmem_device_alloc(*ctx, &bms);
     this->m_tg.base_reg_index = 0;
     this->m_tg.start_address = bmmem_device_addr(*ctx, this->m_bmmem);
-    this->m_tg.stride = bmk1880v2_bf16_tensor_tgmem_default_stride(m_tg.shape, m_tg.fmt);
+    // FIXME: bmk1880v2_bf16_tensor_tgmem_default_stride is bugged.
+    // this->m_tg.stride = bmk1880v2_bf16_tensor_tgmem_default_stride(m_tg.shape, m_tg.fmt);
+    this->m_tg.stride.h = m_tg.shape.w * getFmtSize(m_tg.fmt);
+    this->m_tg.stride.c = m_tg.shape.h * this->m_tg.stride.h;
+    this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
   }
   m_vaddr = (uint8_t *)bmmem_device_v_addr(*ctx, this->m_bmmem);
   m_paddr = bmmem_device_addr(*ctx, this->m_bmmem);
