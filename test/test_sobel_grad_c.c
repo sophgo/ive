@@ -130,7 +130,7 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE
   u16 *dstMag_ptr = (u16 *)dstMag->pu8VirAddr[0];
   u16 *dstAng_ptr = (u16 *)dstAng->pu8VirAddr[0];
   float mul_val = 180.f / M_PI;
-  float sqrt_epsilon = 0.01;
+  float sqrt_epsilon = 2;
   float ang_abs_limit = 1;
   printf("Check Mag:\n");
   for (size_t i = 0; i < channels * src->u16Width * src->u16Height; i++) {
@@ -138,10 +138,10 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE
     float dstV_f = convert_bf16_fp32(dstV_ptr[i]);
     float dstMag_f = convert_bf16_fp32(dstMag_ptr[i]);
     float sqrt_res = sqrtf(dstV_f * dstV_f + dstH_f * dstH_f);
-    float error = fabs(sqrt_res - dstMag_f) / sqrt_res;
+    float error = fabs(sqrt_res - dstMag_f);
     if (error > sqrt_epsilon) {
-      printf("[%lu] sqrt( %f, %f) = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f, dstMag_f,
-             sqrt_res, error);
+      printf("[%lu] sqrt( %f^2 + %f^2) = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f,
+             dstMag_f, sqrt_res, error);
       ret = CVI_FAILURE;
     }
   }
