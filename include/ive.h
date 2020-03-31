@@ -190,7 +190,7 @@ CVI_S32 CVI_IVE_And(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 
 /**
  * @brief Calculate the average of the sliced cells of an image. The output image size will be \
- *        (input_w / cell_size, output_h / cell_size)
+ *        (input_w / u32CellSize, output_h / u32CellSize)
  *
  * @param pIveHandle Ive instance handler.
  * @param pstSrc Input image. Only accepts U8C1.
@@ -236,7 +236,7 @@ CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
  * @param pstDst Output result.
  * @param pstFltCtrl Filter control parameter.
  * @param bInstant Dummy variable.
- * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
+ * @return CVI_S32 Return CVI_SUCCESS if succeed.
  */
 CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_FILTER_CTRL_S *pstFltCtrl, bool bInstant);
@@ -249,14 +249,14 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
  * @param u8BinSize Bin size.
  * @param u16CellSize Cell size.
  * @param u16BlkSize  Block size.
- * @param blkStepX Block step in X dimension.
- * @param blkStepY Block step in Y dimension.
+ * @param u16BlkStepX Block step in X dimension.
+ * @param u16BlkStepY Block step in Y dimension.
  * @param u32HogSize Output HOG size (length * sizeof(u32)).
  * @return CVI_S32 Return CVI_SUCCESS if succeed.
  */
 CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U16 u16Width, CVI_U16 u16Height, CVI_U8 u8BinSize,
-                             CVI_U16 u16CellSize, CVI_U16 u16BlkSize, CVI_U16 blkStepX,
-                             CVI_U16 blkStepY, CVI_U32 *u32HogSize);
+                             CVI_U16 u16CellSize, CVI_U16 u16BlkSize, CVI_U16 u16BlkStepX,
+                             CVI_U16 u16BlkStepY, CVI_U32 *u32HogSize);
 
 /**
  * @brief Calculate the HOG of an image. The gradient calculation uses Sobel gradient.

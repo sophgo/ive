@@ -64,11 +64,11 @@ int main(int argc, char **argv) {
 
   printf("Run TPU HOG.\n");
   IVE_HOG_CTRL_S pstHogCtrl;
-  pstHogCtrl.bin_num = BIN_NUM;
-  pstHogCtrl.cell_size = CELL_SIZE;
-  pstHogCtrl.block_size = BLOCK_SIZE;
-  pstHogCtrl.step_x = STEP_X;
-  pstHogCtrl.step_y = STEP_Y;
+  pstHogCtrl.u8BinSize = BIN_NUM;
+  pstHogCtrl.u32CellSize = CELL_SIZE;
+  pstHogCtrl.u16BlkSize = BLOCK_SIZE;
+  pstHogCtrl.u16BlkStepX = STEP_X;
+  pstHogCtrl.u16BlkStepY = STEP_Y;
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < total_run; i++) {

@@ -68,8 +68,8 @@ int main(int argc, char **argv) {
 
   printf("Run TPU Block.\n");
   IVE_BLOCK_CTRL_S iveBlkCtrl;
-  iveBlkCtrl.bin_num = 2;
-  iveBlkCtrl.cell_size = CELL_SZ;
+  iveBlkCtrl.f32BinSize = 2;
+  iveBlkCtrl.u32CellSize = CELL_SZ;
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < total_run; i++) {
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
   CVI_IVE_BufRequest(handle, &src);
   CVI_IVE_BufRequest(handle, &dst);
   CVI_IVE_BufRequest(handle, &dst_fp32);
-  int ret = cpu_ref(res_w, res_h, iveBlkCtrl.bin_num, &src, &dst, &dst_fp32);
+  int ret = cpu_ref(res_w, res_h, iveBlkCtrl.f32BinSize, &src, &dst, &dst_fp32);
 
   if (total_run == 1) {
     printf("TPU avg time %lu\n", elapsed_tpu);

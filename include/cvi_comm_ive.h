@@ -116,8 +116,8 @@ typedef struct IVE_ADD_CTRL_S {
 } IVE_ADD_CTRL_S;
 
 typedef struct IVE_BLOCK_CTRL {
-  CVI_FLOAT bin_num;
-  CVI_U32 cell_size;
+  CVI_FLOAT f32BinSize;
+  CVI_U32 u32CellSize;
 } IVE_BLOCK_CTRL_S;
 
 typedef struct IVE_ELEMENT_STRUCTURE_CTRL {
@@ -128,7 +128,7 @@ typedef IVE_ELEMENT_STRUCTURE_CTRL_S IVE_DILATE_CTRL_S;
 typedef IVE_ELEMENT_STRUCTURE_CTRL_S IVE_ERODE_CTRL_S;
 
 typedef struct IVE_FILTER_CTRL {
-  CVI_S8 maskSize;
+  CVI_U8 u8MaskSize;
   CVI_S8 as8Mask[25];
   CVI_U32 u32Norm;
 } IVE_FILTER_CTRL_S;
@@ -149,11 +149,11 @@ typedef struct IVE_NORM_GRAD_CTRL {
 } IVE_NORM_GRAD_CTRL_S;
 
 typedef struct IVE_HOG_CTRL {
-  CVI_U8 bin_num;
-  CVI_U32 cell_size;
-  CVI_U16 block_size;
-  CVI_U16 step_x;
-  CVI_U16 step_y;
+  CVI_U8 u8BinSize;
+  CVI_U32 u32CellSize;
+  CVI_U16 u16BlkSize;
+  CVI_U16 u16BlkStepX;
+  CVI_U16 u16BlkStepY;
 } IVE_HOG_CTRL_S;
 
 typedef enum IVE_MAG_AND_ANG_OUT_CTRL {
