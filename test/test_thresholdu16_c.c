@@ -135,6 +135,7 @@ int main(int argc, char** argv) {
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);
+  CVI_SYS_FreeI(handle, &src_u16);
   CVI_SYS_FreeI(handle, &dst_mmm);
   CVI_SYS_FreeI(handle, &dst_mom);
   CVI_SYS_FreeI(handle, &dst_cpu_mmm);

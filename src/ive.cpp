@@ -357,13 +357,7 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
       float *dst_ptr = (float *)cpp_dst->GetVAddr();
       u64 img_size = cpp_src->GetImgSize() / 2;
-#ifdef __ARM_ARCH
       neonBF162F32(src_ptr, dst_ptr, img_size);
-#else
-      for (u64 i = 0; i < img_size; i++) {
-        dst_ptr[i] = convert_bf16_fp32(src_ptr[i]);
-      }
-#endif
       cpp_src->Flush(&handle_ctx->ctx);
       cpp_dst->Flush(&handle_ctx->ctx);
     } else if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_U16) {
@@ -373,27 +367,8 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       u16 *dst_ptr = (u16 *)cpp_dst->GetVAddr();
       float min = std::numeric_limits<float>::max(), max = std::numeric_limits<float>::min();
       u64 img_size = cpp_src->m_tg.shape.c * cpp_src->m_tg.shape.h * cpp_src->m_tg.shape.w;
-#ifdef __ARM_ARCH
       neonBF16FindMinMax(src_ptr, img_size, &min, &max);
       neonBF162U16Normalize(src_ptr, dst_ptr, img_size, min, max);
-#else
-      u16 *tmp_arr = new u16[cpp_src->GetImgSize()];
-      for (u64 i = 0; i < img_size; i++) {
-        tmp_arr[i] = convert_bf16_fp32(src_ptr[i]);
-        if (tmp_arr[i] < min) {
-          min = tmp_arr[i];
-        }
-        if (tmp_arr[i] > max) {
-          max = tmp_arr[i];
-        }
-      }
-      float multiplier = 65535.f / max - min;
-      int s8_offset = cpp_dst->m_tg.fmt == FMT_U16 ? 0 : 32768;
-      for (u64 i = 0; i < img_size; i++) {
-        dst_ptr[i] = std::round((int)(multiplier * (tmp_arr[i] - min)) - s8_offset);
-      }
-      delete[] tmp_arr;
-#endif
       cpp_src->Flush(&handle_ctx->ctx);
       cpp_dst->Flush(&handle_ctx->ctx);
     } else if (cpp_src->m_tg.fmt == FMT_U16 &&
@@ -404,35 +379,12 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       u8 *dst_ptr = (u8 *)cpp_dst->GetVAddr();
       u16 min = 65535, max = 0;
       u64 img_size = cpp_src->m_tg.shape.c * cpp_src->m_tg.shape.h * cpp_src->m_tg.shape.w;
-#ifdef __ARM_ARCH
       neonU16FindMinMax(src_ptr, img_size, &min, &max);
       if (cpp_dst->m_tg.fmt == FMT_U8) {
         neonU162U8Normalize(src_ptr, dst_ptr, img_size, min, max);
       } else {
         neonU162S8Normalize(src_ptr, (s8 *)dst_ptr, img_size, min, max);
       }
-#else
-      for (u64 i = 0; i < img_size; i++) {
-        u16 tmp = src_ptr[i];
-        if (tmp < min) {
-          min = tmp;
-        }
-        if (tmp > max) {
-          max = tmp;
-        }
-      }
-
-      float multiplier = 255.f / (float)(max - min);
-      if (cpp_dst->m_tg.fmt == FMT_U8) {
-        for (u64 i = 0; i < img_size; i++) {
-          dst_ptr[i] = std::round((u8)(multiplier * (src_ptr[i] - min)));
-        }
-      } else {
-        for (u64 i = 0; i < img_size; i++) {
-          ((s8 *)dst_ptr)[i] = std::round((u8)(multiplier * (src_ptr[i] - min)) - 128);
-        }
-      }
-#endif
       cpp_src->Flush(&handle_ctx->ctx);
       cpp_dst->Flush(&handle_ctx->ctx);
     } else if (cpp_src->m_tg.fmt == FMT_BF16 &&
@@ -443,19 +395,7 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       u8 *dst_ptr = (u8 *)cpp_dst->GetVAddr();
       float min = std::numeric_limits<float>::max(), max = std::numeric_limits<float>::min();
       u64 img_size = cpp_src->m_tg.shape.c * cpp_src->m_tg.shape.h * cpp_src->m_tg.shape.w;
-#ifdef __ARM_ARCH
       neonBF16FindMinMax(src_ptr, img_size, &min, &max);
-#else
-      for (u64 i = 0; i < img_size; i++) {
-        float tmp = convert_bf16_fp32(src_ptr[i]);
-        if (tmp < min) {
-          min = tmp;
-        }
-        if (tmp > max) {
-          max = tmp;
-        }
-      }
-#endif
       handle_ctx->t_h.t_norm.setMinMax(min, max);
       handle_ctx->t_h.t_norm.setOutputFMT(cpp_dst->m_tg.fmt);
       handle_ctx->t_h.t_norm.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
@@ -472,13 +412,7 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
       float *dst_ptr = (float *)cpp_dst->GetVAddr();
       u64 img_size = cpp_src->GetImgSize() / 2;
-#ifdef __ARM_ARCH
       neonBF162F32(src_ptr, dst_ptr, img_size);
-#else
-      for (u64 i = 0; i < img_size; i++) {
-        dst_ptr[i] = convert_bf16_fp32(src_ptr[i]);
-      }
-#endif
       cpp_src->Flush(&handle_ctx->ctx);
       cpp_dst->Flush(&handle_ctx->ctx);
     } else if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_U16) {
@@ -487,16 +421,7 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
       u16 *dst_ptr = (u16 *)cpp_dst->GetVAddr();
       u64 img_size = cpp_src->GetImgSize() / 2;
-#ifdef __ARM_ARCH
       neonBF162U16(src_ptr, dst_ptr, img_size);
-#else
-      for (u64 i = 0; i < img_size; i++) {
-        int val = std::round(convert_bf16_fp32(src_ptr[i]));
-        if (val > 65535) val = 65535;
-        if (val < 0) val = 0;
-        dst_ptr[i] = val;
-      }
-#endif
       cpp_src->Flush(&handle_ctx->ctx);
       cpp_dst->Flush(&handle_ctx->ctx);
     } else if ((cpp_src->m_tg.fmt == FMT_BF16 || cpp_src->m_tg.fmt == FMT_U8 ||
@@ -1197,7 +1122,6 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
 
 CVI_S32 CVI_IVE_Thresh_S16(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                            IVE_THRESH_S16_CTRL_S *pstThrS16Ctrl, bool bInstant) {
-#ifdef __ARM_ARCH
   if (pstSrc->enType != IVE_IMAGE_TYPE_S16C1) {
     std::cerr << "Input only accepts S16C1 image format." << std::endl;
     return CVI_FAILURE;
@@ -1233,15 +1157,10 @@ CVI_S32 CVI_IVE_Thresh_S16(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
   CVI_IVE_BufFlush(pIveHandle, pstDst);
   return CVI_SUCCESS;
-#else
-  std::cerr << "Cmodel does not support yet." << std::endl;
-  return CVI_NOT_SUPPORTED;
-#endif
 }
 
 CVI_S32 CVI_IVE_Thresh_U16(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                            IVE_THRESH_U16_CTRL_S *pstThrU16Ctrl, bool bInstant) {
-#ifdef __ARM_ARCH
   if (pstSrc->enType != IVE_IMAGE_TYPE_U16C1) {
     std::cerr << "Input only accepts U16C1 image format." << std::endl;
     return CVI_FAILURE;
@@ -1262,10 +1181,6 @@ CVI_S32 CVI_IVE_Thresh_U16(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
   CVI_IVE_BufFlush(pIveHandle, pstDst);
   return CVI_SUCCESS;
-#else
-  std::cerr << "Cmodel does not support yet." << std::endl;
-  return CVI_NOT_SUPPORTED;
-#endif
 }
 
 CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,

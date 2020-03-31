@@ -1,4 +1,14 @@
+#pragma once
+#ifdef __ARM_ARCH
 #include <arm_neon.h>
+#else
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#include "neon2sse/NEON_2_SSE.h"
+#pragma clang diagnostic pop
+#endif
+#include <cmath>
 #include <limits>
 
 union neonfloatshort {
@@ -32,6 +42,17 @@ __attribute__((always_inline)) inline int32x4_t vcvtq_s32_f32_r(float32x4_t v4) 
       vorrq_u32(vandq_u32(vreinterpretq_u32_f32(v4), mask4), vreinterpretq_u32_f32(half4)));
   return vcvtq_s32_f32(vaddq_f32(v4, w4));
 }
+
+#ifndef __ARM_ARCH
+#include <immintrin.h>
+_NEON2SSESTORAGE float32x4_t vfmaq_f32(float32x4_t a, float32x4_t b,
+                                       float32x4_t c);  // VMLA.F32 q0,q0,q0
+_NEON2SSE_INLINE float32x4_t vfmaq_f32(float32x4_t a, float32x4_t b,
+                                       float32x4_t c)  // VMLA.F32 q0,q0,q0
+{
+  return _mm_fmadd_ps(a, b, c);
+}
+#endif
 
 inline void neonU16FindMinMax(u16 *src_ptr, const u64 src_size, u16 *min, u16 *max) {
   u64 neon_turn = src_size / 8;

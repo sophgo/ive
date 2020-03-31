@@ -11,10 +11,8 @@
 #include <limits.h>
 #include <string.h>
 #include <iostream>
-#include <vector>
-#ifdef __ARM_ARCH
 #include <neon_utils.hpp>
-#endif
+#include <vector>
 
 #define MULTIPLIER_ONLY_PACKED_DATA_SIZE 5
 
