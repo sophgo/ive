@@ -336,6 +336,8 @@ static void run_background_subtraction(GstCviIveBackground *cviivebackground, gu
       // And two dilated images
       CVI_IVE_And(bk_handle->handle, &bk_handle->andframe[bk_handle->count],
                   &bk_handle->andframe[1 - bk_handle->count], &bk_handle->dst, 0);
+      CVI_IVE_And(bk_handle->handle, &bk_handle->src[bk_handle->count], &bk_handle->dst,
+                  &bk_handle->dst, 0);
       CVI_IVE_BufRequest(bk_handle->handle, &bk_handle->dst);
       memcpy(out_buf, bk_handle->dst.pu8VirAddr[0], total_sz);
     }
