@@ -75,13 +75,12 @@ enum
 /* pad templates */
 
 /* FIXME: add/remove formats you can handle */
-// FIXME: Support GRAY8 after HW aupports color conversion.
 #define VIDEO_SRC_CAPS \
     GST_VIDEO_CAPS_MAKE("{ I420 }")
 
 /* FIXME: add/remove formats you can handle */
 #define VIDEO_SINK_CAPS \
-    GST_VIDEO_CAPS_MAKE("{ GRAY8 }")
+    GST_VIDEO_CAPS_MAKE("{ I420 }")
 
 static GstCaps *gst_cvi_ive_background_transform_caps(GstBaseTransform * btrans,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter)
@@ -354,17 +353,41 @@ static GstFlowReturn
 gst_cvi_ive_background_transform_frame (GstVideoFilter * filter, GstVideoFrame * inframe,
     GstVideoFrame * outframe)
 {
-  GstCviIveBackground *cviivebackground = GST_CVI_IVE_BACKGROUND (filter);
-  guchar *in_buf = GST_VIDEO_FRAME_PLANE_DATA (inframe, 0);
-  guchar *out_buf = GST_VIDEO_FRAME_PLANE_DATA (outframe, 0);
-  guchar *out_buf2 = GST_VIDEO_FRAME_PLANE_DATA(outframe, 1);
-  guchar *out_buf3 = GST_VIDEO_FRAME_PLANE_DATA(outframe, 2);
-  int width_s_u = GST_VIDEO_FRAME_PLANE_STRIDE(outframe, 1);
-  int width_s_v = GST_VIDEO_FRAME_PLANE_STRIDE(outframe, 2);
-  int height = GST_VIDEO_FRAME_HEIGHT(outframe);
-  memset(out_buf2, 0, sizeof(width_s_u * height));
-  memset(out_buf3, 0, sizeof(width_s_v * height));
-  run_background_subtraction(cviivebackground, in_buf, out_buf);
+  int height_in = GST_VIDEO_FRAME_HEIGHT(inframe);
+  int height_out = GST_VIDEO_FRAME_HEIGHT(outframe);
+  GstCviIveBackground *cviivebackground = GST_CVI_IVE_BACKGROUND(filter);
+  if (height_in == height_out) {
+    guchar *in_buf = GST_VIDEO_FRAME_PLANE_DATA(inframe, 0);
+    guchar *out_buf = GST_VIDEO_FRAME_PLANE_DATA(outframe, 0);
+    for (int i = 1; i < 3; i++) {
+      guchar *in_frame = GST_VIDEO_FRAME_PLANE_DATA(inframe, i);
+      guchar *out_frame = GST_VIDEO_FRAME_PLANE_DATA(outframe, i);
+      int width_s = GST_VIDEO_FRAME_PLANE_STRIDE(outframe, i);
+      int height = GST_VIDEO_FRAME_COMP_HEIGHT(outframe, i);
+      memcpy(out_frame, in_frame, width_s * height);
+    }
+    run_background_subtraction(cviivebackground, in_buf, out_buf);
+  } else if (height_in * 2 == height_out) {
+    guchar *in_buf = GST_VIDEO_FRAME_PLANE_DATA(inframe, 0);
+    guchar *out_buf = GST_VIDEO_FRAME_PLANE_DATA(outframe, 0);
+    for (int i = 1; i < 3; i++) {
+      guchar *in_frame = GST_VIDEO_FRAME_PLANE_DATA(inframe, i);
+      guchar *out_frame = GST_VIDEO_FRAME_PLANE_DATA(outframe, i);
+      int width_s = GST_VIDEO_FRAME_PLANE_STRIDE(outframe, i);
+      int height = GST_VIDEO_FRAME_COMP_HEIGHT(inframe, i);
+      memcpy(out_frame, in_frame, width_s * height);
+    }
+    run_background_subtraction(cviivebackground, in_buf, out_buf);
+    for (int i = 0; i < 3; i++) {
+      guchar *in_frame = GST_VIDEO_FRAME_PLANE_DATA (inframe, i);
+      guchar *out_frame = GST_VIDEO_FRAME_PLANE_DATA (outframe, i);
+      int width_s = GST_VIDEO_FRAME_PLANE_STRIDE(outframe, i);
+      int height = GST_VIDEO_FRAME_COMP_HEIGHT(inframe, i);
+      out_frame += width_s * height;
+      memcpy(out_frame, in_frame, width_s * height);
+    }
+  }
+
 
   GST_DEBUG_OBJECT (cviivebackground, "transform_frame");
 
