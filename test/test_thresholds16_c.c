@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
 #endif
     // write result to disk
     printf("Save to image.\n");
-    CVI_IVE_WriteImage(handle, "test_thresholdu16_c.png", &dst_mmm_u8);
+    CVI_IVE_WriteImage(handle, "test_thresholds16_c.png", &dst_mmm_u8);
   }
 #ifdef __ARM_ARCH
   else {
