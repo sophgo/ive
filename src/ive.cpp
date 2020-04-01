@@ -765,7 +765,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
         u32 &&index = skip + k * width_block;
         auto *cell_hist_ptr = cell_histogram + index;
         auto *dst_hog_ptr = hog_ptr + count;
-        memcpy(hog_ptr, cell_hist_ptr, copy_data_length);
+        memcpy(dst_hog_ptr, cell_hist_ptr, copy_data_length);
         count += copy_length;
       }
     }
