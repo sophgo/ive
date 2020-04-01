@@ -119,6 +119,20 @@ CVI_S32 CVI_IVE_CreateMemInfo(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo,
 
 CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
                             u16 u16Width, u16 u16Height) {
+  if (u16Width == 0 || u16Height == 0) {
+    std::cerr << "Image width or height cannot be 0." << std::endl;
+    pstImg->tpu_block = NULL;
+    pstImg->enType = enType;
+    pstImg->u16Width = 0;
+    pstImg->u16Height = 0;
+    pstImg->u16Reserved = 0;
+    for (size_t i = 0; i < 3; i++) {
+      pstImg->pu8VirAddr[i] = NULL;
+      pstImg->u64PhyAddr[i] = -1;
+      pstImg->u16Stride[i] = 0;
+    }
+    return CVI_FAILURE;
+  }
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   int c = 1;
   int fmt_size = 1;
@@ -147,7 +161,7 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
       break;
     case IVE_IMAGE_TYPE_U32C1:
       fmt_size = 4;
-      fmt = FMT_INVALID;
+      fmt = FMT_U32;
       break;
     case IVE_IMAGE_TYPE_FP32C1:
       fmt_size = 4;
@@ -161,7 +175,7 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
   int total_size = c * u16Width * u16Height * fmt_size;
   // Special case for unsupported I32/U32 images
   // FIXME: Put thosinto bmkernel, bmruntime
-  if (fmt == FMT_INVALID) {
+  if (fmt == FMT_U32) {
     pstImg->tpu_block = NULL;
     pstImg->enType = enType;
     pstImg->u16Width = u16Width;
@@ -263,6 +277,10 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
     int width, height, nChannels;
     stbi_uc *stbi_data = stbi_load(filename, &width, &height, &nChannels, desiredNChannels);
     CVI_IVE_CreateImage(pIveHandle, &img, enType, width, height);
+    if (stbi_data == nullptr) {
+      std::cerr << "Image " << filename << " read failed." << std::endl;
+      return img;
+    }
     memcpy(img.pu8VirAddr[0], stbi_data, desiredNChannels * width * height);
     CVI_IVE_BufFlush(pIveHandle, &img);
     stbi_image_free(stbi_data);
