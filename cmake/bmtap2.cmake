@@ -21,7 +21,7 @@ if("${LIBDEP_BMTAP2_DIR}" STREQUAL "")
       set(FILE_NAME ${BMTAP2_TARGET_BASENAME}-${DATE_TAG}.7z)
       set(WORK_DIR ${CMAKE_SOURCE_DIR}/prebuilt)
       include(${CMAKE_SOURCE_DIR}/cmake/downanddecompress.cmake)
-      download_and_decompress(ftp://10.34.33.5/ai/prebuilt/ive/${FILE_NAME}
+      download_and_decompress(ftp://10.34.33.5/prebuilt/ive/${FILE_NAME}
                               ${FILE_NAME}
                               ${WORK_DIR}
                               MD5
