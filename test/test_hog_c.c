@@ -50,7 +50,8 @@ int main(int argc, char **argv) {
   CVI_IVE_CreateImage(handle, &dstH_u8, IVE_IMAGE_TYPE_U8C1, width, height);
   CVI_IVE_CreateImage(handle, &dstV_u8, IVE_IMAGE_TYPE_U8C1, width, height);
 
-  IVE_DST_IMAGE_S dstAng;
+  IVE_DST_IMAGE_S dstMag, dstAng;
+  CVI_IVE_CreateImage(handle, &dstMag, IVE_IMAGE_TYPE_BF16C1, width, height);
   CVI_IVE_CreateImage(handle, &dstAng, IVE_IMAGE_TYPE_BF16C1, width, height);
 
   IVE_DST_IMAGE_S dstAng_u8;
@@ -72,7 +73,7 @@ int main(int argc, char **argv) {
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < total_run; i++) {
-    CVI_IVE_HOG(handle, &src, &dstH, &dstV, NULL, &dstAng, &dstHist, &pstHogCtrl, 0);
+    CVI_IVE_HOG(handle, &src, &dstH, &dstV, &dstMag, &dstAng, &dstHist, &pstHogCtrl, 0);
   }
   gettimeofday(&t1, NULL);
   unsigned long elapsed_tpu =
@@ -96,6 +97,16 @@ int main(int argc, char **argv) {
     CVI_IVE_WriteImage(handle, "test_sobelV_c.png", &dstV_u8);
     CVI_IVE_WriteImage(handle, "test_sobelH_c.png", &dstH_u8);
     CVI_IVE_WriteImage(handle, "test_ang_c.png", &dstAng_u8);
+    printf("Output HOG feature.\n");
+    u32 blkSize = BLOCK_SIZE * BLOCK_SIZE * BIN_NUM;
+    u32 blkNum = dstHistSize / sizeof(float) / blkSize;
+    for (size_t i = 0; i < blkNum; i++) {
+      printf("\n");
+      for (size_t j = 0; j < blkSize; j++) {
+        printf("%3f ", ((float *)dstHist.pu8VirAddr)[i + j]);
+      }
+    }
+    printf("\n");
   } else {
     printf("OOO %-10s %10lu %10s %10s\n", "HOG", elapsed_tpu, "NA", "NA");
   }

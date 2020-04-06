@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
   printf("Run TPU Sobel Grad.\n");
   IVE_SOBEL_CTRL_S iveSblCtrl;
   iveSblCtrl.enOutCtrl = IVE_SOBEL_OUT_CTRL_BOTH;
+  iveSblCtrl.u8MaskSize = 3;
   IVE_MAG_AND_ANG_CTRL_S pstMaaCtrl;
   pstMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG;
   unsigned long total_s = 0;

@@ -52,6 +52,15 @@ _NEON2SSE_INLINE float32x4_t vfmaq_f32(float32x4_t a, float32x4_t b,
 {
   return _mm_fmadd_ps(a, b, c);
 }
+union {
+  __m128 v;
+  float a[4];
+} m128uF;
+_NEON2SSESTORAGE float32_t vaddvq_f32(float32x4_t a);
+_NEON2SSE_INLINE float32_t vaddvq_f32(float32x4_t a) {
+  m128uF.v = a;
+  return m128uF.a[0] + m128uF.a[1] + m128uF.a[2] + m128uF.a[3];
+}
 #endif
 
 inline void neonU16FindMinMax(u16 *src_ptr, const u64 src_size, u16 *min, u16 *max) {

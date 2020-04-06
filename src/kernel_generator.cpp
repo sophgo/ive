@@ -30,20 +30,22 @@ static inline IveKernel createGaussianKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u
 }
 
 // clang-format off
-static s8 sobel_y_kernel_3x3[] = { -1, 0, 1, -2, 0, 2, -1, 0, 1 };
-static s8 sobel_x_kernel_3x3[] = { -1, -2, -1, 0, 0, 0, 1, 2, 1 };
-static s8 sobel_y_kernel_5x5[] = { 1,  2,  0,  -2, -1, \
-                                   4,  8,  0,  -8, -4, \
-                                   6, 12,  0, -12, -6, \
-                                   4,  8,  0,  -8, -4, \
-                                   1,  2,  0,  -2, -1};
-static s8 sobel_x_kernel_5x5[] = { 1,  4,  6,   4,  1, \
+static s8 sobel_y_kernel_1x1[] = { 0, -1, 0, 0, 0, 0, 0, 1, 0 };
+static s8 sobel_x_kernel_1x1[] = { 0, 0, 0, -1, 0, 1, 0, 0, 0 };
+static s8 sobel_y_kernel_3x3[] = { -1, -2, -1, 0, 0, 0, 1, 2, 1 };
+static s8 sobel_x_kernel_3x3[] = { -1, 0, 1, -2, 0, 2, -1, 0, 1 };
+static s8 sobel_y_kernel_5x5[] = { 1,  4,  6,   4,  1, \
                                    2,  8, 12,   8,  2, \
                                    0,  0,  0,   0,  0, \
                                   -2, -8,-12,  -8, -2, \
                                    1, -4, -6,  -4, -1};
-static s8 scharr_y_kernel_3x3[] = { -3, 0, 3, -10, 0, 10, -3, 0, 3 };
-static s8 scharr_x_kernel_3x3[] = { -3, -10, -3, 0, 0, 0, 3, 10, 3 };
+static s8 sobel_x_kernel_5x5[] = { 1,  2,  0,  -2, -1, \
+                                   4,  8,  0,  -8, -4, \
+                                   6, 12,  0, -12, -6, \
+                                   4,  8,  0,  -8, -4, \
+                                   1,  2,  0,  -2, -1};
+static s8 scharr_y_kernel_3x3[] = { -3, -10, -3, 0, 0, 0, 3, 10, 3 };
+static s8 scharr_x_kernel_3x3[] = { -3, 0, 3, -10, 0, 10, -3, 0, 3 };
 static s8 morph_rect_kernel_3x3[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1};
 static s8 morph_cross_kernel_3x3[] = { 0, 1, 0, 1, 1, 1, 0, 1, 0};
 static s8 morph_ellipse_kernel_3x3[] = { 0, 1, 0, 1, 1, 1, 0, 1, 0};
@@ -66,12 +68,30 @@ static s8 morph_ellipse_kernel_5x5[] = { 0, 1, 1, 1, 0, \
 
 static inline IveKernel createKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u32 k_w,
                                      IVE_KERNEL kernel_type, float multiplir_val = 1.f) {
+  bool is_1x1 = false;
+  if (k_h == 1 && k_w == 1) {
+    is_1x1 = true;
+    k_h = 3;
+    k_w = 3;
+  }
   CviImg cimg(ctx, img_c, k_h, k_w, FMT_I8);
   IveKernel kernel;
   kernel.img = cimg;
   kernel.multiplier.f = multiplir_val;
   s8 *filter = nullptr;
-  if (k_h == 3 && k_w == 3) {
+  if (is_1x1) {
+    switch (kernel_type) {
+      case IVE_KERNEL::SOBEL_Y:
+        filter = sobel_y_kernel_1x1;
+        break;
+      case IVE_KERNEL::SOBEL_X:
+        filter = sobel_x_kernel_1x1;
+        break;
+      default:
+        std::cerr << "Not supported kernel type." << std::endl;
+        break;
+    }
+  } else if (k_h == 3 && k_w == 3) {
     switch (kernel_type) {
       case IVE_KERNEL::SOBEL_Y:
         filter = sobel_y_kernel_3x3;
