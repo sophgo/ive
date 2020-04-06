@@ -662,7 +662,7 @@ CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U16 u16Width, CVI_U16 u16Height, CVI_U8 u8BinSi
   width_block = (width_block - 1) / u16BlkStepX + 1;
   height_block = (height_block - 1) / u16BlkStepY + 1;
   u32 num_of_block_data = height_block * width_block;
-  *u32HogSize = num_of_block_data * (block_length * u8BinSize) * sizeof(u32);
+  *u32HogSize = num_of_block_data * (block_length * u8BinSize) * sizeof(float);
   return CVI_SUCCESS;
 }
 
@@ -702,7 +702,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   u32 &&num_of_block_data = ((height_block - 1) / pstHogCtrl->u16BlkStepY + 1) *
                             ((width_block - 1) / pstHogCtrl->u16BlkStepX + 1);
   u32 &&hog_hist_length = num_of_block_data * (block_length * pstHogCtrl->u8BinSize);
-  u32 &&hog_hist_size = hog_hist_length * sizeof(u32);
+  u32 &&hog_hist_size = hog_hist_length * sizeof(float);
   if (pstDstHist->u32Size != hog_hist_size) {
     std::cerr << "Histogram size not match! Given: " << pstDstHist->u32Size
               << ", required: " << hog_hist_size << " (" << hog_hist_length << " * sizeof(u32))"
@@ -712,11 +712,12 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
 
   IVE_SOBEL_CTRL_S iveSblCtrl;
   iveSblCtrl.enOutCtrl = IVE_SOBEL_OUT_CTRL_BOTH;
+  iveSblCtrl.u8MaskSize = 1;
   if (CVI_IVE_Sobel(pIveHandle, pstSrc, pstDstH, pstDstV, &iveSblCtrl, 0) != CVI_SUCCESS) {
     return CVI_FAILURE;
   }
   IVE_MAG_AND_ANG_CTRL_S iveMaaCtrl;
-  iveMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_ANG;
+  iveMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG;
   if (CVI_IVE_MagAndAng(pIveHandle, pstDstH, pstDstV, pstDstMag, pstDstAng, &iveMaaCtrl, 0) !=
       CVI_SUCCESS) {
     return CVI_FAILURE;
@@ -726,35 +727,62 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   Tracer::TraceBegin("CPU histogram");
   Tracer::TraceBegin("Generate cell histogram");
   CVI_IVE_BufRequest(pIveHandle, pstDstAng);
-  u16 *cell_ptr = (u16 *)pstDstAng->pu8VirAddr[0];
-  u16 div = 360 / pstHogCtrl->u8BinSize;
-  u32 *cell_histogram = new u32[cell_hist_length];
-  memset(cell_histogram, 0, cell_hist_length * sizeof(int));
+  CVI_IVE_BufRequest(pIveHandle, pstDstMag);
+  u16 *ang_ptr = (u16 *)pstDstAng->pu8VirAddr[0];
+  u16 *mag_ptr = (u16 *)pstDstMag->pu8VirAddr[0];
+  u16 div = 180 / pstHogCtrl->u8BinSize;
+  float *cell_histogram = new float[cell_hist_length];
+  memset(cell_histogram, 0, cell_hist_length * sizeof(float));
   // Do Add & DIV while creating histogram. Slow.
-  for (u32 i = 0; i < pstDstAng->u16Height; i++) {
+  for (u32 i = 1; i < (u32)(pstDstAng->u16Height - 1); i++) {
     u32 &&row_skip = pstDstAng->u16Stride[0] * i;
-    for (u32 j = 0; j < pstDstAng->u16Width; j++) {
-      float degree = convert_bf16_fp32(cell_ptr[j + row_skip]);
-      u32 bin_index = degree < 0 ? (u32)((360.f + degree) / div) : (u32)(degree / div);
+    for (u32 j = 1; j < (u32)(pstDstAng->u16Width - 1); j++) {
       u32 &&cell_index =
           (u32)((i / pstHogCtrl->u32CellSize) * width_cell + (u32)(j / pstHogCtrl->u32CellSize)) *
           pstHogCtrl->u8BinSize;
-      if (bin_index > pstHogCtrl->u8BinSize) {
-        std::cerr << "Pixel value " << degree << " at " << i << ", " << j << " exceed bin size "
-                  << pstHogCtrl->u8BinSize << std::endl;
-        Tracer::TraceEnd();
-        Tracer::TraceEnd();
-        return CVI_FAILURE;
+      u32 degree = std::abs(convert_bf16_fp32(ang_ptr[j + row_skip]));
+      u32 mag = convert_bf16_fp32(mag_ptr[j + row_skip]);
+      float bin_div = degree / div;
+      float bin_div_dec = bin_div - (u32)(bin_div);
+      if (bin_div_dec == 0) {
+        u32 bin_index = bin_div;
+        cell_histogram[cell_index + bin_index] += mag;
+      } else {
+        u32 bin_index = bin_div;
+        u32 bin_index_2 = (u32)bin_div + 1;
+        if (bin_index_2 > pstHogCtrl->u8BinSize) {
+          bin_index_2 = 0;
+        }
+        float bin_div_dec_left = 1.f - bin_div_dec;
+        cell_histogram[cell_index + bin_index] += (mag * bin_div_dec_left);
+        cell_histogram[cell_index + bin_index_2] += (mag * bin_div_dec);
       }
-      cell_histogram[cell_index + bin_index]++;
     }
   }
+  // for (u32 i = 1; i < (u32)(pstDstAng->u16Height - 1); i++) {
+  //   u32 &&row_skip = pstDstAng->u16Stride[0] * i;
+  //   for (u32 j = 1; j < (u32)(pstDstAng->u16Width - 1); j++) {
+  //     float degree = convert_bf16_fp32(cell_ptr[j + row_skip]);
+  //     u32 bin_index = degree < 0 ? (u32)((360.f + degree) / div) : (u32)(degree / div);
+  //     u32 &&cell_index =
+  //         (u32)((i / pstHogCtrl->u32CellSize) * width_cell + (u32)(j / pstHogCtrl->u32CellSize))
+  //         * pstHogCtrl->u8BinSize;
+  //     if (bin_index > pstHogCtrl->u8BinSize) {
+  //       std::cerr << "Pixel value " << degree << " at " << i << ", " << j << " exceed bin size "
+  //                 << pstHogCtrl->u8BinSize << std::endl;
+  //       Tracer::TraceEnd();
+  //       Tracer::TraceEnd();
+  //       return CVI_FAILURE;
+  //     }
+  //     cell_histogram[cell_index + bin_index]++;
+  //   }
+  // }
   Tracer::TraceEnd();
 
   Tracer::TraceBegin("Generate HOG histogram");
   u32 &&copy_length = pstHogCtrl->u8BinSize * pstHogCtrl->u16BlkSize;
-  u32 &&copy_data_length = copy_length * sizeof(u32);
-  u32 *hog_ptr = (u32 *)pstDstHist->pu8VirAddr;
+  u32 &&copy_data_length = copy_length * sizeof(float);
+  float *hog_ptr = (float *)pstDstHist->pu8VirAddr;
   memset(hog_ptr, 0, pstDstHist->u32Size);
   u32 count = 0;
   for (u32 i = 0; i < height_block; i += pstHogCtrl->u16BlkStepY) {
@@ -770,13 +798,29 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
       }
     }
   }
-  Tracer::TraceEnd();
-  delete[] cell_histogram;
-  Tracer::TraceEnd();
   if (count != hog_hist_length) {
     std::cerr << "Hog histogram not aligned." << count << " " << hog_hist_length << std::endl;
     return CVI_FAILURE;
   }
+  delete[] cell_histogram;
+  Tracer::TraceEnd();
+  Tracer::TraceBegin("Normalizing HOG histogram");
+  hog_ptr = (float *)pstDstHist->pu8VirAddr;
+  u32 &&block_data_length = block_length * pstHogCtrl->u8BinSize;
+  u32 nums_of_block_feature = hog_hist_length / block_data_length;
+  for (u32 i = 0; i < nums_of_block_feature; i++) {
+    float count_total = 0;
+    auto &&skip_i = i * block_data_length;
+    for (u32 j = 0; j < block_data_length; j++) {
+      count_total += hog_ptr[skip_i + j] * hog_ptr[skip_i + j];
+    }
+    float count = 1 / sqrt(count_total);
+    for (u32 j = 0; j < block_data_length; j++) {
+      hog_ptr[skip_i + j] *= count;
+    }
+  }
+  Tracer::TraceEnd();
+  Tracer::TraceEnd();
   return CVI_SUCCESS;
 }
 
@@ -1051,12 +1095,15 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   CviImg *cpp_dstv = reinterpret_cast<CviImg *>(pstDstV->tpu_block);
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs;
+  u8 mask_sz = pstSobelCtrl->u8MaskSize;
   if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_BOTH) {
     int npu_num = handle_ctx->t_h.t_sobel_gradonly.getNpuNum();
     outputs.emplace_back(*cpp_dstv);
     outputs.emplace_back(*cpp_dsth);
-    IveKernel kernel_w = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_X);
-    IveKernel kernel_h = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_Y);
+    IveKernel kernel_w =
+        createKernel(&handle_ctx->ctx, npu_num, mask_sz, mask_sz, IVE_KERNEL::SOBEL_X);
+    IveKernel kernel_h =
+        createKernel(&handle_ctx->ctx, npu_num, mask_sz, mask_sz, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_sobel_gradonly.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_sobel_gradonly.setKernel(kernel_w, kernel_h);
     handle_ctx->t_h.t_sobel_gradonly.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
@@ -1064,16 +1111,16 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     kernel_h.img.Free(&handle_ctx->ctx);
   } else if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_HOR) {
     outputs.emplace_back(*cpp_dsth);
-    IveKernel kernel_h =
-        createKernel(&handle_ctx->ctx, cpp_src->m_tg.shape.c, 3, 3, IVE_KERNEL::SOBEL_Y);
+    IveKernel kernel_h = createKernel(&handle_ctx->ctx, cpp_src->m_tg.shape.c, mask_sz, mask_sz,
+                                      IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_filter_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_h);
     handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_h.img.Free(&handle_ctx->ctx);
   } else if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_VER) {
     outputs.emplace_back(*cpp_dstv);
-    IveKernel kernel_w =
-        createKernel(&handle_ctx->ctx, cpp_src->m_tg.shape.c, 3, 3, IVE_KERNEL::SOBEL_X);
+    IveKernel kernel_w = createKernel(&handle_ctx->ctx, cpp_src->m_tg.shape.c, mask_sz, mask_sz,
+                                      IVE_KERNEL::SOBEL_X);
     handle_ctx->t_h.t_filter_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_w);
     handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);

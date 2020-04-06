@@ -214,6 +214,7 @@ typedef enum IVE_SOBEL_OUT_CTRL {
 
 typedef struct IVE_SOBEL_CTRL {
   IVE_SOBEL_OUT_CTRL_E enOutCtrl;
+  CVI_U8 u8MaskSize;
   CVI_S8 as8Mask[25];
 } IVE_SOBEL_CTRL_S;
 
