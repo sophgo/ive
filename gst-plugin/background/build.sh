@@ -45,7 +45,7 @@ then
         exit 1
     fi
 
-    gcc -shared -o $gstreplace.so *.o $(pkg-config --libs gstreamer-1.0 $pkg opencv) -L${IVE_INSTALL_ROOT}/lib -lbmruntime -lbmkernel -lbmodel -lbmutils -lcvi_ive_tpu
+    gcc -shared -o $gstreplace.so *.o $(pkg-config --libs gstreamer-1.0 $pkg opencv) -L${IVE_INSTALL_ROOT}/lib -lcviruntime -lcvikernel -lcvi_ive_tpu
 
     if test $? -ne 0; then
         exit 1
@@ -78,7 +78,7 @@ then
       exit 1
     fi
 
-    $CC -shared -o $gstreplace.so *.o $GST_LIBS -L${IVE_INSTALL_ROOT}/lib -lbmruntime -lbmkernel -lbmodel -lbmutils -lcvi_ive_tpu
+    $CC -shared -o $gstreplace.so *.o $GST_LIBS -L${IVE_INSTALL_ROOT}/lib -lcviruntime -lcvikernel -lcvi_ive_tpu
 
     if test $? -ne 0; then
        exit 1

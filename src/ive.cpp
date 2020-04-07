@@ -106,7 +106,7 @@ CVI_S32 CVI_IVE_BufRequest(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
 CVI_S32 CVI_IVE_CmdFlush(IVE_HANDLE pIveHandle) {
   ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  bmruntime_bmkernel_submit(handle_ctx->ctx);
+  cviruntime_cvikernel_submit(handle_ctx->ctx);
   return CVI_SUCCESS;
 }
 

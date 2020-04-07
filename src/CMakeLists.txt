@@ -1,6 +1,8 @@
 project(ive)
 
 include_directories(
+    ${MLIR_INCLUDES}
+    ${MIDDLEWARE_INCLUDES}
     ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/middleware/include
@@ -44,12 +46,12 @@ set(SRC
 )
 
 add_library(cvi_ive_tpu SHARED ${SRC})
-target_link_libraries(cvi_ive_tpu ${BM_LIBS})
+target_link_libraries(cvi_ive_tpu ${MLIR_LIBS})
 set_target_properties(cvi_ive_tpu PROPERTIES
                      VERSION ${CVI_IVE_MAJOR_VERSION}
                      SOVERSION ${CVI_IVE_SO_VERSION})
 add_library(cvi_ive_tpu-static ${SRC})
-target_link_libraries(cvi_ive_tpu-static ${BM_LIBS})
+target_link_libraries(cvi_ive_tpu-static ${MLIR_LIBS})
 install(TARGETS cvi_ive_tpu DESTINATION lib)
 install(TARGETS cvi_ive_tpu-static DESTINATION lib)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/cvi_comm_ive.h DESTINATION include/ive)

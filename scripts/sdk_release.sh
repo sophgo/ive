@@ -6,12 +6,14 @@ IVE_SDK_NAME="ivesdk"-$(date '+%Y%m%d')
 echo "Creating tmp working directory."
 mkdir -p $TMP_WORKING_DIR/build_sdk
 cd $TMP_WORKING_DIR/build_sdk
-cmake $IVE_ROOT -DBM_TARGET=soc \
-                -DENABLE_SYSTRACE=OFF \
-                -DCMAKE_BUILD_TYPE=SDKRelease \
-                -DCMAKE_INSTALL_PREFIX=$TMP_WORKING_DIR/ivesdk \
-                -DTOOLCHAIN_ROOT_DIR=$IVE_ROOT/../gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu \
-                -DCMAKE_TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-aarch64-linux.cmake
+cmake -G Ninja $IVE_ROOT -DBM_TARGET=soc \
+                         -DENABLE_SYSTRACE=OFF \
+                         -DCMAKE_BUILD_TYPE=SDKRelease \
+                         -DMLIR_SDK_ROOT=$MLIR_DIR \
+                         -DMIDDLEWARE_SDK_ROOT=$MIDDLEWARE_DIR \
+                         -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR \
+                         -DTOOLCHAIN_ROOT_DIR=$IVE_ROOT/../gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu \
+                         -DCMAKE_TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-aarch64-linux.cmake
 make -j8 && make install
 cd $TMP_WORKING_DIR
 echo "Compressing SDK release..."

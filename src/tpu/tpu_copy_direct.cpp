@@ -13,7 +13,7 @@ int IveTPUCopyDirect::run(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector
   copy_param.src = &input[0].m_tg;
   copy_param.dst = &(*output)[0].m_tg;
   bmk1880v2_tdma_tg2tg_bf16_tensor_copy(bk_ctx, &copy_param);
-  bmruntime_bmkernel_submit(*ctx);
+  cviruntime_cvikernel_submit(*ctx);
 
   return CVI_SUCCESS;
 }

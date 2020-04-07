@@ -1,6 +1,6 @@
 function(build_test FNAME)
   add_executable(${FNAME} ${FNAME}.c)
-  if("${BM_TARGET}" STREQUAL "soc")
+  if("${CVI_TARGET}" STREQUAL "soc")
     set(SOC_LIB ${PROTO_LIBRARIES} ${CLABS_LIBRARIES})
   else()
     set(SOC_LIB "")
@@ -11,6 +11,8 @@ endfunction()
 
 project(test-c)
 include_directories(
+    ${MLIR_INCLUDES}
+    ${MIDDLEWARE_INCLUDES}
     ${CMAKE_SOURCE_DIR}/3rdparty
     ${CMAKE_SOURCE_DIR}/include
 )

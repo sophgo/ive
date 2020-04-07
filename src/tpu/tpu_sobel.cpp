@@ -124,7 +124,6 @@ void IveTPUSobel::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_
   m_p_conv.ofmap = m_tl_vec[1];
   m_p_conv.weight = m_tl_vec[4];
   bmk1880v2_tiu_bf16_depthwise_convolution(bk_ctx, &m_p_conv);
-  bmruntime_bmkernel_submit(*ctx);
   m_p_conv.ofmap = m_tl_vec[2];
   m_p_conv.weight = m_tl_vec[5];
   bmk1880v2_tiu_bf16_depthwise_convolution(bk_ctx, &m_p_conv);

@@ -3,27 +3,17 @@
 # Author Yangwen Huang <yangwen.huang@bitmain.com>
 
 
-if("${LIBDEP_MIDDLEWARE_DIR}" STREQUAL "")
-    set(LIBDEP_MIDDLEWARE_DIR ${CMAKE_SOURCE_DIR}/prebuilt/${MIDDLEWARE_TARGET_BASENAME})
-    if(EXISTS "${LIBDEP_MIDDLEWARE_DIR}")
-      message("Middleware dolder found.")
-    else()
-      message("Folder not found, downloading...")
-      set(MD5_HASH 8d99c5e5de0d2c4a5a61561ba8fe912b)
-      set(FILE_NAME middleware-20200213.7z)
-      set(WORK_DIR ${CMAKE_SOURCE_DIR}/prebuilt)
-      include(${CMAKE_SOURCE_DIR}/cmake/downanddecompress.cmake)
-      download_and_decompress(ftp://10.34.33.5/ai/prebuilt/ive/${FILE_NAME}
-                              ${FILE_NAME}
-                              ${WORK_DIR}
-                              MD5
-                              ${MD5_HASH})
-    endif()
+if("${MIDDLEWARE_SDK_ROOT}" STREQUAL "")
+  message(FATAL_ERROR "You must set MIDDLEWARE_SDK_ROOT before building IVE library.")
+elseif(EXISTS "${MIDDLEWARE_SDK_ROOT}")
+  message("-- Found MIDDLEWARE_SDK_ROOT (directory: ${MIDDLEWARE_SDK_ROOT})")
+else()
+  message(FATAL_ERROR "${MIDDLEWARE_SDK_ROOT} is not a valid folder.")
 endif()
 
-include_directories(
-    ${LIBDEP_MIDDLEWARE_DIR}/include/
+set(MIDDLEWARE_INCLUDES
+    ${MIDDLEWARE_SDK_ROOT}/include/
 )
 if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "SDKRelease")
-  install(DIRECTORY ${LIBDEP_MIDDLEWARE_DIR}/include/ DESTINATION ${CMAKE_INSTALL_PREFIX}/include/middleware)
+  install(DIRECTORY ${MIDDLEWARE_SDK_ROOT}/include/ DESTINATION ${CMAKE_INSTALL_PREFIX}/include/middleware)
 endif()

@@ -2,7 +2,7 @@
 // TODO: Move into bmkernel.
 
 #include <bmkernel/bm1880v2/bmkernel_1880v2.h>
-#include <libbmruntime/bmruntime_bmkernel.h>
+#include <bmruntime.h>
 
 typedef struct bmk1880v2_tiu_non_atomic_sqrt_param {
   bmk1880v2_tensor_lmem_t *a;

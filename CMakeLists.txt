@@ -1,30 +1,20 @@
 cmake_minimum_required(VERSION 3.2.2)
 
+# Options
+option(ENABLE_SYSTRACE "Use systrace" OFF)
+
 set(CVI_IVE_SO_VERSION 0)
 set(CVI_IVE_MAJOR_VERSION "${CVI_IVE_SO_VERSION}.0.5")
 
 if (CMAKE_C_COMPILER STREQUAL "/usr/bin/cc")
-messgae(FATAL_ERROR "Please use clang compiler. Please export C and CXX compiler to clang.")
-endif()
-
-# Options
-option(ENABLE_SYSTRACE "Use systrace" OFF)
-
-# Check if tracer exists.
-if(EXISTS "${CMAKE_SOURCE_DIR}/3rdparty/tracer")
-  message("Tracer folder found.")
-else()
-  message(FATAL_ERROR "Tracer folder not found. Git clone to 3rdparty at http://10.34.33.3:8480/sys_app/tracer.")
-endif()
-if (ENABLE_SYSTRACE)
-  add_definitions(-DENABLE_TRACE)
+  message(FATAL_ERROR "Please use clang compiler. Please export C and CXX compiler to clang.")
 endif()
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
   set(CMAKE_BUILD_TYPE "Release")
 endif()
-if("${BM_TARGET}" STREQUAL "soc")
-  set(BMTAP2_TARGET_BASENAME soc_bm1880v2)
+if("${CVI_TARGET}" STREQUAL "soc")
+  add_definitions(-DCVI_SOC)
   if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
     set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/install_soc")
   endif()
@@ -36,10 +26,9 @@ if("${BM_TARGET}" STREQUAL "soc")
     message(FATAL_ERROR "TOOLCHAIN_ROOT_DIR is not set. Aborting.")
   endif()
   set(USE_TOOLCHAIN "true")
-  include(cmake/soc.cmake)
   set(SSE_FLAGS "")
 else()
-  set(BMTAP2_TARGET_BASENAME cmodel_bm1880v2)
+  set(CVI_TARGET "cmodel")
   if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
     set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/install")
   endif()
@@ -47,9 +36,22 @@ else()
   include(cmake/FindGlog.cmake)
   set(SSE_FLAGS "-mssse3 -msse4.1 -mavx2 -mfma")
 endif()
-include(cmake/bmtap2.cmake)
-set(MIDDLEWARE_TARGET_BASENAME middleware)
-include(cmake/middleware.cmake)
+
+# Check if tracer exists.
+if(EXISTS "${CMAKE_SOURCE_DIR}/3rdparty/tracer")
+  message("-- Found Tracer (directory: ${CMAKE_SOURCE_DIR}/3rdparty/tracer)")
+else()
+  message(FATAL_ERROR "Tracer folder not found. Git clone to 3rdparty at http://10.34.33.3:8480/sys_app/tracer.")
+endif()
+if (ENABLE_SYSTRACE)
+  add_definitions(-DENABLE_TRACE)
+endif()
+
+# Check if MLIR SDK exists.
+include(cmake/mlir.cmake)
+
+# Check if middleware exists.
+include (cmake/middleware.cmake)
 
 set(CMAKE_C_INIT "-fsigned-char -Werror=all -fdiagnostics-color=always ${SSE_FLAGS}")
 set(CMAKE_CXX_INIT "-fsigned-char -fPIC -Werror=all -fdiagnostics-color=always -Wno-unused-variable -std=gnu++11 ${SSE_FLAGS}")
@@ -80,7 +82,7 @@ message("==================================================")
 message("[Summary]")
 message("C   compiler ${CMAKE_C_COMPILER}")
 message("CXX compiler ${CMAKE_CXX_COMPILER}")
-message("Target       ${BM_TARGET}")
+message("Target       ${CVI_TARGET}")
 message("Build type   ${CMAKE_BUILD_TYPE}")
 message("Install dir  ${CMAKE_INSTALL_PREFIX}")
 message("Use Systrace ${ENABLE_SYSTRACE}")
