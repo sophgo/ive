@@ -81,10 +81,4 @@ $make install
 3. Some required API is missing,
    1. ~~auto channel expansion~~
    2. div
-4. Middleware include header ``cvi_type.h`` may miss some ``#define``
-
-```
-typedef unsigned short          CVI_U0Q16;
-
-#define CVI_NOT_SUPPORTED       9
-```
+4. ~~Middleware include header ``cvi_type.h`` may miss some ``#define``~~
