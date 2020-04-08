@@ -9,10 +9,10 @@ cd $TMP_WORKING_DIR/build_sdk
 cmake -G Ninja $IVE_ROOT -DBM_TARGET=soc \
                          -DENABLE_SYSTRACE=OFF \
                          -DCMAKE_BUILD_TYPE=SDKRelease \
-                         -DMLIR_SDK_ROOT=$MLIR_DIR \
-                         -DMIDDLEWARE_SDK_ROOT=$MIDDLEWARE_DIR \
-                         -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR \
-                         -DTOOLCHAIN_ROOT_DIR=$IVE_ROOT/../gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu \
+                         -DMLIR_SDK_ROOT=$TPU_SDK_INSTALL_PATH \
+                         -DMIDDLEWARE_SDK_ROOT=$MW_PATH \
+                         -DCMAKE_INSTALL_PREFIX=$IVE_SDK_INSTALL_PATH \
+                         -DTOOLCHAIN_ROOT_DIR=$HOST_TOOL_PATH \
                          -DCMAKE_TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-aarch64-linux.cmake
 make -j8 && make install
 cd $TMP_WORKING_DIR
