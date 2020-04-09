@@ -2,6 +2,16 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 IVE_ROOT=$(readlink -f $SCRIPT_DIR/../)
 TMP_WORKING_DIR=$IVE_ROOT/tmp
+# Clone 3rdparty library systrace
+pushd ./ive/3rdparty
+if [ ! -d "$tracer" ]; then
+  git clone ssh://git@10.34.33.3:8422/sys_app/tracer.git
+fi
+pushd tracer
+git checkout origin/master
+popd
+popd
+
 # IVE_SDK_NAME="ivesdk"-$(date '+%Y%m%d')
 echo "Creating tmp working directory."
 if [[ "$1" == "cmodel" ]]; then
