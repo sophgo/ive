@@ -40,6 +40,7 @@ int main(int argc, char **argv) {
       src2.pu8VirAddr[0][i + j * width] = 0;
     }
   }
+  CVI_IVE_BufFlush(handle, &src2);
 
   IVE_DST_IMAGE_S dst;
   CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);

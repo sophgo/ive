@@ -1,5 +1,5 @@
 #include "bmkernel/bm_kernel.h"
-#include "bmtap2/1880v2_fp_convert.h"
+#include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 #include "ive.h"
 
 #include <stdio.h>

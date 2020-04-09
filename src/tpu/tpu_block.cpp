@@ -78,7 +78,7 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     cviImgFlush2TL(ctx, bk_ctx, *mp_multiplier, tl_multiplier);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
     tl_multiplier->stride =
-        bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_multiplier->shape, 0, FMT_U8);
+        bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_multiplier->shape, FMT_U8, 0);
   }
 
   m_p_conv.pad_top = m_kernel_info.pad[2];

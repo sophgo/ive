@@ -111,8 +111,8 @@ typedef struct IVE_ITC_CRTL {
 } IVE_ITC_CRTL_S;
 
 typedef struct IVE_ADD_CTRL_S {
-  CVI_U0Q16 u0q16X;
-  CVI_U0Q16 u0q16Y;
+  float aX;
+  float bY;
 } IVE_ADD_CTRL_S;
 
 typedef struct IVE_BLOCK_CTRL {

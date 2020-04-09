@@ -1,4 +1,3 @@
-#include "../tpu_math/sqrt.hpp"
 #include "tpu/tpu_sobel.hpp"
 
 #include <string.h>

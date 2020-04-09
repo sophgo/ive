@@ -138,13 +138,13 @@ inline void updateTSIInfo(bmk1880v2_context_t *bk_ctx, const u32 load_n, const u
                           TensorSliceInfo *tl_info) {
   tl_info->tl_load.shape = {load_n, load_c, load_h, load_w};
   tl_info->tl_load.stride =
-      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_info->tl_load.shape, 1, io_fmt);
+      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_info->tl_load.shape, io_fmt, 1);
   tl_info->tg_load.shape = {load_n, load_c, load_h, load_w};
   tl_info->tg_load.stride =
       bmk1880v2_bf16_tensor_tgmem_default_stride(tl_info->tg_load.shape, tgin_fmt_type);
   tl_info->tl_store.shape = {store_n, store_c, store_h, store_w};
   tl_info->tl_store.stride =
-      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_info->tl_store.shape, 1, io_fmt);
+      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_info->tl_store.shape, io_fmt, 1);
   tl_info->tg_store.shape = {store_n, store_c, store_h, store_w};
   tl_info->tg_store.stride =
       bmk1880v2_bf16_tensor_tgmem_default_stride(tl_info->tg_store.shape, tgout_fmt_type);
@@ -190,7 +190,7 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
   tsi->tg_store.stride =
       bmk1880v2_bf16_tensor_tgmem_default_stride(tsi->tg_store.shape, tgout_fmt_type);
   tsi->tl_store.stride =
-      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tsi->tl_store.shape, 1, tl_fmt_type);
+      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tsi->tl_store.shape, tl_fmt_type, 1);
   // FIXME: Temporarily hack.
   if (tsi->tg_load.shape.w != in_img_w) {
     int l_n = tsi->tg_load.stride.n / tsi->tg_load.stride.c;
@@ -308,7 +308,7 @@ inline void updateLMemSize(
     if (io_fmt == lmem->fmt) {
       lmem->stride = tsi.tl_load.stride;
     } else {
-      lmem->stride = bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+      lmem->stride = bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
     }
   }
   for (size_t k = 0; k < tl_out_shape_lmem_vec->size(); k++) {
@@ -318,7 +318,7 @@ inline void updateLMemSize(
     if (io_fmt == lmem->fmt) {
       lmem->stride = tsi.tl_store.stride;
     } else {
-      lmem->stride = bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+      lmem->stride = bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
     }
   }
   for (size_t k = 0; k < tl_vec->size(); k++) {
@@ -328,7 +328,7 @@ inline void updateLMemSize(
     if (lmem->shape.c != tsi.tl_load.shape.c && tl_type[k] != IVETLType::TABLE) {
       lmem->shape.c = tsi.tl_load.shape.c;
       lmem->stride =
-          bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, is_align, lmem->fmt);
+          bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, is_align);
     }
   }
 }
@@ -613,11 +613,11 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         if (i == 0) {
           lmem->shape.h = s_in_vec[index].h;
           lmem->stride =
-              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
         } else if (i == in_slice_res.h.turn - 1) {
           lmem->shape.h = s_in_left_vec[index].h;
           lmem->stride =
-              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
         }
       }
     }
@@ -628,11 +628,11 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         if (i == 0) {
           lmem->shape.h = s_out_vec[index].h;
           lmem->stride =
-              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
         } else if (i == out_slice_res.h.turn - 1) {
           lmem->shape.h = s_out_left_vec[index].h;
           lmem->stride =
-              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
         }
       }
     }
@@ -646,11 +646,11 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
           if (j == 0) {
             lmem->shape.w = s_in_vec[index].w;
             lmem->stride =
-                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
           } else if (j == in_slice_res.w.turn - 1) {
             lmem->shape.w = s_in_left_vec[index].w;
             lmem->stride =
-                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
           }
         }
       }
@@ -661,11 +661,11 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
           if (j == 0) {
             lmem->shape.w = s_out_vec[index].w;
             lmem->stride =
-                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
           } else if (j == out_slice_res.w.turn - 1) {
             lmem->shape.w = s_out_left_vec[index].w;
             lmem->stride =
-                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
           }
         }
       }
@@ -1353,7 +1353,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
           lmem->shape.h = left_shape.h;
           lmem->shape.w = left_shape.w;
           lmem->stride =
-              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
           skip = true;
           break;
         }
@@ -1368,7 +1368,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
           lmem->shape.h = left_shape.h;
           lmem->shape.w = left_shape.w;
           lmem->stride =
-              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, 1, lmem->fmt);
+              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
           break;
         }
       }

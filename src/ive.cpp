@@ -106,7 +106,7 @@ CVI_S32 CVI_IVE_BufRequest(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
 CVI_S32 CVI_IVE_CmdFlush(IVE_HANDLE pIveHandle) {
   ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  bmruntime_bmkernel_submit(handle_ctx->ctx);
+  cviruntime_cvikernel_submit(handle_ctx->ctx);
   return CVI_SUCCESS;
 }
 
@@ -329,7 +329,7 @@ CVI_S32 CVI_SYS_FreeI(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
 CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                     IVE_DMA_CTRL_S *pstDmaCtrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
-  int ret = CVI_NOT_SUPPORTED;
+  int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   if (pstDmaCtrl->enMode == IVE_DMA_MODE_DIRECT_COPY) {
     ret = CVI_SUCCESS;
@@ -455,11 +455,11 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
     } else {
       std::cerr << "Unsupported input output image type ( " << cpp_src->m_tg.fmt << ", "
                 << cpp_dst->m_tg.fmt << ")." << std::endl;
-      return CVI_NOT_SUPPORTED;
+      return CVI_FAILURE;
     }
   } else {
     std::cerr << "Unsupported enType " << pstItcCtrl->enType << std::endl;
-    return CVI_NOT_SUPPORTED;
+    return CVI_FAILURE;
   }
   return CVI_SUCCESS;
 }
@@ -467,11 +467,11 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
 CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_IMAGE_S *pstDst, IVE_ADD_CTRL_S *ctrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
-  int ret = CVI_NOT_SUPPORTED;
+  int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
 
-  float x = convert_bf16_fp32(ctrl->u0q16X);
-  float y = convert_bf16_fp32(ctrl->u0q16Y);
+  const float &x = ctrl->aX;
+  const float &y = ctrl->bY;
   if ((x == 1 && y == 1) || (x == 0.f && y == 0.f)) {
     ret = CVI_SUCCESS;
     handle_ctx->t_h.t_add.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
@@ -526,7 +526,7 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   if ((cpp_src->m_tg.fmt != FMT_U8 && cpp_src->m_tg.fmt != FMT_BF16) &&
       (cpp_dst->m_tg.fmt != FMT_U8 && cpp_dst->m_tg.fmt != FMT_BF16)) {
     std::cerr << "CVI Block only supports U8/ BF16." << std::endl;
-    return CVI_NOT_SUPPORTED;
+    return CVI_FAILURE;
   }
   if (cpp_src->m_tg.fmt == FMT_U8 && cpp_dst->m_tg.fmt == FMT_U8) {
     handle_ctx->t_h.t_block.setBinNum(pstBlkCtrl->f32BinSize);
@@ -730,42 +730,32 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   CVI_IVE_BufRequest(pIveHandle, pstDstMag);
   u16 *ang_ptr = (u16 *)pstDstAng->pu8VirAddr[0];
   u16 *mag_ptr = (u16 *)pstDstMag->pu8VirAddr[0];
-  u16 div = 180 / pstHogCtrl->u8BinSize;
+  float div = 180 / pstHogCtrl->u8BinSize;
   float *cell_histogram = new float[cell_hist_length];
   memset(cell_histogram, 0, cell_hist_length * sizeof(float));
   // Do Add & DIV while creating histogram. Slow.
-  float weight=0;
-  for (u32 i = 1; i < (u32)(pstDstAng->u16Height - 1); i++) {
+  auto &&u16Height_i = (u32)(pstDstAng->u16Height - 1);
+  auto &&u16Width_j = (u32)(pstDstAng->u16Width - 1);
+  for (u32 i = 1; i < u16Height_i; i++) {
     u32 &&row_skip = pstDstAng->u16Stride[0] * i;
-    for (u32 j = 1; j < (u32)(pstDstAng->u16Width - 1); j++) {
+    u32 &&cell_row_skip = (i / pstHogCtrl->u32CellSize) * width_cell;
+    for (u32 j = 1; j < u16Width_j; j++) {
       u32 &&cell_index =
-          (u32)((i / pstHogCtrl->u32CellSize) * width_cell + (u32)(j / pstHogCtrl->u32CellSize)) *
-          pstHogCtrl->u8BinSize;
+          (u32)(cell_row_skip + (u32)(j / pstHogCtrl->u32CellSize)) * pstHogCtrl->u8BinSize;
       u32 degree = std::abs(convert_bf16_fp32(ang_ptr[j + row_skip]));
       u32 mag = convert_bf16_fp32(mag_ptr[j + row_skip]);
-
-      int bin_pos = floor( (float)degree / div );
-      float bin_div = (float)degree / div;
+      float bin_div = degree / div;
       float bin_div_dec = bin_div - (u32)(bin_div);
-      
       if (bin_div_dec == 0) {
         u32 bin_index = bin_div;
         cell_histogram[cell_index + bin_index] += mag;
       } else {
-        float weight = bin_div_dec / div;
-        bin_div = bin_pos;
-
         u32 bin_index = bin_div;
-        u32 bin_index_2 = (u32)bin_div + 1;
-        if (bin_index_2 > pstHogCtrl->u8BinSize) {
-          bin_index_2 = 0;
-        }
-        float bin_div_dec_left = 1.f - weight;//bin_div_dec;
-        //cell_histogram[cell_index + bin_index] += (mag * bin_div_dec_left);
-        //cell_histogram[cell_index + bin_index_2] += (mag * bin_div_dec);
+        u32 bin_index_2 = (bin_index + 1);
+        if (bin_index_2 >= pstHogCtrl->u8BinSize) bin_index_2 = 0;
+        float bin_div_dec_left = 1.f - bin_div_dec;
         cell_histogram[cell_index + bin_index] += (mag * bin_div_dec_left);
-        cell_histogram[cell_index + bin_index_2] += (mag * weight);
-
+        cell_histogram[cell_index + bin_index_2] += (mag * bin_div_dec);
       }
     }
   }
@@ -777,7 +767,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   //     u32 &&cell_index =
   //         (u32)((i / pstHogCtrl->u32CellSize) * width_cell + (u32)(j / pstHogCtrl->u32CellSize))
   //         * pstHogCtrl->u8BinSize;
-  //     if (bin_index > pstHogCtrl->u8BinSize) {
+  //     if (bin_index >= pstHogCtrl->u8BinSize) {
   //       std::cerr << "Pixel value " << degree << " at " << i << ", " << j << " exceed bin size "
   //                 << pstHogCtrl->u8BinSize << std::endl;
   //       Tracer::TraceEnd();
@@ -818,14 +808,31 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   hog_ptr = (float *)pstDstHist->pu8VirAddr;
   u32 &&block_data_length = block_length * pstHogCtrl->u8BinSize;
   u32 nums_of_block_feature = hog_hist_length / block_data_length;
+  u32 neon_turn = block_data_length / 4;
+  u32 neon_turn_left = neon_turn * 4;
   for (u32 i = 0; i < nums_of_block_feature; i++) {
     float count_total = 0;
     auto &&skip_i = i * block_data_length;
-    for (u32 j = 0; j < block_data_length; j++) {
+    float *block_head = hog_ptr + skip_i;
+    for (u32 j = 0; j < neon_turn; j++) {
+      float32x4_t f = vld1q_f32(block_head);
+      float32x4_t result = vmulq_f32(f, f);
+      count_total += vaddvq_f32(result);
+      block_head += 4;
+    }
+    for (u32 j = neon_turn_left; j < block_data_length; j++) {
       count_total += hog_ptr[skip_i + j] * hog_ptr[skip_i + j];
     }
-    float count = 1 / sqrt(count_total);
-    for (u32 j = 0; j < block_data_length; j++) {
+    float count = 1.f / sqrt(count_total);
+    float32x4_t m = vdupq_n_f32(count);
+    block_head = hog_ptr + skip_i;
+    for (u32 j = 0; j < neon_turn; j++) {
+      float32x4_t f = vld1q_f32(block_head);
+      float32x4_t result = vmulq_f32(m, f);
+      vst1q_f32(block_head, result);
+      block_head += 4;
+    }
+    for (u32 j = neon_turn_left; j < block_data_length; j++) {
       hog_ptr[skip_i + j] *= count;
     }
   }
@@ -970,7 +977,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
     CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstHV, &iveItcCtrl, 0);
     CVI_SYS_FreeI(pIveHandle, &dst_BF16);
   } else {
-    return CVI_NOT_SUPPORTED;
+    return CVI_FAILURE;
   }
   return CVI_SUCCESS;
 }
@@ -1136,7 +1143,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
   } else {
-    return CVI_NOT_SUPPORTED;
+    return CVI_FAILURE;
   }
   return CVI_SUCCESS;
 }
@@ -1144,7 +1151,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
 CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_IMAGE_S *pstDst, IVE_SUB_CTRL_S *ctrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
-  int ret = CVI_NOT_SUPPORTED;
+  int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   if (ctrl->enMode == IVE_SUB_MODE_NORMAL) {
     ret = CVI_SUCCESS;
@@ -1173,7 +1180,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_THRESH_CTRL_S *ctrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
-  int ret = CVI_NOT_SUPPORTED;
+  int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);

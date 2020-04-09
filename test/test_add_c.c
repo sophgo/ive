@@ -1,5 +1,4 @@
 #include "bmkernel/bm_kernel.h"
-#include "bmtap2/1880v2_fp_convert.h"
 #include "ive.h"
 
 #include <stdio.h>
@@ -51,9 +50,8 @@ int main(int argc, char **argv) {
 
   printf("Run TPU Add.\n");
   IVE_ADD_CTRL_S iveAddCtrl;
-  CVI_U16 res = convert_fp32_bf16(1.f);
-  iveAddCtrl.u0q16X = res;
-  iveAddCtrl.u0q16Y = res;
+  iveAddCtrl.aX = 1.f;
+  iveAddCtrl.bY = 1.f;
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < total_run; i++) {

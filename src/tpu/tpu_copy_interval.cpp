@@ -50,7 +50,6 @@ int IveTPUCopyInterval::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   p_fill.constant = 0;
   p_fill.dst = tl_output;
   bmk1880v2_tdma_tg2l_bf16_tensor_fill_constant(bk_ctx, &p_fill);
-  bmruntime_bmkernel_submit(*ctx);
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(1);

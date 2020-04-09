@@ -9,25 +9,18 @@ This is an Image Processing library using TPU on CVI1835.
 ### Requirements
 
 1. Middleware headers
-2. Bmtap2 cmodel & soc prebuilt
+2. MLIR SDK
 3. Tracer lib
 
-1 & 2 will be automatically downloaded from the FTP server when processing CMake. Tracer lib can be get from GitLab at ``http://10.34.33.3:8480/sys_app/tracer``. Put the Tracer lib under the ``3rdparty`` folder.
+Tracer lib can be get from GitLab at ``http://10.34.33.3:8480/sys_app/tracer``. Put the Tracer lib under the ``3rdparty`` folder.
 
 ```
 $ mkdir build
 $ cd build
-$ cmake ..
-$ make -j8
-```
-
-Or you can manually assign the root folder of the prebuilt libraries.
-
-```
-$ mkdir build
-$ cd build
-$ cmake .. -DLIBDEP_MIDDLEWARE_DIR=<middleware root folder> -DLIBDEP_BMTAP2_DIR=<bmtap2 root folder>
-$ make -j8
+$ cmake -G Ninja .. -DMLIR_SDK_ROOT=${PWD}/../../cvitek_mlir \
+                    -DMIDDLEWARE_SDK_ROOT=${PWD}/../../middleware \
+                    -DCMAKE_BUILD_TYPE=Release
+$ ninja -j8
 ```
 
 SOC mode
@@ -35,16 +28,19 @@ SOC mode
 ```
 $ mkdir build_soc
 $ cd build
-$ cmake .. -DBM_TARGET=soc -DTOOLCHAIN_ROOT_DIR=${PWD}/../../gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu  -DCMAKE_TOOLCHAIN_FILE=../toolchain/toolchain-aarch64-linux.cmake
-$ make -j8
+$ cmake -G Ninja .. -DCVI_TARGET=soc \
+                    -DTOOLCHAIN_ROOT_DIR=${PWD}/../../gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu \
+                    -DCMAKE_TOOLCHAIN_FILE=${PWD}/../toolchain/toolchain-aarch64-linux.cmake \
+                    -DMLIR_SDK_ROOT=${PWD}/../../cvitek_tpu_sdk \
+                    -DMIDDLEWARE_SDK_ROOT=${PWD}/../../middleware \
+                    -DCMAKE_BUILD_TYPE=Release
+$ ninja -j8
 ```
-
-**Note: You'll need to connect to VPN to get prebuilt files from FTP.**
 
 You may install the library with the following command.
 
 ```
-$make install
+$ninja install
 ```
 
 ## Currently supported TPU operations
@@ -81,10 +77,4 @@ $make install
 3. Some required API is missing,
    1. ~~auto channel expansion~~
    2. div
-4. Middleware include header ``cvi_type.h`` may miss some ``#define``
-
-```
-typedef unsigned short          CVI_U0Q16;
-
-#define CVI_NOT_SUPPORTED       9
-```
+4. ~~Middleware include header ``cvi_type.h`` may miss some ``#define``~~

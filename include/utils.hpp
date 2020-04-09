@@ -3,9 +3,9 @@
 #include "debug.hpp"
 #include "tpu_data.hpp"
 
+#include <bmkernel/bm1880v2/1880v2_fp_convert.h>
 #include <bmkernel/bm1880v2/bmkernel_1880v2.h>
-#include <bmtap2/1880v2_fp_convert.h>
-#include <libbmruntime/bmruntime_bmkernel.h>
+#include <bmruntime.h>
 
 #include <assert.h>
 #include <limits.h>
@@ -23,11 +23,11 @@ inline void createHandle(bmctx_t *ctx, bmk1880v2_context_t **bmk) {
     exit(-1);
   }
 
-  bmruntime_bmkernel_create(*ctx, (void **)bmk);
+  cviruntime_cvikernel_create(*ctx, (void **)bmk);
 }
 
 inline void destroyHandle(bmctx_t *ctx) {
-  bmruntime_bmkernel_destroy(*ctx);
+  cviruntime_cvikernel_destroy(*ctx);
   bm_exit(*ctx);
 }
 
@@ -46,7 +46,7 @@ inline void submitCmdbuf(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     bmerr_t ret = bm_send_cmdbuf(*ctx, buf, (size_t)len, &seq_no);
     bmk1880v2_reset(bk_ctx);
   } else {
-    bmruntime_bmkernel_submit(*ctx);
+    cviruntime_cvikernel_submit(*ctx);
   }
 }
 
@@ -114,7 +114,7 @@ inline void bf16LookupTable(bmk1880v2_context_t *bk_ctx,
   lmem.fmt = FMT_I8;
   lmem.shape.h *= lmem.shape.w;
   lmem.shape.w = 1;
-  lmem.stride = bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem.shape, 1, FMT_I8);
+  lmem.stride = bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem.shape, FMT_I8, 1);
   lmem.stride.h *= 2;
   p10.dst = &lmem;
   p10.src = mask->ifmap;

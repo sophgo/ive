@@ -2,7 +2,7 @@
 #include "cvi_type.h"
 
 #include <bmkernel/bm1880v2/bmkernel_1880v2.h>
-#include <libbmruntime/bmruntime_bmkernel.h>
+#include <bmruntime.h>
 #include <string.h>
 #include <iostream>
 #include <vector>
@@ -230,7 +230,13 @@ class CviImg {
    * @param ctx bm context.
    * @return int return 0 if success.
    */
-  int Flush(bmctx_t *ctx) { return bm_device_flush(*ctx, m_bmmem); }
+  int Flush(bmctx_t *ctx) {
+#ifdef CVI_SOC
+    return bmmem_device_flush(*ctx, m_bmmem);
+#else
+    return 0;
+#endif
+  }
 
   /**
    * @brief Update cache data from RAM.
@@ -238,7 +244,13 @@ class CviImg {
    * @param ctx bm context.
    * @return int return 0 if success.
    */
-  int Invld(bmctx_t *ctx) { return bm_device_invld(*ctx, m_bmmem); }
+  int Invld(bmctx_t *ctx) {
+#ifdef CVI_SOC
+    return bmmem_device_invld(*ctx, m_bmmem);
+#else
+    return 0;
+#endif
+  }
 
   bmk1880v2_tensor_tgmem_t m_tg;
 
