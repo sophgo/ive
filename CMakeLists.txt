@@ -90,6 +90,7 @@ message("==================================================")
 
 # add_subdirectory(tpu_math)
 add_subdirectory(src)
+add_subdirectory(sample)
 if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "SDKRelease")
   add_subdirectory(test)
 endif()
