@@ -751,9 +751,15 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
       float bin_div_dec = bin_div - (u32)(bin_div);
       if (bin_div_dec == 0) {
         u32 bin_index = bin_div;
+        if (bin_index == pstHogCtrl->u8BinSize) {
+          bin_index = 0;
+        }
         cell_histogram[cell_index + bin_index] += mag;
       } else {
         u32 bin_index = bin_div;
+        if (bin_index == pstHogCtrl->u8BinSize) {
+          bin_index = 0;
+        }
         u32 bin_index_2 = (bin_index + 1);
         if (bin_index_2 >= pstHogCtrl->u8BinSize) bin_index_2 = 0;
         float bin_div_dec_left = 1.f - bin_div_dec;
@@ -902,6 +908,10 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
 CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO_S *pstMap,
                     IVE_DST_IMAGE_S *pstDst, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
+  if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1 || pstDst->enType != IVE_IMAGE_TYPE_U8C1) {
+    std::cerr << "CVI_IVE_Map only supports U8C1." << std::endl;
+    return CVI_FAILURE;
+  }
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   auto &shape = handle_ctx->t_h.t_tblmgr.getTblTLShape(FMT_U8);
   u32 tbl_sz = shape.h * shape.w;
@@ -1534,4 +1544,3 @@ CVI_S32 CVI_IVE_16BitTo8Bit(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_
   CVI_IVE_BufFlush(pIveHandle, pstDst);
   return CVI_SUCCESS;
 }
-
