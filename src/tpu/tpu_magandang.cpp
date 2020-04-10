@@ -67,7 +67,7 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     tl_buf6 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
   }
 
-  const bmk1880v2_tensor_lmem_shape_t tl_table_s = mp_tblmgr->getTblTLShape();
+  const bmk1880v2_tensor_lmem_shape_t tl_table_s = mp_tblmgr->getTblTLShape(FMT_BF16);
   // atan buf
   auto *tl_y0_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
   auto *tl_invert_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);

@@ -1222,6 +1222,32 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   // FIXME: We assumed that h never exceeds 1024.
   bmk1880v2_tensor_tgmem_shape_t shape = {1, 32, div_16, 16};
   size_t loop_turn = (total_size / (32 * div)) / m_slice_info.ping_pong_size;
+  // Check if any pixel left.
+  size_t left_pixels = total_size - ((loop_turn * (32 * div)) * m_slice_info.ping_pong_size);
+
+  if (loop_turn == 0 && left_pixels != 0) {
+    // FIXME: Duplicate code below.
+    u32 div = 32;
+    while (left_pixels % div != 0) {
+      u32 val = std::ceil(float(left_pixels) / div);
+      div = std::floor(float(left_pixels) / val);
+    }
+    u32 hw = left_pixels / div;
+    // FIXME: Again, we assumed that h and w may not exceed 1024.
+    u32 w_val = 1024;
+    while (hw % w_val != 0) {
+      u32 val = std::ceil(float(hw) / w_val);
+      w_val = std::floor(float(hw) / val);
+    }
+    shape.n = 1;
+    shape.c = div;
+    shape.h = hw / w_val;
+    shape.w = w_val;
+  }
+  IVE_DEBUG("Total size %u\n", total_size);
+  IVE_DEBUG("turn %lu left %lu\n", loop_turn, left_pixels);
+  IVE_DEBUG("%u %u %u %u\n", shape.n, shape.c, shape.h, shape.w);
+
   std::vector<bmk1880v2_tensor_tgmem_shape_t> s_in_vec, s_out_vec;
   for (size_t k = 0; k < input.size(); k++) {
     s_in_vec.push_back({shape.n, shape.c, shape.h, shape.w});
@@ -1229,12 +1255,6 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   for (size_t k = 0; k < output->size(); k++) {
     s_out_vec.push_back({shape.n, shape.c, shape.h, shape.w});
   }
-  // Check if any pixel left.
-  size_t left_pixels = total_size - ((loop_turn * (32 * div)) * m_slice_info.ping_pong_size);
-  IVE_DEBUG("Total size %u\n", total_size);
-  IVE_DEBUG("turn %lu left %lu\n", loop_turn, left_pixels);
-  IVE_DEBUG("%u %u %u %u\n", shape.n, shape.c, shape.h, shape.w);
-
   // allocate tl shape and get input/ output indices.
   std::vector<u32> tl_in_idx, tl_out_idx;
   runSetup(ctx, bk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);

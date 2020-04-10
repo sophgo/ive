@@ -54,7 +54,7 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   cviImgFlush2TL(ctx, bk_ctx, m_kernel_x->img, tl_kernel_gx);
   cviImgFlush2TL(ctx, bk_ctx, m_kernel_y->img, tl_kernel_gy);
 
-  const bmk1880v2_tensor_lmem_shape_t tl_table_s = mp_tblmgr->getTblTLShape();
+  const bmk1880v2_tensor_lmem_shape_t tl_table_s = mp_tblmgr->getTblTLShape(FMT_BF16);
   auto *tl_table_data = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
   auto *tl_table_data_mantissa = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
   {

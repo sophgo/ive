@@ -23,6 +23,7 @@
 #include "tpu/tpu_sigmoid.hpp"
 #include "tpu/tpu_sobel.hpp"
 #include "tpu/tpu_sub.hpp"
+#include "tpu/tpu_table.hpp"
 #include "tpu/tpu_threshold.hpp"
 #include "tpu/tpu_xor.hpp"
 
@@ -48,6 +49,7 @@ struct TPU_HANDLE {
   IveTPUSobel t_sobel;
   IveTPUSubAbs t_sub_abs;
   IveTPUSub t_sub;
+  IveTPUTbl t_tbl;
   IveTPUThreshold t_thresh;
   IveTPUThresholdHighLow t_thresh_hl;
   IveTPUThresholdSlope t_thresh_s;
@@ -893,6 +895,26 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
   handle_ctx->t_h.t_magandang.noNegative(false);
   handle_ctx->t_h.t_magandang.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   handle_ctx->t_h.t_magandang.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO_S *pstMap,
+                    IVE_DST_IMAGE_S *pstDst, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  auto &shape = handle_ctx->t_h.t_tblmgr.getTblTLShape(FMT_U8);
+  u32 tbl_sz = shape.h * shape.w;
+  if (pstMap->u32Size != tbl_sz) {
+    std::cerr << "Mapping table must be size " << tbl_sz << " in CVI_U8 format." << std::endl;
+    return CVI_FAILURE;
+  }
+  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
+  handle_ctx->t_h.t_tbl.setTable(&handle_ctx->ctx, &handle_ctx->t_h.t_tblmgr, pstMap->pu8VirAddr);
+  handle_ctx->t_h.t_tbl.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+  handle_ctx->t_h.t_tbl.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return CVI_SUCCESS;
 }
 

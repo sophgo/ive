@@ -122,7 +122,7 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   }
 
   if (m_do_threshold) {
-    const bmk1880v2_tensor_lmem_shape_t tl_table_s = mp_tblmgr->getTblTLShape();
+    const bmk1880v2_tensor_lmem_shape_t tl_table_s = mp_tblmgr->getTblTLShape(FMT_BF16);
     auto *tl_pos_neg_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
     {
       mp_table_pos_neg = new CviImg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, FMT_BF16);

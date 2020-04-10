@@ -294,6 +294,19 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
                           IVE_MAG_AND_ANG_CTRL_S *pstMaaCtrl, bool bInstant);
 
 /**
+ * @brief Map src image to dst image with a given table.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc Input image.
+ * @param pstMap Mapping table. (length 256.)
+ * @param pstDst Output image.
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO_S *pstMap,
+                    IVE_DST_IMAGE_S *pstDst, bool bInstant);
+
+/**
  * @brief Calculate the normalized gradient of an image.
  *
  * @param pIveHandle Ive instance handler.
