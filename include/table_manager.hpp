@@ -15,13 +15,14 @@ class TblMgr {
   ~TblMgr();
   int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx);
   int free(bmctx_t *ctx);
-  const bmk1880v2_tensor_lmem_shape_t getTblTLShape();
+  const bmk1880v2_tensor_lmem_shape_t getTblTLShape(fmt_t fmt);
   const CviImg *atan(enum TBLATAN tblatan);
   const CviImg *reciprocal(enum TBLRECIPROCAL tblrpc);
   const CviImg *sqrt(enum TBLSQRT tblsqrt);
   const CviImg *mask(enum TBLMASK tblmsk);
 
  private:
+  bmk1880v2_tensor_lmem_shape_t m_table_s_u8;
   bmk1880v2_tensor_lmem_shape_t m_table_s;
   // atan2 CviImg
   CviImg *mp_atan_y0_degree = nullptr;

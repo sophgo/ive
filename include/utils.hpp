@@ -50,6 +50,17 @@ inline void submitCmdbuf(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   }
 }
 
+inline void genTableU8(const bmk1880v2_tensor_lmem_shape_t &table_shape, const u8 *table_data,
+                       u8 *tg_table) {
+  int table_hw = table_shape.h * table_shape.w;
+
+  // duplicate channel #0 to #31
+  // TODO: tensor copy
+  for (u64 i = 0; i < table_shape.c; i++) {
+    memcpy(&tg_table[table_hw * i], table_data, sizeof(u8) * table_hw);
+  }
+}
+
 inline void genTableBF16(const bmk1880v2_tensor_lmem_shape_t &table_shape, const float min_value,
                          const float max_value, u16 *table_pos_neg) {
   u32 half = table_shape.h * table_shape.w / 2;

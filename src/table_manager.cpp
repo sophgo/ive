@@ -4,6 +4,8 @@ TblMgr::TblMgr() {}
 TblMgr::~TblMgr() {}
 
 int TblMgr::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_table_s_u8 = {1, 32, 16, 16};  // Kernel does not support U8 table info.
+  // bf16_lut_tbl_bytesize(bk_ctx, &m_table_s_u8, FMT_U8);  // 16 * 16
   bf16_lut_tbl_bytesize(bk_ctx, &m_table_s, FMT_BF16);  // 32 * 8
   if (mp_atan_y0_degree == nullptr) {
     mp_atan_y0_degree = new CviImg(ctx, m_table_s.c, m_table_s.h, m_table_s.w, FMT_BF16);
@@ -118,7 +120,15 @@ int TblMgr::free(bmctx_t *ctx) {
   return BM_SUCCESS;
 }
 
-const bmk1880v2_tensor_lmem_shape_t TblMgr::getTblTLShape() { return m_table_s; }
+const bmk1880v2_tensor_lmem_shape_t TblMgr::getTblTLShape(fmt_t fmt) {
+  if (fmt == FMT_U8) {
+    return m_table_s_u8;
+  } else if (fmt == FMT_BF16) {
+    return m_table_s;
+  }
+  std::cerr << "Unsupported fmt " << fmt << std::endl;
+  return {0, 0, 0, 0};
+}
 
 const CviImg *TblMgr::atan(enum TBLATAN tblatan) {
   CviImg *img = nullptr;
