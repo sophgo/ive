@@ -7,3 +7,6 @@ prebuilt
 tmp
 ivesdk-*.tar.gz
 *.o
+3rdparty/tracer
+
+

@@ -1329,10 +1329,10 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
  * @Param Height image height
  * @Param Stride shift bytes
  */
-inline void GetGrayIntegralImage(u8 *Src, u32 *Integral, int Width, int Height, int Stride) {
+inline void GetGrayIntegralImage(u8 *Src, u32 *Integral, int Width, int Height) {
   memset(Integral, 0, (Width + 1) * sizeof(uint));
   for (int Y = 0; Y < Height; Y++) {
-    u8 *LinePS = Src + Y * Stride;
+    u8 *LinePS = Src + Y * Width;
     u32 *LinePL = Integral + Y * (Width + 1) + 1;
     u32 *LinePD = Integral + (Y + 1) * (Width + 1) + 1;
     LinePD[-1] = 0;
@@ -1351,7 +1351,7 @@ inline void GetGrayIntegralImage(u8 *Src, u32 *Integral, int Width, int Height, 
  * @param num_bins how many values you want to find frequency
  */
 
-inline int cal_hist(int cols, int rows, u8 *image, u32 *hist, int Stride, int num_bins) {
+inline int cal_hist(int cols, int rows, u8 *image, u32 *hist, int num_bins) {
   int col, row;
   if (cols < 1 || rows < 1 || num_bins < 1) {
     return (1);
@@ -1390,17 +1390,17 @@ inline int equalize_hist(u32 *hist, u8 *eqhist, int nbr_elements, int nbr_bins) 
     // calculating new gray level after multiplying by
     // maximum gray count which is 255 and dividing by
     // total number of pixels
-    eqhist[i] = round((((float)curr) * 255) / total);
+    eqhist[i] = (u8)round((((float)curr) * 255) / total);
   }
   return (0);
 }
 
-inline int histogramEqualisation(int cols, int rows, int stride, u8 *image, u8 *pDst) {
+inline int histogramEqualisation(int cols, int rows, u8 *image, u8 *pDst) {
   u32 hist[256] = {0};
   u8 new_gray_level[256] = {0};
   int col, row, total, st;
 
-  st = cal_hist(cols, rows, image, hist, stride, 256);
+  st = cal_hist(cols, rows, image, hist, 256);
   if (st > 0) {
     return (st);
   }
@@ -1409,11 +1409,13 @@ inline int histogramEqualisation(int cols, int rows, int stride, u8 *image, u8 *
   if (st > 0) {
     return (st);
   }
+  u8 *ptr = image;
   for (row = 0; row < rows; row++) {
     for (col = 0; col < cols; col++) {
-      pDst[col] = (unsigned char)new_gray_level[pDst[col]];
+      pDst[col] = (unsigned char)new_gray_level[ptr[col]];
     }
     pDst += cols;
+    ptr += cols;
   }
   return st;
 }
@@ -1428,11 +1430,11 @@ CVI_S32 CVI_IVE_Integ(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_ME
 
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
 
-  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
-  u64 data_size = cpp_src->m_tg.stride.n / getFmtSize(cpp_src->m_tg.fmt);
+  // CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+  // u64 data_size = cpp_src->m_tg.stride.n / getFmtSize(cpp_src->m_tg.fmt);
   u32 *ptr = (u32 *)pstDst->pu8VirAddr;
   GetGrayIntegralImage((u8 *)pstSrc->pu8VirAddr[0], ptr, (int)pstSrc->u16Width,
-                       (int)pstSrc->u16Height, (int)data_size);
+                       (int)pstSrc->u16Height);
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
   return CVI_SUCCESS;
@@ -1445,10 +1447,8 @@ CVI_S32 CVI_IVE_Hist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_MEM
     return CVI_FAILURE;
   }
 
-  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
-  u64 data_size = cpp_src->m_tg.stride.n / getFmtSize(cpp_src->m_tg.fmt);
   cal_hist((int)pstSrc->u16Width, (int)pstSrc->u16Height, (u8 *)pstSrc->pu8VirAddr[0],
-           (u32 *)pstDst->pu8VirAddr, (int)data_size, 256);
+           (u32 *)pstDst->pu8VirAddr, 256);
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
   return CVI_SUCCESS;
 }
@@ -1462,21 +1462,23 @@ CVI_S32 CVI_IVE_EqualizeHist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
   }
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
 
-  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
-  u64 data_size = cpp_src->m_tg.stride.n / getFmtSize(cpp_src->m_tg.fmt);
-
-  histogramEqualisation((int)pstSrc->u16Width, (int)pstSrc->u16Height, (int)data_size,
-                        (u8 *)pstSrc->pu8VirAddr[0], (u8 *)pstDst->pu8VirAddr[0]);
+  histogramEqualisation((int)pstSrc->u16Width, (int)pstSrc->u16Height, (u8 *)pstSrc->pu8VirAddr[0],
+                        (u8 *)pstDst->pu8VirAddr[0]);
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
 
   return CVI_SUCCESS;
 }
 
-double cal_norm_cc(unsigned char *psrc1, unsigned char *psrc2, int srcw, int srch) {
+inline float cal_norm_cc(unsigned char *psrc1, unsigned char *psrc2, int srcw, int srch) {
   int i, j, wxh;
   uint t1, t2, t3;
+  float rtv = 0;
+  double d1, d2, d3;
 
+  if (srcw < 1 || srch < 1) {
+    return (0.0);
+  }
   t1 = 0;
   t2 = 0;
   t3 = 0;
@@ -1491,8 +1493,16 @@ double cal_norm_cc(unsigned char *psrc1, unsigned char *psrc2, int srcw, int src
   for (i = 0; i < wxh; i++) {
     t3 += (psrc2[i] * psrc2[i]);
   }
+  if (t2 < 1 || t3 < 1) {
+    return (0.0);
+  }
+  d1 = (double)(t1);
+  d2 = sqrt((double)t2) * sqrt((double)t3);
+  d3 = d1 / (d2 + 1);
+  // printf("%lf %lf %d %d %d\n", d1, d2, t1, t2, t3);
+  rtv = (float)(d3);
 
-  return ((double)t1 / t2 * ((double)(1.0) / t3));
+  return rtv;
 }
 
 CVI_S32 CVI_IVE_NCC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
@@ -1508,9 +1518,11 @@ CVI_S32 CVI_IVE_NCC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 
   CVI_IVE_BufRequest(pIveHandle, pstSrc1);
   CVI_IVE_BufRequest(pIveHandle, pstSrc2);
-  // u32 *ptr = (u32 *)pstDst->pu8VirAddr[0];
-  double rt = cal_norm_cc((u8 *)pstSrc1->pu8VirAddr[0], (u8 *)pstSrc2->pu8VirAddr[0],
-                          (int)pstSrc1->u16Width, (int)pstSrc1->u16Height);
+  float *ptr = (float *)pstDst->pu8VirAddr;
+  float rt = cal_norm_cc((u8 *)pstSrc1->pu8VirAddr[0], (u8 *)pstSrc2->pu8VirAddr[0],
+                         (int)pstSrc1->u16Width, (int)pstSrc1->u16Height);
+
+  ptr[0] = rt;
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc1);
   CVI_IVE_BufFlush(pIveHandle, pstSrc2);
@@ -1522,9 +1534,9 @@ inline void uint16_8bit(uint16_t *in, uint8_t *out, int dim) {
   int i;
 
   for (i = 0; i < dim; i++) {
-    uint16_t n = in[i];  // because shifting the sign bit invokes UB
-    uint8_t hi = ((n >> 8) & 0xff);
-    uint8_t lo = ((n >> 0) & 0xff);
+    // uint16_t n = in[i];  // because shifting the sign bit invokes UB
+    // uint8_t hi = ((n >> 8) & 0xff);
+    uint8_t lo = ((in[i] >> 0) & 0xff);
     out[i] = lo;
   }
 }

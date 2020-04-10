@@ -310,4 +310,11 @@ typedef struct cviIVE_16BIT_TO_8BIT_CTRL_S {
   CVI_S8 s8Bias;
 } IVE_16BIT_TO_8BIT_CTRL_S;
 
+typedef struct cviIVE_NCC_DST_MEM_S {
+  CVI_U64 u64Numerator;
+  CVI_U64 u64QuadSum1;
+  CVI_U64 u64QuadSum2;
+  CVI_U64 u8Reserved[8];
+} IVE_NCC_DST_MEM_S;
+
 #endif  // End of _CVI_COMM_IVE.h
