@@ -118,6 +118,7 @@ int main(int argc, char **argv) {
   CVI_SYS_FreeI(handle, &dstH_u8);
   CVI_SYS_FreeI(handle, &dstV);
   CVI_SYS_FreeI(handle, &dstV_u8);
+  CVI_SYS_FreeI(handle, &dstMag);
   CVI_SYS_FreeI(handle, &dstAng);
   CVI_SYS_FreeI(handle, &dstAng_u8);
   CVI_SYS_FreeM(handle, &dstHist);
