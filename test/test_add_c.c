@@ -10,6 +10,8 @@
 #endif
 
 int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src1, IVE_SRC_IMAGE_S *src2, IVE_DST_IMAGE_S *dst);
+int cpu_ref_bf16(const int channels, IVE_SRC_IMAGE_S *src1, IVE_SRC_IMAGE_S *src2,
+                 IVE_DST_IMAGE_S *dst, float a, float b);
 
 int main(int argc, char **argv) {
   if (argc != 3) {
@@ -45,8 +47,9 @@ int main(int argc, char **argv) {
   }
   CVI_IVE_BufFlush(handle, &src2);
 
-  IVE_DST_IMAGE_S dst;
+  IVE_DST_IMAGE_S dst, dst2;
   CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
+  CVI_IVE_CreateImage(handle, &dst2, IVE_IMAGE_TYPE_U8C1, width, height);
 
   printf("Run TPU Add.\n");
   IVE_ADD_CTRL_S iveAddCtrl;
@@ -60,10 +63,22 @@ int main(int argc, char **argv) {
   gettimeofday(&t1, NULL);
   unsigned long elapsed_tpu =
       ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
+  printf("Run TPU BF16 Add.\n");
+  iveAddCtrl.aX = 1.f;
+  iveAddCtrl.bY = 0.f;
+  gettimeofday(&t0, NULL);
+  for (size_t i = 0; i < total_run; i++) {
+    CVI_IVE_Add(handle, &src1, &src2, &dst2, &iveAddCtrl, 0);
+  }
+  gettimeofday(&t1, NULL);
+  unsigned long elapsed_tpu_bf16 =
+      ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
   CVI_IVE_BufRequest(handle, &src1);
   CVI_IVE_BufRequest(handle, &src2);
   CVI_IVE_BufRequest(handle, &dst);
+  CVI_IVE_BufRequest(handle, &dst2);
   int ret = cpu_ref(nChannels, &src1, &src2, &dst);
+  ret |= cpu_ref_bf16(nChannels, &src1, &src2, &dst2, iveAddCtrl.aX, iveAddCtrl.bY);
 
 #ifdef __ARM_ARCH
   IVE_DST_IMAGE_S dst_cpu;
@@ -119,6 +134,7 @@ int main(int argc, char **argv) {
 #endif
   if (total_run == 1) {
     printf("TPU avg time %lu\n", elapsed_tpu);
+    printf("TPU BF16 avg time %lu\n", elapsed_tpu_bf16);
 #ifdef __ARM_ARCH
     printf("CPU NEON time %lu\n", elapsed_neon);
     printf("CPU time %lu\n", elapsed_cpu);
@@ -126,10 +142,12 @@ int main(int argc, char **argv) {
     // write result to disk
     printf("Save to image.\n");
     CVI_IVE_WriteImage(handle, "test_add_c.png", &dst);
+    CVI_IVE_WriteImage(handle, "test_addBf16_c.png", &dst2);
   }
 #ifdef __ARM_ARCH
   else {
     printf("OOO %-10s %10lu %10lu %10lu\n", "ADD", elapsed_tpu, elapsed_neon, elapsed_cpu);
+    printf("OOO %-10s %10lu %10s %10s\n", "ADD BF16", elapsed_tpu, "NA", "NA");
   }
 #endif
 
@@ -137,6 +155,7 @@ int main(int argc, char **argv) {
   CVI_SYS_FreeI(handle, &src1);
   CVI_SYS_FreeI(handle, &src2);
   CVI_SYS_FreeI(handle, &dst);
+  CVI_SYS_FreeI(handle, &dst2);
   CVI_IVE_DestroyHandle(handle);
 
   return ret;
@@ -150,6 +169,24 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src1, IVE_SRC_IMAGE_S *src2,
   CVI_U8 *dst_ptr = dst->pu8VirAddr[0];
   for (size_t i = 0; i < channels * src1->u16Width * src1->u16Height; i++) {
     int res = src1_ptr[i] + src2_ptr[i];
+    res = res > 255 ? 255 : res;
+    if (res != dst_ptr[i]) {
+      printf("[%lu] %d + %d = TPU %d, CPU %d\n", i, src1_ptr[i], src2_ptr[i], dst_ptr[i], (int)res);
+      ret = CVI_FAILURE;
+      break;
+    }
+  }
+  return ret;
+}
+
+int cpu_ref_bf16(const int channels, IVE_SRC_IMAGE_S *src1, IVE_SRC_IMAGE_S *src2,
+                 IVE_DST_IMAGE_S *dst, float a, float b) {
+  int ret = CVI_SUCCESS;
+  CVI_U8 *src1_ptr = src1->pu8VirAddr[0];
+  CVI_U8 *src2_ptr = src2->pu8VirAddr[0];
+  CVI_U8 *dst_ptr = dst->pu8VirAddr[0];
+  for (size_t i = 0; i < channels * src1->u16Width * src1->u16Height; i++) {
+    int res = a * src1_ptr[i] + b * src2_ptr[i];
     res = res > 255 ? 255 : res;
     if (res != dst_ptr[i]) {
       printf("[%lu] %d + %d = TPU %d, CPU %d\n", i, src1_ptr[i], src2_ptr[i], dst_ptr[i], (int)res);

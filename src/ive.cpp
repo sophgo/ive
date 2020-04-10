@@ -33,6 +33,7 @@
 struct TPU_HANDLE {
   TblMgr t_tblmgr;
   IveTPUAdd t_add;
+  IveTPUAddBF16 t_add_bf16;
   IveTPUAnd t_and;
   IveTPUBlock t_block;
   IveTPUBlockBF16 t_block_bf16;
@@ -472,19 +473,23 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   ScopedTrace t(__PRETTY_FUNCTION__);
   int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
+  CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
+  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
   const float &x = ctrl->aX;
   const float &y = ctrl->bY;
   if ((x == 1 && y == 1) || (x == 0.f && y == 0.f)) {
     ret = CVI_SUCCESS;
     handle_ctx->t_h.t_add.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-    CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
-    CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
-    CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-    std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
-    std::vector<CviImg> outputs = {*cpp_dst};
-
     handle_ctx->t_h.t_add.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  } else {
+    ret = CVI_SUCCESS;
+    handle_ctx->t_h.t_add_bf16.setCoef(x, y);
+    handle_ctx->t_h.t_add_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+    handle_ctx->t_h.t_add_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   }
   return ret;
 }

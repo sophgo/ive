@@ -23,6 +23,7 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/table_manager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu_data.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_add.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_add_bf16.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_and.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_block_bf16.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_block.cpp
