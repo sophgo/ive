@@ -1303,7 +1303,6 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   return CVI_SUCCESS;
 }
 
-
 // ---------------------------------
 // cpu functions
 // ---------------------------------
@@ -1315,23 +1314,19 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
  * @Param Height image height
  * @Param Stride shift bytes
  */
-inline void GetGrayIntegralImage(u8 *Src, u32 *Integral, int Width, int Height, int Stride)
-{
-	memset(Integral, 0, (Width + 1) * sizeof(uint));
-	for (int Y = 0; Y < Height; Y++)
-	{
-		u8 *LinePS = Src + Y * Stride;
-		u32 *LinePL = Integral + Y * (Width + 1) + 1;
-		u32 *LinePD = Integral + (Y + 1) * (Width + 1) + 1;
-		LinePD[-1] = 0;
-		for (int X = 0, Sum = 0; X < Width; X++)
-		{
-			Sum += LinePS[X];
-			LinePD[X] = LinePL[X] + Sum;
-		}
-	}
+inline void GetGrayIntegralImage(u8 *Src, u32 *Integral, int Width, int Height, int Stride) {
+  memset(Integral, 0, (Width + 1) * sizeof(uint));
+  for (int Y = 0; Y < Height; Y++) {
+    u8 *LinePS = Src + Y * Stride;
+    u32 *LinePL = Integral + Y * (Width + 1) + 1;
+    u32 *LinePD = Integral + (Y + 1) * (Width + 1) + 1;
+    LinePD[-1] = 0;
+    for (int X = 0, Sum = 0; X < Width; X++) {
+      Sum += LinePS[X];
+      LinePD[X] = LinePL[X] + Sum;
+    }
+  }
 }
-
 
 /**
  * @param cols image width
@@ -1341,27 +1336,23 @@ inline void GetGrayIntegralImage(u8 *Src, u32 *Integral, int Width, int Height, 
  * @param num_bins how many values you want to find frequency
  */
 
-inline int cal_hist(int cols, int rows, u8 *image, u32 *hist, int Stride, int num_bins)
-{
-	int col, row;
-	if(cols<1 || rows<1 || num_bins<1){
-		return(1);
-	}
-	memset(hist, 0, sizeof(u32)*num_bins);
+inline int cal_hist(int cols, int rows, u8 *image, u32 *hist, int Stride, int num_bins) {
+  int col, row;
+  if (cols < 1 || rows < 1 || num_bins < 1) {
+    return (1);
+  }
+  memset(hist, 0, sizeof(u32) * num_bins);
 
-	for (int Y = 0; Y < rows; Y++)
-	{
-		u8 *LinePS = image + Y * cols;
-		for (int X = 0, Sum = 0; X < cols; X++)
-		{
-			Sum = LinePS[X];
+  for (int Y = 0; Y < rows; Y++) {
+    u8 *LinePS = image + Y * cols;
+    for (int X = 0, Sum = 0; X < cols; X++) {
+      Sum = LinePS[X];
       hist[Sum]++;
-		}
-	}
+    }
+  }
 
-	return(0);
+  return (0);
 }
-
 
 /**
  * @param hist frequencies
@@ -1370,57 +1361,52 @@ inline int cal_hist(int cols, int rows, u8 *image, u32 *hist, int Stride, int nu
  * @param nbr_bins number of levels
  */
 
-inline int equalize_hist(u32 *hist, u8 *eqhist, int nbr_elements, int nbr_bins)
-{
-	int curr, i, total;
-	if(nbr_elements<1 || nbr_bins<1){
-		return(1);
-	}
-	curr = 0;
-	total = nbr_elements;
-	// calculating cumulative frequency and new gray levels
-	for (i = 0; i < nbr_bins; i++) {
-		    // cumulative frequency
-		    curr += hist[i];
-        // calculating new gray level after multiplying by
-        // maximum gray count which is 255 and dividing by
-        // total number of pixels
-        eqhist[i] = round((((float)curr) * 255) / total);
-	}
-	return(0);
+inline int equalize_hist(u32 *hist, u8 *eqhist, int nbr_elements, int nbr_bins) {
+  int curr, i, total;
+  if (nbr_elements < 1 || nbr_bins < 1) {
+    return (1);
+  }
+  curr = 0;
+  total = nbr_elements;
+  // calculating cumulative frequency and new gray levels
+  for (i = 0; i < nbr_bins; i++) {
+    // cumulative frequency
+    curr += hist[i];
+    // calculating new gray level after multiplying by
+    // maximum gray count which is 255 and dividing by
+    // total number of pixels
+    eqhist[i] = round((((float)curr) * 255) / total);
+  }
+  return (0);
 }
 
+inline int histogramEqualisation(int cols, int rows, int stride, u8 *image, u8 *pDst) {
+  u32 hist[256] = {0};
+  u8 new_gray_level[256] = {0};
+  int col, row, total, st;
 
-inline int histogramEqualisation(int cols, int rows, int stride, u8* image, u8 *pDst)
-{
-	u32 hist[256] = { 0 };
-	u8 new_gray_level[256] = { 0 };
-	int col, row, total, st;
-
-	st = cal_hist(cols, rows, image, hist, stride, 256);
-	if(st>0){
-		return(st);
-	}
-	total = cols * rows;
-	st = equalize_hist(hist, new_gray_level, total, 256);
-	if(st>0){
-		return(st);
-	}
-	for (row = 0; row < rows; row++) {
-		for (col = 0; col < cols; col++){
-			pDst[col] = (unsigned char)new_gray_level[pDst[col]];
-		}
-		pDst += cols;
-	}
-	return st;
+  st = cal_hist(cols, rows, image, hist, stride, 256);
+  if (st > 0) {
+    return (st);
+  }
+  total = cols * rows;
+  st = equalize_hist(hist, new_gray_level, total, 256);
+  if (st > 0) {
+    return (st);
+  }
+  for (row = 0; row < rows; row++) {
+    for (col = 0; col < cols; col++) {
+      pDst[col] = (unsigned char)new_gray_level[pDst[col]];
+    }
+    pDst += cols;
+  }
+  return st;
 }
-
-
 
 // main body
-CVI_S32 CVI_IVE_Integ(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_MEM_INFO_S *pstDst, IVE_INTEG_CTRL_S *ctrl, bool bInstant)
-{
-  if(pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
+CVI_S32 CVI_IVE_Integ(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_MEM_INFO_S *pstDst,
+                      IVE_INTEG_CTRL_S *ctrl, bool bInstant) {
+  if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
     std::cerr << "Output only accepts U8C1 image format." << std::endl;
     return CVI_FAILURE;
   }
@@ -1430,96 +1416,86 @@ CVI_S32 CVI_IVE_Integ(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_ME
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   u64 data_size = cpp_src->m_tg.stride.n / getFmtSize(cpp_src->m_tg.fmt);
   u32 *ptr = (u32 *)pstDst->pu8VirAddr;
-  GetGrayIntegralImage((u8 *)pstSrc->pu8VirAddr[0], ptr, (int)pstSrc->u16Width, (int)pstSrc->u16Height, (int)data_size);
-
+  GetGrayIntegralImage((u8 *)pstSrc->pu8VirAddr[0], ptr, (int)pstSrc->u16Width,
+                       (int)pstSrc->u16Height, (int)data_size);
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
   return CVI_SUCCESS;
 }
 
-CVI_S32 CVI_IVE_Hist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_MEM_INFO_S *pstDst, bool bInstant)
-{
-
-  if(pstSrc->enType != IVE_IMAGE_TYPE_U8C1)
-  {
+CVI_S32 CVI_IVE_Hist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_MEM_INFO_S *pstDst,
+                     bool bInstant) {
+  if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
     std::cerr << "Output only accepts U8C1 image format." << std::endl;
     return CVI_FAILURE;
   }
 
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   u64 data_size = cpp_src->m_tg.stride.n / getFmtSize(cpp_src->m_tg.fmt);
-  cal_hist((int)pstSrc->u16Width, (int)pstSrc->u16Height, (u8 *)pstSrc->pu8VirAddr[0], (u32 *)pstDst->pu8VirAddr, (int)data_size, 256 );
+  cal_hist((int)pstSrc->u16Width, (int)pstSrc->u16Height, (u8 *)pstSrc->pu8VirAddr[0],
+           (u32 *)pstDst->pu8VirAddr, (int)data_size, 256);
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
   return CVI_SUCCESS;
 }
 
-
-
-CVI_S32 CVI_IVE_EqualizeHist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst, IVE_EQUALIZE_HIST_CTRL_S *ctrl, bool bInstant)
-{
-  if(pstSrc->enType != IVE_IMAGE_TYPE_U8C1)
-  {
-     std::cerr << "Output only accepts U8C1 image format." << std::endl;
-     return CVI_FAILURE;
+CVI_S32 CVI_IVE_EqualizeHist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
+                             IVE_DST_IMAGE_S *pstDst, IVE_EQUALIZE_HIST_CTRL_S *ctrl,
+                             bool bInstant) {
+  if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
+    std::cerr << "Output only accepts U8C1 image format." << std::endl;
+    return CVI_FAILURE;
   }
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
 
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   u64 data_size = cpp_src->m_tg.stride.n / getFmtSize(cpp_src->m_tg.fmt);
 
-  histogramEqualisation( (int)pstSrc->u16Width, (int)pstSrc->u16Height, (int)data_size, (u8 *)pstSrc->pu8VirAddr[0],
-            (u8 *)pstDst->pu8VirAddr[0] );
+  histogramEqualisation((int)pstSrc->u16Width, (int)pstSrc->u16Height, (int)data_size,
+                        (u8 *)pstSrc->pu8VirAddr[0], (u8 *)pstDst->pu8VirAddr[0]);
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
 
   return CVI_SUCCESS;
 }
 
-double cal_norm_cc(unsigned char *psrc1, unsigned char *psrc2, int srcw, int srch)
-{
-    int i, j, wxh;
-    uint t1, t2, t3;
+double cal_norm_cc(unsigned char *psrc1, unsigned char *psrc2, int srcw, int srch) {
+  int i, j, wxh;
+  uint t1, t2, t3;
 
-    t1 = 0;
-    t2 = 0;
-    t3 = 0;
-    wxh = srcw*srch;
-    for(i=0; i<wxh; i++){
-      t1 += (psrc1[i]*psrc2[i]);
-    }
+  t1 = 0;
+  t2 = 0;
+  t3 = 0;
+  wxh = srcw * srch;
+  for (i = 0; i < wxh; i++) {
+    t1 += (psrc1[i] * psrc2[i]);
+  }
 
-    for(i=0; i<wxh; i++){
-      t2 += (psrc1[i]*psrc1[i]);
-    }
-    for(i=0; i<wxh; i++){
-      t3 += (psrc2[i]*psrc2[i]);
-    }
+  for (i = 0; i < wxh; i++) {
+    t2 += (psrc1[i] * psrc1[i]);
+  }
+  for (i = 0; i < wxh; i++) {
+    t3 += (psrc2[i] * psrc2[i]);
+  }
 
-    return ( (double)t1/t2 *( (double)(1.0)/t3) );
-
+  return ((double)t1 / t2 * ((double)(1.0) / t3));
 }
 
-CVI_S32 CVI_IVE_NCC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
-      IVE_SRC_IMAGE_S *pstSrc2, IVE_DST_MEM_INFO_S *pstDst, bool bInstant)
-{
-  if( pstSrc1->enType != IVE_IMAGE_TYPE_U8C1 )
-  {
+CVI_S32 CVI_IVE_NCC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
+                    IVE_DST_MEM_INFO_S *pstDst, bool bInstant) {
+  if (pstSrc1->enType != IVE_IMAGE_TYPE_U8C1) {
     std::cerr << "Output only accepts U8C1 image 1 format." << std::endl;
     return CVI_FAILURE;
   }
-  if( pstSrc2->enType != IVE_IMAGE_TYPE_U8C1 )
-  {
+  if (pstSrc2->enType != IVE_IMAGE_TYPE_U8C1) {
     std::cerr << "Output only accepts U8C1 image 2 format." << std::endl;
     return CVI_FAILURE;
   }
 
-
   CVI_IVE_BufRequest(pIveHandle, pstSrc1);
   CVI_IVE_BufRequest(pIveHandle, pstSrc2);
-  //u32 *ptr = (u32 *)pstDst->pu8VirAddr[0];
+  // u32 *ptr = (u32 *)pstDst->pu8VirAddr[0];
   double rt = cal_norm_cc((u8 *)pstSrc1->pu8VirAddr[0], (u8 *)pstSrc2->pu8VirAddr[0],
-  (int)pstSrc1->u16Width, (int)pstSrc1->u16Height);
-
+                          (int)pstSrc1->u16Width, (int)pstSrc1->u16Height);
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc1);
   CVI_IVE_BufFlush(pIveHandle, pstSrc2);
@@ -1527,21 +1503,19 @@ CVI_S32 CVI_IVE_NCC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
   return CVI_SUCCESS;
 }
 
-
-inline void uint16_8bit(uint16_t *in, uint8_t *out, int dim )
-{
+inline void uint16_8bit(uint16_t *in, uint8_t *out, int dim) {
   int i;
 
-  for(i=0;i<dim;i++){
-      uint16_t n = in[i]; // because shifting the sign bit invokes UB
-      uint8_t hi = ((n >> 8) & 0xff);
-      uint8_t lo = ((n >> 0) & 0xff);
-      out[i] = lo;
+  for (i = 0; i < dim; i++) {
+    uint16_t n = in[i];  // because shifting the sign bit invokes UB
+    uint8_t hi = ((n >> 8) & 0xff);
+    uint8_t lo = ((n >> 0) & 0xff);
+    out[i] = lo;
   }
 }
 
-CVI_S32 CVI_IVE_16BitTo8Bit(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst, IVE_16BIT_TO_8BIT_CTRL_S *ctrl, bool bInstant)
-{
+CVI_S32 CVI_IVE_16BitTo8Bit(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                            IVE_16BIT_TO_8BIT_CTRL_S *ctrl, bool bInstant) {
   if (pstSrc->enType != IVE_IMAGE_TYPE_U16C1) {
     std::cerr << "Input only accepts U16C1 image format." << std::endl;
     return CVI_FAILURE;
@@ -1554,13 +1528,10 @@ CVI_S32 CVI_IVE_16BitTo8Bit(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_
   CVI_IVE_BufRequest(pIveHandle, pstDst);
 
   int wxh = ((int)pstSrc->u16Width * (int)pstSrc->u16Height);
-  uint16_8bit((uint16_t *)pstSrc->pu8VirAddr[0], (uint8_t *)pstDst->pu8VirAddr[0], wxh );
+  uint16_8bit((uint16_t *)pstSrc->pu8VirAddr[0], (uint8_t *)pstDst->pu8VirAddr[0], wxh);
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
   CVI_IVE_BufFlush(pIveHandle, pstDst);
   return CVI_SUCCESS;
-
 }
-
-
 

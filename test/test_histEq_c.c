@@ -38,19 +38,18 @@ int main(int argc, char** argv) {
   printf("Run CPU Histogram Equalizatin.\n");
 
   IVE_EQUALIZE_HIST_CTRL_S ctrl;  // Currently a dummy variable
-  
+
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < total_run; i++) {
     CVI_IVE_EqualizeHist(handle, &src, &dst, &ctrl, 0);
-
   }
   gettimeofday(&t1, NULL);
   unsigned long elapsed_cpu =
       ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
 
   CVI_IVE_BufRequest(handle, &dst);
-  
+
   if (total_run == 1) {
     printf("TPU avg time %s\n", "NA");
 

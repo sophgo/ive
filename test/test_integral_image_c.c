@@ -40,18 +40,15 @@ int main(int argc, char **argv) {
   int height = src.u16Height;
   printf("Image size is %d X %d, channel %d\n", width, height, nChannels);
 
-
   IVE_DST_MEM_INFO_S dstInteg;
-  CVI_U32 dstIntegSize = (width+1)*(height+1)*sizeof(u32);
+  CVI_U32 dstIntegSize = (width + 1) * (height + 1) * sizeof(u32);
   CVI_IVE_CreateMemInfo(handle, &dstInteg, dstIntegSize);
-  dstIntegSize = (width+1)*(height+1);
-
+  dstIntegSize = (width + 1) * (height + 1);
 
   printf("Run CPU Integral Image.\n");
   IVE_INTEG_CTRL_S pstIntegCtrl;
 
   pstIntegCtrl.enOutCtrl = IVE_INTEG_OUT_CTRL_SUM;
-
 
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
@@ -62,13 +59,12 @@ int main(int argc, char **argv) {
   unsigned long elapsed_cpu =
       ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
 
-
   CVI_IVE_BufRequest(handle, &src);
   if (total_run == 1) {
     printf("CPU time %lu\n", elapsed_cpu);
     // write result to disk
     printf("Output Integral Image.\n");
-    for (size_t j = 0; j < (width*3); j++) {
+    for (size_t j = 0; j < (width * 3); j++) {
       printf("%3d ", ((u32 *)dstInteg.pu8VirAddr)[j]);
     }
     printf("\n");

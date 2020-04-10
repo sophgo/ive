@@ -12,7 +12,6 @@
 #include "arm_neon.h"
 #endif
 
-
 int main(int argc, char **argv) {
   if (argc != 3) {
     printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
@@ -36,12 +35,12 @@ int main(int argc, char **argv) {
   int nChannels = 1;
   int width = src.u16Width;
   int height = src.u16Height;
-  //size_t img_data_sz = nChannels * src.u16Stride[0] * height;
+  // size_t img_data_sz = nChannels * src.u16Stride[0] * height;
   printf("Image size is %d X %d, channel %d\n", width, height, nChannels);
   CVI_IVE_BufFlush(handle, &src);
 
   IVE_DST_MEM_INFO_S dstHist;
-  CVI_U32 dstHistSize = 256*sizeof(u32);
+  CVI_U32 dstHistSize = 256 * sizeof(u32);
   CVI_IVE_CreateMemInfo(handle, &dstHist, dstHistSize);
   dstHistSize = 256;
 
@@ -55,7 +54,6 @@ int main(int argc, char **argv) {
   gettimeofday(&t1, NULL);
   unsigned long elapsed_cpu =
       ((t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec) / total_run;
-
 
   CVI_IVE_BufRequest(handle, &src);
   if (total_run == 1) {
@@ -71,7 +69,6 @@ int main(int argc, char **argv) {
   CVI_SYS_FreeI(handle, &src);
   CVI_SYS_FreeM(handle, &dstHist);
   CVI_IVE_DestroyHandle(handle);
-
 
   return ret;
 }

@@ -8,7 +8,6 @@
 #include "arm_neon.h"
 #endif
 
-
 int main(int argc, char** argv) {
   if (argc != 3) {
     printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
@@ -41,8 +40,6 @@ int main(int argc, char** argv) {
   }
   CVI_IVE_BufFlush(handle, &src_u16);
 
-
-
   IVE_DST_IMAGE_S dst;
   CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
 
@@ -54,13 +51,12 @@ int main(int argc, char** argv) {
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < total_run; i++) {
-      ret = CVI_IVE_16BitTo8Bit(handle, &src_u16, &dst, &ctrl, 0);
+    ret = CVI_IVE_16BitTo8Bit(handle, &src_u16, &dst, &ctrl, 0);
   }
   gettimeofday(&t1, NULL);
   unsigned long elapsed_cpu = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
 
   CVI_IVE_BufRequest(handle, &dst);
-  
 
   if (total_run == 1) {
     printf("TPU avg time %s\n", "NA");
@@ -69,7 +65,6 @@ int main(int argc, char** argv) {
     printf("Save to image.\n");
     CVI_IVE_WriteImage(handle, "test_16bitTo8bit_c.png", &dst);
   }
-
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);
