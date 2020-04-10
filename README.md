@@ -2,7 +2,11 @@
 
 This is an Image Processing library using TPU on CVI1835.
 
-**bmtap2 docker environment is recomended.**
+Note:
+
+**1. bmtap2 docker environment is recomended.**
+
+**2. Run ``./clang-format.sh`` before pushing the code.**
 
 ## How to build
 
