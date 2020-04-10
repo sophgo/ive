@@ -1221,7 +1221,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   div = div_16 * 16;
   // FIXME: We assumed that h never exceeds 1024.
   bmk1880v2_tensor_tgmem_shape_t shape = {1, 32, div_16, 16};
-  size_t loop_turn = (total_size / (32 * div)) / m_slice_info.ping_pong_size;
+  size_t loop_turn = (div == 0) ? 0 : (total_size / (32 * div)) / m_slice_info.ping_pong_size;
   // Check if any pixel left.
   size_t left_pixels = total_size - ((loop_turn * (32 * div)) * m_slice_info.ping_pong_size);
 
