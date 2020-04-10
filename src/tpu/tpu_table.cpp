@@ -14,6 +14,7 @@ void IveTPUTbl::setTable(bmctx_t *ctx, TblMgr *tblmgr, const u8 *tbl_data) {
 }
 
 int IveTPUTbl::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+  m_slice_info.io_fmt = FMT_U8;
   m_cmdbuf_subfix = "tbl";
   m_slice_info.ping_pong_size = 2;
   m_slice_info.ping_pong_share_tl = 0;
