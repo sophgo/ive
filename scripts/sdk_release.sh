@@ -27,14 +27,14 @@ if [[ "$1" == "cmodel" ]]; then
 elif [[ "$1" == "soc" ]]; then
     mkdir -p $TMP_WORKING_DIR/build_sdk
     pushd $TMP_WORKING_DIR/build_sdk
-    cmake -G Ninja $IVE_ROOT -DBM_TARGET=soc \
-                            -DENABLE_SYSTRACE=OFF \
-                            -DCMAKE_BUILD_TYPE=SDKRelease \
-                            -DMLIR_SDK_ROOT=$TPU_SDK_INSTALL_PATH \
-                            -DMIDDLEWARE_SDK_ROOT=$MW_PATH \
-                            -DCMAKE_INSTALL_PREFIX=$IVE_SDK_INSTALL_PATH \
-                            -DTOOLCHAIN_ROOT_DIR=$HOST_TOOL_PATH \
-                            -DCMAKE_TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-aarch64-linux.cmake
+    cmake -G Ninja $IVE_ROOT -DCVI_TARGET=soc \
+                             -DENABLE_SYSTRACE=OFF \
+                             -DCMAKE_BUILD_TYPE=SDKRelease \
+                             -DMLIR_SDK_ROOT=$TPU_SDK_INSTALL_PATH \
+                             -DMIDDLEWARE_SDK_ROOT=$MW_PATH \
+                             -DCMAKE_INSTALL_PREFIX=$IVE_SDK_INSTALL_PATH \
+                             -DTOOLCHAIN_ROOT_DIR=$HOST_TOOL_PATH \
+                             -DCMAKE_TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-aarch64-linux.cmake
     ninja -j8 && ninja install
     popd
 else
