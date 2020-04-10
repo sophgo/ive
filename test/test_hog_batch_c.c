@@ -1,5 +1,6 @@
 #include "bmkernel/bm_kernel.h"
-#include "bmtap2/1880v2_fp_convert.h"
+
+#include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 #include "ive.h"
 
 #include <math.h>
@@ -44,7 +45,7 @@ int main(int argc, char **argv) {
     printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
     return CVI_FAILURE;
   }
-#endif  
+#endif
   // Create instance
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
   printf("BM Kernel init.\n");
@@ -93,7 +94,7 @@ int main(int argc, char **argv) {
               CVI_IVE_GET_HOG_SIZE(dstAng.u16Width, dstAng.u16Height, BIN_NUM, CELL_SIZE, BLOCK_SIZE, STEP_X,
                                   STEP_Y, &dstHistSize);
               CVI_IVE_CreateMemInfo(handle, &dstHist, dstHistSize);
-              
+
               pstHogCtrl.u8BinSize = BIN_NUM;
               pstHogCtrl.u32CellSize = CELL_SIZE;
               pstHogCtrl.u16BlkSize = BLOCK_SIZE;
@@ -106,7 +107,7 @@ int main(int argc, char **argv) {
 
         struct timeval t0, t1;
         gettimeofday(&t0, NULL);
-        //for (size_t i = 0; i < total_run; i++) 
+        //for (size_t i = 0; i < total_run; i++)
         {
           CVI_IVE_HOG(handle, &src, &dstH, &dstV, &dstMag, &dstAng, &dstHist, &pstHogCtrl, 0);
           float *ptr = (float *)dstHist.pu8VirAddr;
@@ -140,7 +141,7 @@ int main(int argc, char **argv) {
           CVI_IVE_WriteImage(handle, "test_sobelH_c.png", &dstH_u8);
           CVI_IVE_WriteImage(handle, "test_ang_c.png", &dstAng_u8);
               printf("Output HOG feature.\n");
-          /*    
+          /*
           u32 blkSize = BLOCK_SIZE * BLOCK_SIZE * BIN_NUM;
           u32 blkNum = dstHistSize / sizeof(float) / blkSize;
           for (size_t i = 0; i < blkNum; i++) {

@@ -1,5 +1,6 @@
 #include "bmkernel/bm_kernel.h"
-#include "bmtap2/1880v2_fp_convert.h"
+
+#include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 #include "ive.h"
 
 #include <math.h>
@@ -49,7 +50,7 @@ int main(int argc, char **argv) {
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < total_run; i++) {
-    CVI_IVE_Hist(handle, &src, &dstHist, 0); 
+    CVI_IVE_Hist(handle, &src, &dstHist, 0);
   }
   gettimeofday(&t1, NULL);
   unsigned long elapsed_cpu =
@@ -70,7 +71,7 @@ int main(int argc, char **argv) {
   CVI_SYS_FreeI(handle, &src);
   CVI_SYS_FreeM(handle, &dstHist);
   CVI_IVE_DestroyHandle(handle);
-  
+
 
   return ret;
 }

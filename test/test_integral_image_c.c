@@ -1,5 +1,6 @@
 #include "bmkernel/bm_kernel.h"
-#include "bmtap2/1880v2_fp_convert.h"
+
+#include "bmkernel/bm1880v2/1880v2_fp_convert.h"
 #include "ive.h"
 
 #include <math.h>
@@ -44,7 +45,7 @@ int main(int argc, char **argv) {
   CVI_U32 dstIntegSize = (width+1)*(height+1)*sizeof(u32);
   CVI_IVE_CreateMemInfo(handle, &dstInteg, dstIntegSize);
   dstIntegSize = (width+1)*(height+1);
-  
+
 
   printf("Run CPU Integral Image.\n");
   IVE_INTEG_CTRL_S pstIntegCtrl;
@@ -71,7 +72,7 @@ int main(int argc, char **argv) {
       printf("%3d ", ((u32 *)dstInteg.pu8VirAddr)[j]);
     }
     printf("\n");
-  } 
+  }
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);
