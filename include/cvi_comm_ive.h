@@ -32,7 +32,7 @@ typedef struct IVE_DMA_CTRL {
 typedef struct IVE_MEM_INFO {
   CVI_U32 u32PhyAddr;
   CVI_U8 *pu8VirAddr;
-  CVI_U32 u32Size;
+  CVI_U32 u32ByteSize;
 } IVE_MEM_INFO_S;
 
 typedef IVE_MEM_INFO_S IVE_SRC_MEM_INFO_S;

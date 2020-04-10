@@ -62,10 +62,11 @@ CVI_S32 CVI_IVE_CmdFlush(IVE_HANDLE pIveHandle);
  *
  * @param pIveHandle Ive instance handler.
  * @param pstMemInfo The input mem info structure.
- * @param u32Size The size of the mem info in 1d.
+ * @param u32ByteSize The size of the mem info in 1d (unit: byte).
  * @return CVI_S32
  */
-CVI_S32 CVI_IVE_CreateMemInfo(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo, CVI_U32 u32Size);
+CVI_S32 CVI_IVE_CreateMemInfo(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo,
+                              CVI_U32 u32ByteSize);
 
 /**
  * @brief Create an IVE_IMAGE_S.

@@ -59,10 +59,10 @@ int main(int argc, char **argv) {
   CVI_IVE_CreateImage(handle, &dstAng_u8, IVE_IMAGE_TYPE_U8C1, width, height);
 
   IVE_DST_MEM_INFO_S dstHist;
-  CVI_U32 dstHistSize = 0;
+  CVI_U32 dstHistByteSize = 0;
   CVI_IVE_GET_HOG_SIZE(dstAng.u16Width, dstAng.u16Height, BIN_NUM, CELL_SIZE, BLOCK_SIZE, STEP_X,
-                       STEP_Y, &dstHistSize);
-  CVI_IVE_CreateMemInfo(handle, &dstHist, dstHistSize);
+                       STEP_Y, &dstHistByteSize);
+  CVI_IVE_CreateMemInfo(handle, &dstHist, dstHistByteSize);
 
   printf("Run TPU HOG.\n");
   IVE_HOG_CTRL_S pstHogCtrl;
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
     CVI_IVE_WriteImage(handle, "test_ang_c.png", &dstAng_u8);
     printf("Output HOG feature.\n");
     u32 blkSize = BLOCK_SIZE * BLOCK_SIZE * BIN_NUM;
-    u32 blkNum = dstHistSize / sizeof(float) / blkSize;
+    u32 blkNum = dstHistByteSize / sizeof(float) / blkSize;
     for (size_t i = 0; i < blkNum; i++) {
       printf("\n");
       for (size_t j = 0; j < blkSize; j++) {

@@ -41,10 +41,10 @@ int main(int argc, char **argv) {
   CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, TEST_W, TEST_H);
 
   IVE_DST_MEM_INFO_S dstTbl;
-  CVI_U32 dstTblSize = 256;
-  CVI_IVE_CreateMemInfo(handle, &dstTbl, dstTblSize);
-  for (CVI_U32 i = 0; i < dstTblSize; i++) {
-    dstTbl.pu8VirAddr[i] = dstTblSize - 1 - i;
+  CVI_U32 dstTblByteSize = 256;
+  CVI_IVE_CreateMemInfo(handle, &dstTbl, dstTblByteSize);
+  for (CVI_U32 i = 0; i < dstTblByteSize; i++) {
+    dstTbl.pu8VirAddr[i] = dstTblByteSize - 1 - i;
   }
 
   printf("Run TPU Map.\n");
