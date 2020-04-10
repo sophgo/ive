@@ -764,6 +764,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                                     bool enable_min_max) {
   if (m_slice_info.io_fmt == FMT_INVALID) {
     std::cerr << "Invalid fmt engine type." << std::endl;
+    freeChildTGMem(ctx);
     return BM_ERR_FAILURE;
   }
   // FIXME: Support later
