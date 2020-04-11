@@ -1561,3 +1561,176 @@ CVI_S32 CVI_IVE_16BitTo8Bit(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_
   CVI_IVE_BufFlush(pIveHandle, pstDst);
   return CVI_SUCCESS;
 }
+
+typedef enum _LbpMappingType {
+  LbpUniform /**< Uniform local binary patterns. */
+} LbpMappingType;
+
+/** @brief Local Binary Pattern extractor */
+typedef struct cvLbp_ {
+  u32 dimension;
+  u32 mapping[256];
+  bool transposed;
+} cvLbp;
+
+static void lbp_init_uniform(cvLbp *self) {
+  int i, j;
+
+  /* overall number of quantized LBPs */
+  self->dimension = 58;
+
+  /* all but selected patterns map to bin 57 (the first bin has index 0) */
+  for (i = 0; i < 256; ++i) {
+    self->mapping[i] = 57;
+  }
+
+  /* the uniform (all zeros or ones) patterns map to bin 56 */
+  self->mapping[0x00] = 56;
+  self->mapping[0xff] = 56;
+
+  /* 56 uniform patterns */
+  for (i = 0; i < 8; ++i) {
+    for (j = 1; j <= 7; ++j) {
+      int ip;
+      int unsigned string;
+      if (self->transposed) {
+        ip = (-i + 2 - (j - 1) + 16) % 8;
+      } else {
+        ip = i;
+      }
+
+      /* string starting with j ones */
+      string = (1 << j) - 1;
+      string <<= ip;
+      string = (string | (string >> 8)) & 0xff;
+
+      self->mapping[string] = i * 7 + (j - 1);
+    }
+  }
+}
+u32 lbp_get_dimension(cvLbp *self) { return self->dimension; }
+
+/** @brief Extract LBP features
+ ** @param self LBP object.
+ ** @param features buffer to write the features to.
+ ** @param image image.
+ ** @param width image width.
+ ** @param height image height.
+ ** @param cellSize size of the LBP cells. Note: 32x32
+ **
+ ** @a features is a  @c numColumns x @c numRows x @c dimension where
+ ** @c dimension is the dimension of a LBP feature obtained from ::vl_lbp_get_dimension,
+ ** @c numColumns is equal to @c floor(width / cellSize), and similarly
+ ** for @c numRows.
+ **/
+
+void lbp_process(cvLbp *self,
+                 // float * features,
+                 u8 *lbpimg, u8 *image, u32 width, u32 height)
+// u32 cellSize)
+{
+  u32 cellSize = 32;
+  u32 cwidth = width / cellSize;
+  u32 cheight = height / cellSize;
+  u32 cstride = cwidth * cheight;
+  u32 cdimension = lbp_get_dimension(self);
+  int x, y, cx, cy, k, bin;
+
+#define at(u, v) (*(image + width * (v) + (u)))
+//#define to(u,v,w) (*(features + cstride * (w) + cwidth * (v) + (u)))
+#define to(m, n) (*(lbpimg + width * (n) + (m)))
+
+  /* clear the output buffer */
+  // memset(features, 0, sizeof(float)*cdimension*cstride) ;
+  memset(lbpimg, 0, (width * height));
+
+  /* accumulate pixel-level measurements into cells */
+  for (y = 1; y < (signed)height - 1; ++y) {
+    float wy1 = (y + 0.5f) / (float)cellSize - 0.5f;
+    int cy1 = (int)floor(wy1);
+    int cy2 = cy1 + 1;
+    float wy2 = wy1 - (float)cy1;
+    wy1 = 1.0f - wy2;
+    if (cy1 >= (signed)cheight) continue;
+
+    for (x = 1; x < (signed)width - 1; ++x) {
+      float wx1 = (x + 0.5f) / (float)cellSize - 0.5f;
+      int cx1 = (int)floor(wx1);
+      int cx2 = cx1 + 1;
+      float wx2 = wx1 - (float)cx1;
+      wx1 = 1.0f - wx2;
+      if (cx1 >= (signed)cwidth) continue;
+
+      {
+        int unsigned bitString = 0;
+        u8 center = at(x, y);
+        if (at(x + 1, y + 0) > center) bitString |= 0x1 << 0; /*  E */
+        if (at(x + 1, y + 1) > center) bitString |= 0x1 << 1; /* SE */
+        if (at(x + 0, y + 1) > center) bitString |= 0x1 << 2; /* S  */
+        if (at(x - 1, y + 1) > center) bitString |= 0x1 << 3; /* SW */
+        if (at(x - 1, y + 0) > center) bitString |= 0x1 << 4; /*  W */
+        if (at(x - 1, y - 1) > center) bitString |= 0x1 << 5; /* NW */
+        if (at(x + 0, y - 1) > center) bitString |= 0x1 << 6; /* N  */
+        if (at(x + 1, y - 1) > center) bitString |= 0x1 << 7; /* NE */
+        bin = self->mapping[bitString];
+        to(x, y) = bin;
+      }
+#if 0
+      if ((cx1 >= 0) & (cy1 >=0)) {
+        to(cx1,cy1,bin) += wx1 * wy1;
+      }
+      if ((cx2 < (signed)cwidth)  & (cy1 >=0)) {
+        to(cx2,cy1,bin) += wx2 * wy1 ;
+      }
+      if ((cx1 >= 0) & (cy2 < (signed)cheight)) {
+        to(cx1,cy2,bin) += wx1 * wy2 ;
+      }
+      if ((cx2 < (signed)cwidth) & (cy2 < (signed)cheight)) {
+        to(cx2,cy2,bin) += wx2 * wy2 ;
+      }
+#endif
+    } /* x */
+  }   /* y */
+#if 0
+  /* normalize cells */
+  for (cy = 0 ; cy < (signed)cheight ; ++cy) {
+    for (cx = 0 ; cx < (signed)cwidth ; ++ cx) {
+      float norm = 0 ;
+      for (k = 0 ; k < (signed)cdimension ; ++k) {
+        norm += features[k * cstride] ;
+      }
+      norm = sqrtf(norm) + 1e-10f; ;
+      for (k = 0 ; k < (signed)cdimension ; ++k) {
+        features[k * cstride] = sqrtf(features[k * cstride]) / norm  ;
+      }
+      features += 1 ;
+    }
+  } /* next cell to normalize */
+#endif
+}
+
+CVI_S32 CVI_IVE_LBP(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                    IVE_LBP_CTRL_S *ctrl, bool bInstant) {
+  if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
+    std::cerr << "Output only accepts U8C1 image format." << std::endl;
+    return CVI_FAILURE;
+  }
+
+  cvLbp self;
+  lbp_init_uniform(&self);
+
+  CVI_IVE_BufRequest(pIveHandle, pstSrc);
+
+  // int wxh = pstSrc->u16Width * pstSrc->u16Height;
+  // float * features = new float [wxh];
+
+  // memset(features,0, sizeof(float)*wxh );
+  lbp_process(&self, (u8 *)pstDst->pu8VirAddr[0], (u8 *)pstSrc->pu8VirAddr[0],
+              (int)pstSrc->u16Width, (int)pstSrc->u16Height);
+
+  // delete[]features;
+
+  CVI_IVE_BufFlush(pIveHandle, pstSrc);
+
+  return CVI_SUCCESS;
+}

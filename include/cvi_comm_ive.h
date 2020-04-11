@@ -317,4 +317,15 @@ typedef struct cviIVE_NCC_DST_MEM_S {
   CVI_U64 u8Reserved[8];
 } IVE_NCC_DST_MEM_S;
 
+typedef enum cviIVE_LBP_CMP_MODE_E {
+  IVE_LBP_CMP_MODE_NORMAL = 0x0, /* P(x)-P(center)>= un8BitThr.s8Val, s(x)=1; else s(x)=0; */
+  IVE_LBP_CMP_MODE_ABS = 0x1,    /* abs(P(x)- P(center))>=un8BitThr.u8Val, s(x)=1; else s(x)=0; */
+  IVE_LBP_CMP_MODE_BUTT
+} IVE_LBP_CMP_MODE_E;
+
+typedef struct cviIVE_LBP_CTRL_S {
+  IVE_LBP_CMP_MODE_E enMode;
+  IVE_8BIT_U un8BitThr;
+} IVE_LBP_CTRL_S;
+
 #endif  // End of _CVI_COMM_IVE.h
