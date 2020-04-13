@@ -328,4 +328,38 @@ typedef struct cviIVE_LBP_CTRL_S {
   IVE_8BIT_U un8BitThr;
 } IVE_LBP_CTRL_S;
 
+// csc/resize
+
+typedef enum cviIVE_CSC_MODE_E {
+  /*CSC: YUV2RGB, video transfer mode, RGB value range [16, 235]*/
+  IVE_CSC_MODE_VIDEO_BT601_YUV2RGB = 0x0,
+  /*CSC: YUV2RGB, video transfer mode, RGB value range [16, 235]*/
+  IVE_CSC_MODE_VIDEO_BT709_YUV2RGB = 0x1,
+  /*CSC: YUV2RGB, picture transfer mode, RGB value range [0, 255]*/
+  IVE_CSC_MODE_PIC_BT601_YUV2RGB = 0x2,
+  /*CSC: YUV2RGB, picture transfer mode, RGB value range [0, 255]*/ IVE_CSC_MODE_PIC_BT709_YUV2RGB =
+      0x3,
+  /*CSC: YUV2HSV, picture transfer mode, HSV value range [0, 255]*/
+  IVE_CSC_MODE_PIC_BT601_YUV2HSV = 0x4,
+  /*CSC: YUV2HSV, picture transfer mode, HSV value range [0, 255]*/
+  IVE_CSC_MODE_PIC_BT709_YUV2HSV = 0x5,
+  /*CSC: YUV2LAB, picture transfer mode, Lab value range [0, 255]*/ IVE_CSC_MODE_PIC_BT601_YUV2LAB =
+      0x6,
+  /*CSC: YUV2LAB, picture transfer mode, Lab value range [0, 255]*/ IVE_CSC_MODE_PIC_BT709_YUV2LAB =
+      0x7,
+  /*CSC: RGB2YUV, video transfer mode, YUV value range [0, 255]*/ IVE_CSC_MODE_VIDEO_BT601_RGB2YUV =
+      0x8,
+  /*CSC: RGB2YUV, video transfer mode, YUV value range [0, 255]*/ IVE_CSC_MODE_VIDEO_BT709_RGB2YUV =
+      0x9,
+  /*CSC: RGB2YUV, picture transfer mode, Y:[16, 235],U\V:[16, 240]*/
+  IVE_CSC_MODE_PIC_BT601_RGB2YUV = 0xa,
+  /*CSC: RGB2YUV, picture transfer mode, Y:[16, 235],U\V:[16, 240]*/
+  IVE_CSC_MODE_PIC_BT709_RGB2YUV = 0xb,
+  IVE_CSC_MODE_BUTT
+} IVE_CSC_MODE_E;
+
+typedef struct cviIVE_CSC_CTRL_S {
+  IVE_CSC_MODE_E enMode; /*Working mode*/
+} IVE_CSC_CTRL_S;
+
 #endif  // End of _CVI_COMM_IVE.h

@@ -1329,12 +1329,14 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
  * @Param Height image height
  * @Param Stride shift bytes
  */
-inline void GetGrayIntegralImage(u8 *Src, u32 *Integral, int Width, int Height) {
-  memset(Integral, 0, (Width + 1) * sizeof(uint));
+inline void GetGrayIntegralImage(u8 *Src, u32 *Integral, int Width, int Height, int src_stride,
+                                 int dst_stride) {
+  memset(Integral, 0, dst_stride * sizeof(u32));
+
   for (int Y = 0; Y < Height; Y++) {
-    u8 *LinePS = Src + Y * Width;
-    u32 *LinePL = Integral + Y * (Width + 1) + 1;
-    u32 *LinePD = Integral + (Y + 1) * (Width + 1) + 1;
+    u8 *LinePS = Src + Y * src_stride;
+    u32 *LinePL = Integral + Y * (dst_stride) + 1;
+    u32 *LinePD = Integral + (Y + 1) * (dst_stride) + 1;
     LinePD[-1] = 0;
     for (int X = 0, Sum = 0; X < Width; X++) {
       Sum += LinePS[X];
@@ -1351,7 +1353,7 @@ inline void GetGrayIntegralImage(u8 *Src, u32 *Integral, int Width, int Height) 
  * @param num_bins how many values you want to find frequency
  */
 
-inline int cal_hist(int cols, int rows, u8 *image, u32 *hist, int num_bins) {
+inline int cal_hist(int cols, int rows, u8 *image, int src_stride, u32 *hist, int num_bins) {
   int col, row;
   if (cols < 1 || rows < 1 || num_bins < 1) {
     return (1);
@@ -1359,7 +1361,7 @@ inline int cal_hist(int cols, int rows, u8 *image, u32 *hist, int num_bins) {
   memset(hist, 0, sizeof(u32) * num_bins);
 
   for (int Y = 0; Y < rows; Y++) {
-    u8 *LinePS = image + Y * cols;
+    u8 *LinePS = image + Y * src_stride;
     for (int X = 0, Sum = 0; X < cols; X++) {
       Sum = LinePS[X];
       hist[Sum]++;
@@ -1395,12 +1397,13 @@ inline int equalize_hist(u32 *hist, u8 *eqhist, int nbr_elements, int nbr_bins) 
   return (0);
 }
 
-inline int histogramEqualisation(int cols, int rows, u8 *image, u8 *pDst) {
+inline int histogramEqualisation(int cols, int rows, u8 *image, int src_stride, u8 *pDst,
+                                 int dst_stride) {
   u32 hist[256] = {0};
   u8 new_gray_level[256] = {0};
   int col, row, total, st;
 
-  st = cal_hist(cols, rows, image, hist, 256);
+  st = cal_hist(cols, rows, image, src_stride, hist, 256);
   if (st > 0) {
     return (st);
   }
@@ -1414,8 +1417,8 @@ inline int histogramEqualisation(int cols, int rows, u8 *image, u8 *pDst) {
     for (col = 0; col < cols; col++) {
       pDst[col] = (unsigned char)new_gray_level[ptr[col]];
     }
-    pDst += cols;
-    ptr += cols;
+    pDst += dst_stride;
+    ptr += src_stride;
   }
   return st;
 }
@@ -1430,11 +1433,12 @@ CVI_S32 CVI_IVE_Integ(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_ME
 
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
 
-  // CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
-  // u64 data_size = cpp_src->m_tg.stride.n / getFmtSize(cpp_src->m_tg.fmt);
   u32 *ptr = (u32 *)pstDst->pu8VirAddr;
+  int channels = 1;
+  int dst_stride = channels * (pstSrc->u16Width + 1);
+
   GetGrayIntegralImage((u8 *)pstSrc->pu8VirAddr[0], ptr, (int)pstSrc->u16Width,
-                       (int)pstSrc->u16Height);
+                       (int)pstSrc->u16Height, (int)pstSrc->u16Stride[0], dst_stride);
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
   return CVI_SUCCESS;
@@ -1448,7 +1452,7 @@ CVI_S32 CVI_IVE_Hist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_MEM
   }
 
   cal_hist((int)pstSrc->u16Width, (int)pstSrc->u16Height, (u8 *)pstSrc->pu8VirAddr[0],
-           (u32 *)pstDst->pu8VirAddr, 256);
+           (int)pstSrc->u16Stride[0], (u32 *)pstDst->pu8VirAddr, 256);
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
   return CVI_SUCCESS;
 }
@@ -1463,7 +1467,8 @@ CVI_S32 CVI_IVE_EqualizeHist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
 
   histogramEqualisation((int)pstSrc->u16Width, (int)pstSrc->u16Height, (u8 *)pstSrc->pu8VirAddr[0],
-                        (u8 *)pstDst->pu8VirAddr[0]);
+                        (int)pstSrc->u16Stride[0], (u8 *)pstDst->pu8VirAddr[0],
+                        (int)pstDst->u16Stride[0]);
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
 
@@ -1624,42 +1629,36 @@ u32 lbp_get_dimension(cvLbp *self) { return self->dimension; }
  ** for @c numRows.
  **/
 
-void lbp_process(cvLbp *self,
-                 // float * features,
-                 u8 *lbpimg, u8 *image, u32 width, u32 height)
-// u32 cellSize)
-{
-  u32 cellSize = 32;
-  u32 cwidth = width / cellSize;
-  u32 cheight = height / cellSize;
-  u32 cstride = cwidth * cheight;
+void lbp_process(cvLbp *self, u8 *lbpimg, u8 *image, u32 stride, u32 width, u32 height) {
+  // u32 cellSize = 32;
+  // u32 cwidth = width / cellSize;
+  // u32 cheight = height / cellSize;
+  // u32 cstride = cwidth * cheight;
   u32 cdimension = lbp_get_dimension(self);
   int x, y, cx, cy, k, bin;
 
-#define at(u, v) (*(image + width * (v) + (u)))
-//#define to(u,v,w) (*(features + cstride * (w) + cwidth * (v) + (u)))
-#define to(m, n) (*(lbpimg + width * (n) + (m)))
+#define at(u, v) (*(image + stride * (v) + (u)))
+#define to(m, n) (*(lbpimg + stride * (n) + (m)))
 
   /* clear the output buffer */
-  // memset(features, 0, sizeof(float)*cdimension*cstride) ;
-  memset(lbpimg, 0, (width * height));
+  memset(lbpimg, 0, (stride * height));
 
   /* accumulate pixel-level measurements into cells */
   for (y = 1; y < (signed)height - 1; ++y) {
-    float wy1 = (y + 0.5f) / (float)cellSize - 0.5f;
-    int cy1 = (int)floor(wy1);
-    int cy2 = cy1 + 1;
-    float wy2 = wy1 - (float)cy1;
-    wy1 = 1.0f - wy2;
-    if (cy1 >= (signed)cheight) continue;
+    // float wy1 = (y + 0.5f) / (float)cellSize - 0.5f;
+    // int cy1 = (int)floor(wy1);
+    // int cy2 = cy1 + 1;
+    // float wy2 = wy1 - (float)cy1;
+    // wy1 = 1.0f - wy2;
+    // if (cy1 >= (signed)cheight) continue;
 
     for (x = 1; x < (signed)width - 1; ++x) {
-      float wx1 = (x + 0.5f) / (float)cellSize - 0.5f;
-      int cx1 = (int)floor(wx1);
-      int cx2 = cx1 + 1;
-      float wx2 = wx1 - (float)cx1;
-      wx1 = 1.0f - wx2;
-      if (cx1 >= (signed)cwidth) continue;
+      // float wx1 = (x + 0.5f) / (float)cellSize - 0.5f;
+      // int cx1 = (int)floor(wx1);
+      // int cx2 = cx1 + 1;
+      // float wx2 = wx1 - (float)cx1;
+      // wx1 = 1.0f - wx2;
+      // if (cx1 >= (signed)cwidth) continue;
 
       {
         int unsigned bitString = 0;
@@ -1675,43 +1674,18 @@ void lbp_process(cvLbp *self,
         bin = self->mapping[bitString];
         to(x, y) = bin;
       }
-#if 0
-      if ((cx1 >= 0) & (cy1 >=0)) {
-        to(cx1,cy1,bin) += wx1 * wy1;
-      }
-      if ((cx2 < (signed)cwidth)  & (cy1 >=0)) {
-        to(cx2,cy1,bin) += wx2 * wy1 ;
-      }
-      if ((cx1 >= 0) & (cy2 < (signed)cheight)) {
-        to(cx1,cy2,bin) += wx1 * wy2 ;
-      }
-      if ((cx2 < (signed)cwidth) & (cy2 < (signed)cheight)) {
-        to(cx2,cy2,bin) += wx2 * wy2 ;
-      }
-#endif
+
     } /* x */
   }   /* y */
-#if 0
-  /* normalize cells */
-  for (cy = 0 ; cy < (signed)cheight ; ++cy) {
-    for (cx = 0 ; cx < (signed)cwidth ; ++ cx) {
-      float norm = 0 ;
-      for (k = 0 ; k < (signed)cdimension ; ++k) {
-        norm += features[k * cstride] ;
-      }
-      norm = sqrtf(norm) + 1e-10f; ;
-      for (k = 0 ; k < (signed)cdimension ; ++k) {
-        features[k * cstride] = sqrtf(features[k * cstride]) / norm  ;
-      }
-      features += 1 ;
-    }
-  } /* next cell to normalize */
-#endif
 }
 
 CVI_S32 CVI_IVE_LBP(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                     IVE_LBP_CTRL_S *ctrl, bool bInstant) {
   if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
+    std::cerr << "Input only accepts U8C1 image format." << std::endl;
+    return CVI_FAILURE;
+  }
+  if (pstDst->enType != IVE_IMAGE_TYPE_U8C1) {
     std::cerr << "Output only accepts U8C1 image format." << std::endl;
     return CVI_FAILURE;
   }
@@ -1721,14 +1695,8 @@ CVI_S32 CVI_IVE_LBP(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
 
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
 
-  // int wxh = pstSrc->u16Width * pstSrc->u16Height;
-  // float * features = new float [wxh];
-
-  // memset(features,0, sizeof(float)*wxh );
   lbp_process(&self, (u8 *)pstDst->pu8VirAddr[0], (u8 *)pstSrc->pu8VirAddr[0],
-              (int)pstSrc->u16Width, (int)pstSrc->u16Height);
-
-  // delete[]features;
+              (u32)pstSrc->u16Stride[0], (int)pstSrc->u16Width, (int)pstSrc->u16Height);
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
 

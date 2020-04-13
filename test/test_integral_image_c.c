@@ -64,8 +64,8 @@ int main(int argc, char **argv) {
     printf("CPU time %lu\n", elapsed_cpu);
     // write result to disk
     printf("Output Integral Image.\n");
-    for (size_t j = 0; j < (width * 3); j++) {
-      printf("%3d ", ((u32 *)dstInteg.pu8VirAddr)[j]);
+    for (size_t j = 0; j < (width); j++) {
+      printf("%3d ", ((u32 *)dstInteg.pu8VirAddr)[width + j]);
     }
     printf("\n");
   }
