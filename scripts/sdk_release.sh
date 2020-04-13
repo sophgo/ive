@@ -17,12 +17,11 @@ echo "Creating tmp working directory."
 if [[ "$1" == "cmodel" ]]; then
     mkdir -p $TMP_WORKING_DIR/build_cmodel
     pushd $TMP_WORKING_DIR/build_cmodel
-    CC=clang CXX=clang++ \
     cmake -G Ninja $IVE_ROOT -DENABLE_SYSTRACE=OFF \
-                             -DCMAKE_BUILD_TYPE=Release \
+                             -DCMAKE_BUILD_TYPE=SDKRelease \
                              -DMLIR_SDK_ROOT=$TPU_MLIR_INSTALL_PATH \
                              -DMIDDLEWARE_SDK_ROOT=$MW_PATH \
-                             -DCMAKE_INSTALL_PREFIX=$IVE_CMODEL_INSTALL_PATH
+                             -DCMAKE_INSTALL_PREFIX=$IVE_CMODEL_INSTALL_PATH \
     ninja -j8 && ninja install
     popd
 elif [[ "$1" == "soc" ]]; then
