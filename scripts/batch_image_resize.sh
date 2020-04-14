@@ -32,9 +32,7 @@ do
   SIZEW=${SIZES_W[$i]}
   SIZEH=${SIZES_H[$i]}
   echo $SIZEW $SIZEH
-  
   folderName="$SIZEW"x"$SIZEH"
-  
   subfolder="$dest_dir/$folderName"
   mkdir -p $subfolder
 
@@ -61,7 +59,7 @@ do
     elif [[ -n $percent ]];   then
       PARAM="-resize $percent%"
     elif [[ -n $fixed_wh ]];   then
-      PARAM="-resize $SIZEWx$SIZEH"  
+      PARAM="-resize $SIZEWx$SIZEH"
     fi
 
     echo Processing file : $source_file
