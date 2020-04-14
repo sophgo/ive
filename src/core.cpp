@@ -169,10 +169,10 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
   bmk1880v2_tensor_lmem_shape_t tl_weight_shape;
   bmk1880v2_tensor_lmem_shape_t tl_bias_shape;
 
-  if (bm1880v2_reshape_channel_same(
-          bk_ctx, ic, ih, iw, kh, kw, pad_right, pad_left, k_stride_h, k_stride_w,
-          &tsi->tl_load.shape, &tsi->tl_load.stride, &tsi->tg_load.shape, &tsi->tg_load.stride,
-          &tl_weight_shape, &tl_bias_shape, &tsi->tl_store.shape, tl_fmt_type, CTRL_AL) == -1) {
+  if (bm1880v2_reshape_channel_same(bk_ctx, ic, ih, iw, kh, kw, pad_right, pad_left, k_stride_h,
+                                    k_stride_w, &tsi->tl_load.shape, &tsi->tl_load.stride,
+                                    &tsi->tg_load.shape, &tsi->tg_load.stride, &tl_weight_shape,
+                                    &tl_bias_shape, &tsi->tl_store.shape, tl_fmt_type, 1) == -1) {
     std::cerr << "Extend failed." << std::endl;
     return BM_ERR_FAILURE;
   }
