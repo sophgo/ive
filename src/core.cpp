@@ -6,15 +6,16 @@
 #include "debug.hpp"
 
 inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int kernel_sz,
-                                 const int default_stride, u32 pad_0, u32 pad_1, sliceUnit *unit) {
+                                 const int default_stride, sliceUnit *unit) {
   unit->slice = slice > length ? length : slice;
   unit->slice = default_stride * (int)(unit->slice / default_stride);
   unit->skip = unit->slice - kernel_sz + default_stride;
   unit->skip = (u32)default_stride > unit->skip ? default_stride : unit->skip;
 
-  u32 &&pad_total = pad_0 + pad_1;
-  unit->turn = ((int64_t)length - unit->slice - pad_1) / unit->skip + 1;
-  int64_t result = (int64_t)length - (int64_t)((unit->turn) * (unit->slice - pad_total));
+  u32 kernel_pad = kernel_sz - 1;
+  u32 left_pad = kernel_pad / 2;
+  unit->turn = ((int64_t)length - unit->slice - left_pad) / unit->skip + 1;
+  int64_t result = (int64_t)length - (int64_t)((unit->turn) * (unit->slice - kernel_pad));
   if (result >= kernel_sz) {
     // x + (x - 1) * default_stride
     int res_left = result - kernel_sz;
@@ -217,7 +218,9 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
             " => tg load shape %d %d %d %d\n" \
             " => tg load stride %d %d %d\n" \
             " => tl store shape %d %d %d %d\n" \
-            " => tl store stride %d %d %d %d\n",
+            " => tl store stride %d %d %d %d\n" \
+            " => tg store shape %d %d %d %d\n" \
+            " => tg store stride %d %d %d\n",
             1, ic, ih, iw,
             kh, kw,
             pad_left, pad_right,
@@ -227,13 +230,15 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
             tsi->tg_load.shape.n, tsi->tg_load.shape.c, tsi->tg_load.shape.h, tsi->tg_load.shape.w,
             tsi->tg_load.stride.n, tsi->tg_load.stride.c, tsi->tg_load.stride.h,
             tsi->tl_store.shape.n, tsi->tl_store.shape.c, tsi->tl_store.shape.h, tsi->tl_store.shape.w,
-            tsi->tl_store.stride.n, tsi->tl_store.stride.c, tsi->tl_store.stride.h, tsi->tl_store.stride.w);
+            tsi->tl_store.stride.n, tsi->tl_store.stride.c, tsi->tl_store.stride.h, tsi->tl_store.stride.w,
+            tsi->tg_store.shape.n, tsi->tg_store.shape.c, tsi->tg_store.shape.h, tsi->tg_store.shape.w,
+            tsi->tg_store.stride.n, tsi->tg_store.stride.c, tsi->tg_store.stride.h);
   // clang-format on
-  u32 h_input_single_lane = (ih / h_cext_multiplier) + pad_bottom + pad_top;
-  if (tsi->tg_load.shape.h != h_input_single_lane) {
+  u32 h_output_single_lane = (ih / h_cext_multiplier);
+  if (tsi->tg_store.shape.h != h_output_single_lane) {
     std::cerr << "H extend c multiplier: " << h_cext_multiplier << std::endl;
-    std::cerr << "Predicted h_slice not match. " << tsi->tg_load.shape.h << ", "
-              << h_input_single_lane << std::endl;
+    std::cerr << "Predicted h_slice not match. " << tsi->tg_store.shape.h << ", "
+              << h_output_single_lane << std::endl;
     if ((u32)(ic * ih) == tsi->tg_store.shape.c * tsi->tg_store.shape.h) {
       std::cerr << "This is a dev warning only." << std::endl;
     } else {
@@ -415,12 +420,12 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32
   if (enable_cext) {
     if (kernel_info.default_stride_y == 1) {
       // Experimental
-      u32 v_total_pad = kernel_info.pad[2] + kernel_info.pad[3];
       u32 c_multiplier = 0, left_pixels = 0;
-      u32 out_max_slice = h_tmp_slice - v_total_pad;
-      u32 out_h = (h - v_total_pad) / kernel_info.default_stride_y;
+      u32 kernel_pad = kernel_info.size - 1;
+      u32 out_max_slice = h_tmp_slice - kernel_pad;
+      u32 out_h = (h - kernel_pad) / kernel_info.default_stride_y;
       calculateOutExtHSlice(npu_num, c, out_max_slice, out_h, &c_multiplier, &left_pixels);
-      h_tmp_slice = (out_h * kernel_info.default_stride_y) - left_pixels + v_total_pad;
+      h_tmp_slice = (out_h * kernel_info.default_stride_y) - left_pixels + kernel_pad;
       unit_h->c_multiplier = c_multiplier;
     } else {
       // FIXME: Need better way to found best slice for channel ext.
@@ -452,10 +457,8 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32
   }
 
   // FIXME: Logic error
-  GetSliceUnitProperty(h, h_tmp_slice, kernel_info.size, kernel_info.default_stride_y,
-                       kernel_info.pad[2], kernel_info.pad[3], unit_h);
-  GetSliceUnitProperty(w, w_length, kernel_info.size, kernel_info.default_stride_x,
-                       kernel_info.pad[0], kernel_info.pad[1], unit_w);
+  GetSliceUnitProperty(h, h_tmp_slice, kernel_info.size, kernel_info.default_stride_y, unit_h);
+  GetSliceUnitProperty(w, w_length, kernel_info.size, kernel_info.default_stride_x, unit_w);
   IVE_DEBUG("H slice %d skip %d turn %d left %d\n", unit_h->slice, unit_h->skip, unit_h->turn,
             unit_h->left);
   IVE_DEBUG("W slice %d skip %d turn %d left %d\n", unit_w->slice, unit_w->skip, unit_w->turn,
@@ -801,9 +804,10 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   in_slice_res = slice_res;
   out_slice_res = slice_res;
   // Convert to API acceptance input.
+  const int kernel_pad = m_kernel_info.size - 1;
   const int vertical_pad_total = m_kernel_info.pad[2] + m_kernel_info.pad[3];
-  out_slice_res.h.slice -= vertical_pad_total;
-  out_slice_res.h.left = out_slice_res.h.left == 0 ? 0 : out_slice_res.h.left - vertical_pad_total;
+  out_slice_res.h.slice -= kernel_pad;
+  out_slice_res.h.left = out_slice_res.h.left == 0 ? 0 : out_slice_res.h.left - kernel_pad;
   // channel ext supports w, so no need to change out_slice_res.w
   // out_slice_res.w.slice -= (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
   // out_slice_res.w.left -= (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
@@ -837,7 +841,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     u32 out_h_left_pixels = 0;
     if (calculateOutExtHSlice(m_chip_info.npu_num, channel, out_info.tg_store.shape.h,
                               out_slice_res.h.left, &c_multiplier, &out_h_left_pixels)) {
-      u32 in_h_left_pixels = out_h_left_pixels + vertical_pad_total;
+      u32 in_h_left_pixels = out_h_left_pixels + kernel_pad;
       out_slice_res.h.left -= out_h_left_pixels;
       out_slice_res.h.turn++;
       in_slice_res.h.left -= in_h_left_pixels;

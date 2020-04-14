@@ -13,6 +13,7 @@
 #include "tpu/tpu_add.hpp"
 #include "tpu/tpu_and.hpp"
 #include "tpu/tpu_block.hpp"
+#include "tpu/tpu_cmp.hpp"
 #include "tpu/tpu_copy.hpp"
 #include "tpu/tpu_filter.hpp"
 #include "tpu/tpu_magandang.hpp"
@@ -42,6 +43,8 @@ struct TPU_HANDLE {
   IveTPUFilter t_filter;
   IveTPUFilterBF16 t_filter_bf16;
   IveTPUMagAndAng t_magandang;
+  IveTPUMax t_max;
+  IveTPUMin t_min;
   IveTPUNormalize t_norm;
   IveTPUOr t_or;
   IveTPUSAD t_sad;
@@ -1033,6 +1036,41 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
 
   handle_ctx->t_h.t_or.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_OrdStatFilter(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
+                              IVE_DST_IMAGE_S *pstDst,
+                              IVE_ORD_STAT_FILTER_CTRL_S *pstOrdStatFltCtrl, bool bInstant) {
+  const u32 kz = 3;
+  const u32 pad_sz = kz - 1;
+  if ((pstDst->u16Width + pad_sz != pstSrc->u16Width) ||
+      (pstDst->u16Height + pad_sz != pstSrc->u16Height)) {
+    std::cerr << "Error, pstDst (width, height) should be pstSrc (width - " << pad_sz
+              << ", height - " << pad_sz << ")." << std::endl;
+    return CVI_FAILURE;
+  }
+  if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1 || pstDst->enType != IVE_IMAGE_TYPE_U8C1) {
+    std::cerr << "Currently only supports U8C1 images." << std::endl;
+    return CVI_FAILURE;
+  }
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
+  int ret = CVI_FAILURE;
+  if (pstOrdStatFltCtrl->enMode == IVE_ORD_STAT_FILTER_MODE_MAX) {
+    ret = CVI_SUCCESS;
+    handle_ctx->t_h.t_max.setKernelSize(kz);
+    handle_ctx->t_h.t_max.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+    handle_ctx->t_h.t_max.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  } else if (pstOrdStatFltCtrl->enMode == IVE_ORD_STAT_FILTER_MODE_MIN) {
+    ret = CVI_SUCCESS;
+    handle_ctx->t_h.t_min.setKernelSize(kz);
+    handle_ctx->t_h.t_min.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+    handle_ctx->t_h.t_min.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  }
+  return ret;
 }
 
 CVI_S32 CVI_IVE_Sigmoid(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
