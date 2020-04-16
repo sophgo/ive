@@ -11,6 +11,9 @@
 #ifdef __ARM_ARCH
 #include "arm_neon.h"
 #endif
+
+#define HOG_SZ 1
+
 #define CELL_SIZE 8
 #define BLOCK_SIZE 2
 #define STEP_X 2
@@ -18,7 +21,7 @@
 #define BIN_NUM 9
 
 int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE_DST_IMAGE_S *dstV,
-            IVE_DST_IMAGE_S *dstAng);
+            IVE_DST_IMAGE_S *dstMag, IVE_DST_IMAGE_S *dstAng);
 
 int main(int argc, char **argv) {
   if (argc != 3) {
@@ -91,7 +94,7 @@ int main(int argc, char **argv) {
   CVI_IVE_BufRequest(handle, &dstH);
   CVI_IVE_BufRequest(handle, &dstV);
   CVI_IVE_BufRequest(handle, &dstAng);
-  int ret = cpu_ref(nChannels, &src, &dstH, &dstV, &dstAng);
+  int ret = cpu_ref(nChannels, &src, &dstH, &dstV, &dstMag, &dstAng);
   if (total_run == 1) {
     // write result to disk
     printf("Save to image.\n");
@@ -128,14 +131,66 @@ int main(int argc, char **argv) {
 }
 
 int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE_DST_IMAGE_S *dstV,
-            IVE_DST_IMAGE_S *dstAng) {
+            IVE_DST_IMAGE_S *dstMag, IVE_DST_IMAGE_S *dstAng) {
   int ret = CVI_SUCCESS;
+  u8 *src_ptr = src->pu8VirAddr[0];
   u16 *dstH_ptr = (u16 *)dstH->pu8VirAddr[0];
   u16 *dstV_ptr = (u16 *)dstV->pu8VirAddr[0];
+  u16 *dstMag_ptr = (u16 *)dstMag->pu8VirAddr[0];
   u16 *dstAng_ptr = (u16 *)dstAng->pu8VirAddr[0];
   float mul_val = 180.f / M_PI;
+  float sqrt_epsilon = 1;
   float ang_abs_limit = 1;
-
+  printf("Check Sobel result:\n");
+  for (size_t i = 1; i < src->u16Height - 1; i++) {
+    for (size_t j = 1; j < src->u16Width - 1; j++) {
+      size_t offset = i * src->u16Stride[0] + j;
+      size_t offset_t = (i - 1) * src->u16Stride[0] + j;
+      size_t offset_b = (i + 1) * src->u16Stride[0] + j;
+#if HOG_SZ == 1
+      int g_h = (int)src_ptr[offset + 1] - src_ptr[offset - 1];
+      int g_v = (int)src_ptr[offset_b] - src_ptr[offset_t];
+#else
+      int g_h = -(int)src_ptr[offset_t - 1] - (2 * src_ptr[offset_t]) - src_ptr[offset_t + 1] +
+                (int)src_ptr[offset_b - 1] + (2 * src_ptr[offset_b]) + src_ptr[offset_b + 1];
+      int g_v = -(int)src_ptr[offset_t - 1] - (2 * src_ptr[offset - 1]) - src_ptr[offset_b - 1] +
+                (int)src_ptr[offset_t + 1] + (2 * src_ptr[offset + 1]) + src_ptr[offset_b + 1];
+#endif
+      float dstH_f = convert_bf16_fp32(dstH_ptr[offset]);
+      float dstV_f = convert_bf16_fp32(dstV_ptr[offset]);
+      if ((int)dstH_f != g_h) {
+#if HOG_SZ == 1
+        printf("H (%lu, %lu) %u - %u = TPU %f CPU %d\n", j, i, src_ptr[offset + 1],
+               src_ptr[offset - 1], dstH_f, g_h);
+#else
+        printf("H (%lu, %lu) TPU %f CPU %d\n", j, i, dstH_f, g_h);
+#endif
+        ret = CVI_FAILURE;
+      }
+      if ((int)dstV_f != g_v) {
+#if HOG_SZ == 1
+        printf("V (%lu, %lu) %u - %u = TPU %f CPU %d\n", j, i, src_ptr[offset_b], src_ptr[offset_t],
+               dstV_f, g_v);
+#else
+        printf("V (%lu, %lu) TPU %f CPU %d\n", j, i, dstV_f, g_v);
+#endif
+        ret = CVI_FAILURE;
+      }
+    }
+  }
+  printf("Check Mag:\n");
+  for (size_t i = 0; i < channels * src->u16Width * src->u16Height; i++) {
+    float dstH_f = convert_bf16_fp32(dstH_ptr[i]);
+    float dstV_f = convert_bf16_fp32(dstV_ptr[i]);
+    float dstMag_f = convert_bf16_fp32(dstMag_ptr[i]);
+    float sqrt_res = sqrtf(dstV_f * dstV_f + dstH_f * dstH_f);
+    float error = fabs(sqrt_res - dstMag_f);
+    if (error > sqrt_epsilon) {
+      printf("[%lu] sqrt( %f^2 + %f^2) = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f,
+             dstMag_f, sqrt_res, error);
+      ret = CVI_FAILURE;
+    }
+  }
   printf("Check Ang:\n");
   for (size_t i = 0; i < channels * src->u16Width * src->u16Height; i++) {
     float dstH_f = convert_bf16_fp32(dstH_ptr[i]);
