@@ -249,14 +249,14 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
  * @param u16Height Input image height.
  * @param u8BinSize Bin size.
  * @param u16CellSize Cell size.
- * @param u16BlkSize  Block size.
+ * @param u16BlkSizeInCell  Block size.
  * @param u16BlkStepX Block step in X dimension.
  * @param u16BlkStepY Block step in Y dimension.
  * @param u32HogSize Output HOG size (length * sizeof(u32)).
  * @return CVI_S32 Return CVI_SUCCESS if succeed.
  */
 CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U16 u16Width, CVI_U16 u16Height, CVI_U8 u8BinSize,
-                             CVI_U16 u16CellSize, CVI_U16 u16BlkSize, CVI_U16 u16BlkStepX,
+                             CVI_U16 u16CellSize, CVI_U16 u16BlkSizeInCell, CVI_U16 u16BlkStepX,
                              CVI_U16 u16BlkStepY, CVI_U32 *u32HogSize);
 
 /**

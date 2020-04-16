@@ -653,7 +653,7 @@ inline bool get_hog_feature_info(u16 width, u16 height, u16 u32CellSize, u16 blk
 }
 
 CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U16 u16Width, CVI_U16 u16Height, CVI_U8 u8BinSize,
-                             CVI_U16 u16CellSize, CVI_U16 u16BlkSize, CVI_U16 u16BlkStepX,
+                             CVI_U16 u16CellSize, CVI_U16 u16BlkSizeInCell, CVI_U16 u16BlkStepX,
                              CVI_U16 u16BlkStepY, CVI_U32 *u32HogSize) {
   if (u16BlkStepX == 0) {
     std::cerr << "u16BlkStepX cannot be 0." << std::endl;
@@ -664,12 +664,12 @@ CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U16 u16Width, CVI_U16 u16Height, CVI_U8 u8BinSi
     return CVI_FAILURE;
   }
   u32 height_cell = 0, width_cell = 0, height_block = 0, width_block = 0;
-  if (!get_hog_feature_info(u16Width, u16Height, u16CellSize, u16BlkSize, &width_cell, &height_cell,
-                            &width_block, &height_block)) {
+  if (!get_hog_feature_info(u16Width, u16Height, u16CellSize, u16BlkSizeInCell, &width_cell,
+                            &height_cell, &width_block, &height_block)) {
     std::cerr << "Block size exceed cell block." << std::endl;
     return CVI_FAILURE;
   }
-  u32 block_length = u16BlkSize * u16BlkSize;
+  u32 block_length = u16BlkSizeInCell * u16BlkSizeInCell;
   width_block = (width_block - 1) / u16BlkStepX + 1;
   height_block = (height_block - 1) / u16BlkStepY + 1;
   u32 num_of_block_data = height_block * width_block;
@@ -702,14 +702,14 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   }
   u32 height_cell = 0, width_cell = 0, height_block = 0, width_block = 0;
   if (!get_hog_feature_info(pstDstAng->u16Width, pstDstAng->u16Height, pstHogCtrl->u32CellSize,
-                            pstHogCtrl->u16BlkSize, &width_cell, &height_cell, &width_block,
+                            pstHogCtrl->u16BlkSizeInCell, &width_cell, &height_cell, &width_block,
                             &height_block)) {
     std::cerr << "Block size exceed cell block." << std::endl;
     return CVI_FAILURE;
   }
   u32 &&cell_length = pstHogCtrl->u32CellSize * pstHogCtrl->u32CellSize;
   u32 &&cell_hist_length = height_cell * width_cell * pstHogCtrl->u8BinSize;
-  u32 &&block_length = pstHogCtrl->u16BlkSize * pstHogCtrl->u16BlkSize;
+  u32 &&block_length = pstHogCtrl->u16BlkSizeInCell * pstHogCtrl->u16BlkSizeInCell;
   u32 &&num_of_block_data = ((height_block - 1) / pstHogCtrl->u16BlkStepY + 1) *
                             ((width_block - 1) / pstHogCtrl->u16BlkStepX + 1);
   u32 &&hog_hist_length = num_of_block_data * (block_length * pstHogCtrl->u8BinSize);
@@ -797,7 +797,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   Tracer::TraceEnd();
 
   Tracer::TraceBegin("Generate HOG histogram");
-  u32 &&copy_length = pstHogCtrl->u8BinSize * pstHogCtrl->u16BlkSize;
+  u32 &&copy_length = pstHogCtrl->u8BinSize * pstHogCtrl->u16BlkSizeInCell;
   u32 &&copy_data_length = copy_length * sizeof(float);
   float *hog_ptr = (float *)pstDstHist->pu8VirAddr;
   memset(hog_ptr, 0, pstDstHist->u32ByteSize);
@@ -806,7 +806,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
     u32 &&row_skip = i * width_block;
     for (u32 j = 0; j < width_block; j += pstHogCtrl->u16BlkStepX) {
       u32 &&skip = j + row_skip;
-      for (u32 k = 0; k < pstHogCtrl->u16BlkSize; k++) {
+      for (u32 k = 0; k < pstHogCtrl->u16BlkSizeInCell; k++) {
         u32 &&index = skip + k * width_block;
         auto *cell_hist_ptr = cell_histogram + index;
         auto *dst_hog_ptr = hog_ptr + count;

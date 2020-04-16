@@ -151,7 +151,7 @@ typedef struct IVE_NORM_GRAD_CTRL {
 typedef struct IVE_HOG_CTRL {
   CVI_U8 u8BinSize;
   CVI_U32 u32CellSize;
-  CVI_U16 u16BlkSize;
+  CVI_U16 u16BlkSizeInCell;
   CVI_U16 u16BlkStepX;
   CVI_U16 u16BlkStepY;
 } IVE_HOG_CTRL_S;

@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
 
       pstHogCtrl.u8BinSize = BIN_NUM;
       pstHogCtrl.u32CellSize = CELL_SIZE;
-      pstHogCtrl.u16BlkSize = BLOCK_SIZE;
+      pstHogCtrl.u16BlkSizeInCell = BLOCK_SIZE;
       pstHogCtrl.u16BlkStepX = STEP_X;
       pstHogCtrl.u16BlkStepY = STEP_Y;
       binit = true;
