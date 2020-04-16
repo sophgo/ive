@@ -815,11 +815,11 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
       }
     }
   }
+  delete[] cell_histogram;
   if (count != hog_hist_length) {
     std::cerr << "Hog histogram not aligned." << count << " " << hog_hist_length << std::endl;
     return CVI_FAILURE;
   }
-  delete[] cell_histogram;
   Tracer::TraceEnd();
   Tracer::TraceBegin("Normalizing HOG histogram");
   hog_ptr = (float *)pstDstHist->pu8VirAddr;
