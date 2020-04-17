@@ -15,4 +15,5 @@ include_directories(
 buildninstall_test(sample_add)
 buildninstall_test(sample_block)
 buildninstall_test(sample_hog)
+buildninstall_test(sample_map)
 buildninstall_test(sample_ordstat)
