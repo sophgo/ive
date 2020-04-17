@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
     for (size_t i = 0; i < blkNum; i++) {
       printf("\n");
       for (size_t j = 0; j < blkSize; j++) {
-        printf("%3f ", ((float *)dstHist.pu8VirAddr)[i + j]);
+        printf("%.3f ", ((float *)dstHist.pu8VirAddr)[i + j]);
       }
     }
     printf("\n");
