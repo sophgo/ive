@@ -307,7 +307,7 @@ inline void updateLMemSize(
     std::vector<std::pair<int, bmk1880v2_tensor_lmem_t *>> *tl_out_shape_lmem_vec,
     std::vector<bmk1880v2_tensor_lmem_t *> *tl_vec) {
   for (size_t k = 0; k < tl_in_shape_lmem_vec->size(); k++) {
-    int &index = (*tl_in_shape_lmem_vec)[k].first;
+    // int &index = (*tl_in_shape_lmem_vec)[k].first;
     auto *lmem = (*tl_in_shape_lmem_vec)[k].second;
     lmem->shape = tsi.tl_load.shape;
     if (io_fmt == lmem->fmt) {
@@ -317,7 +317,7 @@ inline void updateLMemSize(
     }
   }
   for (size_t k = 0; k < tl_out_shape_lmem_vec->size(); k++) {
-    int &index = (*tl_out_shape_lmem_vec)[k].first;
+    // int &index = (*tl_out_shape_lmem_vec)[k].first;
     auto *lmem = (*tl_out_shape_lmem_vec)[k].second;
     lmem->shape = tsi.tl_store.shape;
     if (io_fmt == lmem->fmt) {
@@ -1328,7 +1328,6 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
         tg_out.shape.w = tl_out_info.lmem_vec[k + pp_skip]->shape.w;
         tg_out.fmt = bm_dest_info.fns_vec[k].getFmt();
         tg_out.stride = output_stride_vec[k];
-        bmk1880v2_tensor_lmem_t out_shape;
         bmk1880v2_tdma_l2tg_tensor_copy_param_t p_copy_out;
         p_copy_out.src = tl_out_info.lmem_vec[k + pp_skip];
         p_copy_out.dst = &tg_out;
@@ -1430,7 +1429,6 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
       tg_out.shape.h = tl_out_info.lmem_vec[k]->shape.h;
       tg_out.shape.w = tl_out_info.lmem_vec[k]->shape.w;
       tg_out.stride = output_stride_vec[k];
-      bmk1880v2_tensor_lmem_t out_shape;
       bmk1880v2_tdma_l2tg_tensor_copy_param_t p_copy_out;
       p_copy_out.src = tl_out_info.lmem_vec[k];
       p_copy_out.dst = &tg_out;

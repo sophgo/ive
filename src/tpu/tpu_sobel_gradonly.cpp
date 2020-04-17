@@ -40,8 +40,8 @@ int IveTPUSobelGradOnly::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_shape_out.h = tg_out_slices[0].h;
   tl_shape_out.w = tg_out_slices[0].w;
   auto *tl_input = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_gx = allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
-  auto *tl_gy = allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
+  allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);  // tl_gx
+  allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);  // tl_gy
 
   bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, m_kernel_x->img.m_tg.shape.c, m_kernel_info.size,
                                                m_kernel_info.size};

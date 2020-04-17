@@ -179,7 +179,6 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
       return CVI_FAILURE;
       break;
   }
-  int total_size = c * u16Width * u16Height * fmt_size;
   // Special case for unsupported I32/U32 images
   // FIXME: Put thosinto bmkernel, bmruntime
   if (fmt == FMT_U32) {
@@ -417,7 +416,6 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       cpp_src->Invld(&handle_ctx->ctx);
       cpp_dst->Invld(&handle_ctx->ctx);
       u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
-      u8 *dst_ptr = (u8 *)cpp_dst->GetVAddr();
       float min = std::numeric_limits<float>::max(), max = std::numeric_limits<float>::min();
       u64 img_size = cpp_src->m_tg.shape.c * cpp_src->m_tg.shape.h * cpp_src->m_tg.shape.w;
       neonBF16FindMinMax(src_ptr, img_size, &min, &max);
@@ -707,7 +705,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
     std::cerr << "Block size exceed cell block." << std::endl;
     return CVI_FAILURE;
   }
-  u32 &&cell_length = pstHogCtrl->u32CellSize * pstHogCtrl->u32CellSize;
+  // u32 &&cell_length = pstHogCtrl->u32CellSize * pstHogCtrl->u32CellSize;
   u32 &&cell_hist_length = height_cell * width_cell * pstHogCtrl->u8BinSize;
   u32 &&block_length = pstHogCtrl->u16BlkSizeInCell * pstHogCtrl->u16BlkSizeInCell;
   u32 &&num_of_block_data = ((height_block - 1) / pstHogCtrl->u16BlkStepY + 1) *
@@ -1392,7 +1390,6 @@ inline void GetGrayIntegralImage(u8 *Src, u32 *Integral, int Width, int Height, 
  */
 
 inline int cal_hist(int cols, int rows, u8 *image, int src_stride, u32 *hist, int num_bins) {
-  int col, row;
   if (cols < 1 || rows < 1 || num_bins < 1) {
     return (1);
   }
@@ -1514,7 +1511,7 @@ CVI_S32 CVI_IVE_EqualizeHist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
 }
 
 inline float cal_norm_cc(unsigned char *psrc1, unsigned char *psrc2, int srcw, int srch) {
-  int i, j, wxh;
+  int i, wxh;
   uint t1, t2, t3;
   float rtv = 0;
   double d1, d2, d3;
@@ -1672,8 +1669,8 @@ void lbp_process(cvLbp *self, u8 *lbpimg, u8 *image, u32 stride, u32 width, u32 
   // u32 cwidth = width / cellSize;
   // u32 cheight = height / cellSize;
   // u32 cstride = cwidth * cheight;
-  u32 cdimension = lbp_get_dimension(self);
-  int x, y, cx, cy, k, bin;
+  // u32 cdimension = lbp_get_dimension(self);
+  int x, y, bin;
 
 #define at(u, v) (*(image + stride * (v) + (u)))
 #define to(m, n) (*(lbpimg + stride * (n) + (m)))

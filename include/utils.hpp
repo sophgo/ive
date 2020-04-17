@@ -43,7 +43,7 @@ inline void submitCmdbuf(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     fwrite(buf, sizeof(char), len, pFile);
     fclose(pFile);
     uint16_t seq_no;
-    bmerr_t ret = bm_send_cmdbuf(*ctx, buf, (size_t)len, &seq_no);
+    bm_send_cmdbuf(*ctx, buf, (size_t)len, &seq_no);
     bmk1880v2_reset(bk_ctx);
   } else {
     cviruntime_cvikernel_submit(*ctx);
@@ -142,7 +142,6 @@ inline void bf16LookupTable(bmk1880v2_context_t *bk_ctx,
 
 inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, u32 *quantized_multiplier,
                                              int *right_shift) {
-  float original_real_multiplier = real_multiplier;
   if (real_multiplier <= 0.f || real_multiplier > 1.f) {
     std::cerr << "Multiplier should be bigger than 0, smaller or euqal to 1." << std::endl;
     *quantized_multiplier = 0;
@@ -178,8 +177,6 @@ inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, u32 *quantiz
     *quantized_multiplier = (u32)q;
     *right_shift = s;
   }
-  IVE_DEBUG("    QuantizeMultiplierSmallerThanOne: %f -> multiplier %d, rshift %d\n",
-            original_real_multiplier, *quantized_multiplier, *right_shift);
 }
 
 inline void pack_per_chan_cal_data(u32 channels, bool has_bias, s32 *bias, u32 *multiplier,
