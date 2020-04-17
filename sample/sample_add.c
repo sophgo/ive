@@ -9,13 +9,14 @@ int main(int argc, char **argv) {
     printf("Incorrect loop value. Usage: %s <file_name>\n", argv[0]);
     return CVI_FAILURE;
   }
+  // Redirect logging to file.
   CVI_SYS_LOGGING(argv[0]);
   const char *file_name = argv[1];
   // Create instance
   printf("Create instance.\n");
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
 
-  // Read image from file.
+  // Read image from file. CVI_IVE_ReadImage will do the flush for you.
   IVE_IMAGE_S src1 = CVI_IVE_ReadImage(handle, file_name, IVE_IMAGE_TYPE_U8C1);
   int nChannels = 1;  // IVE_IMAGE_TYPE_U8C1 = 1 channel
   int width = src1.u16Width;

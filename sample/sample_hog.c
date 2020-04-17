@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
   printf("BM Kernel init.\n");
 
-  // Fetch image information
+  // Fetch image information. CVI_IVE_ReadImage will do the flush for you.
   IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, filename, IVE_IMAGE_TYPE_U8C1);
   // int nChannels = 1;
   int width = src.u16Width;
