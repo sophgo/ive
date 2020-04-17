@@ -13,4 +13,5 @@ include_directories(
 )
 
 buildninstall_test(sample_add)
+buildninstall_test(sample_block)
 buildninstall_test(sample_hog)
