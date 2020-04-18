@@ -1,4 +1,6 @@
 #include "ive.h"
+#include <linux/videodev2.h>
+
 #include <glog/logging.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
@@ -287,6 +289,7 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
       std::cerr << "Image " << filename << " read failed." << std::endl;
       return img;
     }
+    printf("desiredNChannels, width, height: %d %d %d\n", desiredNChannels, width, height);
     memcpy(img.pu8VirAddr[0], stbi_data, desiredNChannels * width * height);
     CVI_IVE_BufFlush(pIveHandle, &img);
     stbi_image_free(stbi_data);
@@ -1731,9 +1734,348 @@ CVI_S32 CVI_IVE_LBP(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
 
   lbp_process(&self, (u8 *)pstDst->pu8VirAddr[0], (u8 *)pstSrc->pu8VirAddr[0],
-              (u32)pstSrc->u16Stride[0], (int)pstSrc->u16Width, (int)pstSrc->u16Height);
+              (u32)pstSrc->u16Stride[0], (u32)pstSrc->u16Width, (int)pstSrc->u16Height);
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
 
   return CVI_SUCCESS;
 }
+
+#include "avir.h"
+CVI_S32 CVI_IVE_Resize(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                       IVE_RESIZE_CTRL_S *ctrl, bool bInstant) {
+  if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
+    std::cerr << "Input only accepts U8C1 image format." << std::endl;
+    return CVI_FAILURE;
+  }
+  if (pstDst->enType != IVE_IMAGE_TYPE_U8C1) {
+    std::cerr << "Output only accepts U8C1 image format." << std::endl;
+    return CVI_FAILURE;
+  }
+
+  CVI_IVE_BufRequest(pIveHandle, pstSrc);
+
+  avir::CImageResizer<> ImageResizer(8);
+  ImageResizer.resizeImage((u8 *)pstSrc->pu8VirAddr[0], (int)pstSrc->u16Width,
+                           (int)pstSrc->u16Height, 0, (u8 *)pstDst->pu8VirAddr[0],
+                           (int)pstDst->u16Width, (int)pstDst->u16Height, 1, 0);
+
+  CVI_IVE_BufFlush(pIveHandle, pstSrc);
+
+  return CVI_SUCCESS;
+}
+
+#if 0
+#include "cvi_vip.h"
+CVI_S32 set_fmt_ex(CVI_S32 fd, CVI_S32 width, CVI_S32 height, CVI_U32 pxlfmt, CVI_U32 csc, CVI_U32 quant)
+{
+	struct v4l2_format fmt;
+	//fmt.type = type;
+	fmt.fmt.pix_mp.width = width;
+	fmt.fmt.pix_mp.height = height;
+	fmt.fmt.pix_mp.pixelformat = pxlfmt;
+	fmt.fmt.pix_mp.field = V4L2_FIELD_ANY;
+	if (pxlfmt == V4L2_PIX_FMT_RGBM){
+	fmt.fmt.pix_mp.colorspace = V4L2_COLORSPACE_SRGB;
+	}else{
+	fmt.fmt.pix_mp.colorspace = csc;
+	}
+
+	fmt.fmt.pix_mp.quantization = quant;
+	fmt.fmt.pix_mp.num_planes = 3;
+
+	if (-1 == ioctl(fd, VIDIOC_TRY_FMT, &fmt)){
+		perror("VIDIOC_TRY_FMT");
+		//printf("VIDIOC_TRY_FMT");
+	}
+	if (-1 == ioctl(fd, VIDIOC_S_FMT, &fmt)){
+		perror("VIDIOC_S_FMT");
+		//printf("VIDIOC_S_FMT");
+	}
+	return(fmt.fmt.pix.sizeimage);
+}
+
+
+CVI_S32 CVI_IVE_CSC(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst
+			, IVE_CSC_CTRL_S *pstCscCtrl, CVI_BOOL bInstant)
+{
+	CVI_U32 srcfmt, dstfmt, srcCSC, dstCSC, srcQuant, dstQuant;
+	struct vdev *srcd, *dstd;
+	struct buffer buf;
+	CVI_S32 ret;
+#if 0
+	srcd = get_dev_info(VDEV_TYPE_IMG, 0);
+	dstd = get_dev_info(VDEV_TYPE_SC, 0);
+
+  srcfmt = V4L2_PIX_FMT_YUV420M;
+  dstfmt = V4L2_PIX_FMT_RGBM;
+	srcCSC = V4L2_COLORSPACE_REC709;
+	srcQuant = V4L2_QUANTIZATION_DEFAULT;
+	dstCSC = V4L2_COLORSPACE_REC709;
+	dstQuant = V4L2_QUANTIZATION_LIM_RANGE;
+#endif
+
+#if 0
+	switch (pstCscCtrl->enMode) {
+  case IVE_CSC_MODE_PIC_BT601_YUV2HSV:
+	case IVE_CSC_MODE_VIDEO_BT601_YUV2RGB:
+	case IVE_CSC_MODE_PIC_BT601_YUV2RGB:
+  case IVE_CSC_MODE_VIDEO_BT709_YUV2RGB:
+  case IVE_CSC_MODE_PIC_BT601_YUV2HSV:
+	case IVE_CSC_MODE_PIC_BT601_YUV2HSV:
+		if (srcfmt == V4L2_PIX_FMT_RGBM) {
+			//CVI_TRACE(CVI_DBG_ERR, CVI_ID_IVE, "Invalid parameters\n");
+			return CVI_FAILURE;
+		}
+		srcCSC = V4L2_COLORSPACE_SMPTE170M;
+		srcQuant = V4L2_QUANTIZATION_DEFAULT;
+		break;
+	case IVE_CSC_MODE_VIDEO_BT709_YUV2RGB:
+	case IVE_CSC_MODE_PIC_BT709_YUV2RGB:
+	case IVE_CSC_MODE_PIC_BT709_YUV2HSV:
+		if (srcfmt == V4L2_PIX_FMT_RGBM) {
+			//CVI_TRACE(CVI_DBG_ERR, CVI_ID_IVE, "Invalid parameters\n");
+			return CVI_FAILURE;
+		}
+		srcCSC = V4L2_COLORSPACE_REC709;
+		srcQuant = V4L2_QUANTIZATION_DEFAULT;
+		break;
+	case IVE_CSC_MODE_VIDEO_BT601_RGB2YUV:
+	case IVE_CSC_MODE_VIDEO_BT709_RGB2YUV:
+	case IVE_CSC_MODE_PIC_BT601_RGB2YUV:
+	case IVE_CSC_MODE_PIC_BT709_RGB2YUV:
+		if (srcfmt != V4L2_PIX_FMT_RGBM) {
+			//CVI_TRACE(CVI_DBG_ERR, CVI_ID_IVE, "Invalid parameters\n");
+			return CVI_FAILURE;
+		}
+		srcCSC = V4L2_COLORSPACE_SRGB;
+		srcQuant = V4L2_QUANTIZATION_DEFAULT;
+		break;
+	}
+#endif
+
+	//srcCSC = V4L2_COLORSPACE_REC709;
+	//srcQuant = V4L2_QUANTIZATION_DEFAULT;
+
+#if 0
+	set_fmt_ex(srcd->fd, pstSrc->u16Width, pstSrc->u16Height, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE
+		, srcfmt, srcCSC, srcQuant);
+	set_fmt_ex(dstd->fd, pstDst->u16Width, pstDst->u16Height, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
+		, dstfmt, dstCSC, dstQuant);
+
+	for (CVI_U8 i = 0; i < 3; ++i) {
+		buf.phy_addr[i] = pstSrc->u64PhyAddr[i];
+		buf.length[i] = pstSrc->u16Stride[i] * pstSrc->u16Height;
+		if (pstSrc->enType == IVE_IMAGE_TYPE_YUV420P && i > 0)
+			buf.length[i] >>= 1;
+	}
+	qbuf(srcd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, &buf);
+	for (CVI_U8 i = 0; i < 3; ++i) {
+		buf.phy_addr[i] = pstDst->u64PhyAddr[i];
+		buf.length[i] = pstDst->u16Stride[i] * pstDst->u16Height;
+		if (pstDst->enType == IVE_IMAGE_TYPE_YUV420P && i > 0)
+			buf.length[i] >>= 1;
+	}
+	qbuf(dstd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, &buf);
+
+
+	do {
+		fd_set wfds;
+		struct timeval tv;
+
+		FD_ZERO(&wfds);
+		FD_SET(dstd->fd, &wfds);
+		tv.tv_sec = 0;
+		tv.tv_usec = 500 * 1000;
+		ret = select(dstd->fd + 1, NULL, &wfds, NULL, &tv);
+		if (ret == -1) {
+			if (errno == EINTR)
+				continue;
+			//CVI_TRACE(CVI_DBG_ERR, CVI_ID_IVE, "select error\n");
+			break;
+		}
+
+		if (ret == 0) {
+			//CVI_TRACE(CVI_DBG_ERR, CVI_ID_IVE, "select timeout\n");
+			ret = CVI_FAILURE;
+			break;
+		}
+
+		if (FD_ISSET(dstd->fd, &wfds)) {
+			ret = CVI_SUCCESS;
+			break;
+		}
+	} while(1);
+#endif
+	return ret;
+}
+
+#else
+
+float max(float a, float b, float c) { return ((a > b) ? (a > c ? a : c) : (b > c ? b : c)); }
+float min(float a, float b, float c) { return ((a < b) ? (a < c ? a : c) : (b < c ? b : c)); }
+int rgb_to_hsv(float r, float g, float b, float &h, float &s, float &v) {
+  // R, G, B values are divided by 255
+  // to change the range from 0..255 to 0..1:
+  // float h, s, v;
+  h = 0;
+  s = 0;
+  v = 0;
+
+  r /= 255.0;
+  g /= 255.0;
+  b /= 255.0;
+  float cmax = max(r, g, b);       // maximum of r, g, b
+  float cmin = min(r, g, b);       // minimum of r, g, b
+  float diff = cmax - cmin + 1.0;  // diff of cmax and cmin.
+  if (cmax == cmin)
+    h = 0;
+  else if (cmax == r)
+    h = fmod((60 * ((g - b) / diff) + 360), 360.0);
+  else if (cmax == g)
+    h = fmod((60 * ((b - r) / diff) + 120), 360.0);
+  else if (cmax == b)
+    h = fmod((60 * ((r - g) / diff) + 240), 360.0);
+  // if cmax equal zero
+  if (cmax == 0) {
+    s = 0;
+  } else {
+    s = (diff / cmax) * 100;
+  }
+  // compute v
+  v = cmax * 100;
+  // printf("h s v=(%f, %f, %f)\n", h, s, v );
+  return 0;
+}
+
+int rgbToHsv(unsigned char *rgb, unsigned char *hsv, int srcw, int srch, int ch) {
+  int i;
+  int wxh = srcw * srch;
+  float r, g, b, h, s, v;
+
+  for (i = 0; i < wxh; i++) {
+    r = rgb[ch * i] / 255.0;
+    g = rgb[ch * i + 1] / 255.0;
+    b = rgb[ch * i + 2] / 255.0;
+    rgb_to_hsv(r, g, b, h, s, v);
+
+    hsv[ch * i] = floor(h);
+    hsv[ch * i + 1] = floor(s);
+    hsv[ch * i + 2] = floor(v);
+  }
+
+  return 0;
+}
+
+void rgbToGray(unsigned char *rgb, unsigned char *gray, int stride, int srcw, int srch) {
+  int i, j, n, ii;
+  uint r, g, b;
+  unsigned char one_gray;
+  unsigned char *pr, *pg, *pb;
+  pr = rgb;
+  pg = rgb + srcw * srch;
+  pb = rgb + srcw * srch * 2;
+
+  for (i = 0; i < srch; i++) {
+    n = 0;
+    ii = i * srcw;
+    for (j = 0; j < srcw; j++, n++) {
+      r = *(pr + ii + j);          // red
+      g = *(pg + ii + j);          // green
+      b = *(pb + ii + j);          // blue
+      one_gray = (r + g + b) / 3;  //(r*19595 + g*38469 + b*7472) >> 16;
+      *(gray + ii + n) = one_gray;
+    }
+  }
+}
+
+CVI_S32 CVI_IVE_CSC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                    IVE_CSC_CTRL_S *ctrl, bool bInstant) {
+  if (pstSrc->enType != IVE_IMAGE_TYPE_U8C3_PLANAR) {
+    std::cerr << "Input only accepts U8C3_PLANAR image format." << std::endl;
+    return CVI_FAILURE;
+  }
+
+  CVI_IVE_BufRequest(pIveHandle, pstSrc);
+  int strideSrc;  //, strideDst;
+
+  switch (ctrl->enMode) {
+    case IVE_CSC_MODE_PIC_RGB2HSV:
+      rgbToHsv((u8 *)pstSrc->pu8VirAddr[0], (u8 *)pstDst->pu8VirAddr[0], (int)pstSrc->u16Width,
+               (int)pstSrc->u16Height, 3);
+      break;
+
+    case IVE_CSC_MODE_PIC_RGB2GRAY:
+      strideSrc = pstSrc->u16Stride[0];
+      // strideDst = pstDst->u16Stride[0];
+      // printf("strideSrc: %d, strideDat: %d\n", strideSrc, strideDst);
+      rgbToGray((u8 *)pstSrc->pu8VirAddr[0], (u8 *)pstDst->pu8VirAddr[0], strideSrc,
+                (int)pstSrc->u16Width, (int)pstSrc->u16Height);
+      break;
+
+    default:
+      strideSrc = pstSrc->u16Stride[0];
+      // strideDst = pstDst->u16Stride[0];
+      // printf("strideSrc: %d, strideDat: %d\n", strideSrc, strideDst);
+      rgbToGray((u8 *)pstSrc->pu8VirAddr[0], (u8 *)pstDst->pu8VirAddr[0], strideSrc,
+                (int)pstSrc->u16Width, (int)pstSrc->u16Height);
+
+      break;
+  }
+
+  CVI_IVE_BufFlush(pIveHandle, pstSrc);
+
+  return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_FilterAndCSC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
+                             IVE_SRC_IMAGE_S *pstBuf, IVE_DST_IMAGE_S *pstDst,
+                             IVE_FILTER_AND_CSC_CTRL_S *ctrl, bool bInstant) {
+  if (pstBuf->enType != IVE_IMAGE_TYPE_U8C3_PLANAR) {
+    std::cerr << "Input only accepts U8C3_PLANAR image format." << std::endl;
+    return CVI_FAILURE;
+  }
+
+  IVE_FILTER_CTRL_S iveFltCtrl;
+  iveFltCtrl.u8MaskSize = 5;
+  memcpy(iveFltCtrl.as8Mask, ctrl->as8Mask, 25 * sizeof(CVI_S8));
+  iveFltCtrl.u32Norm = 273;
+  CVI_IVE_Filter(pIveHandle, pstSrc, pstBuf, &iveFltCtrl, 0);
+
+  memcpy(pstBuf->pu8VirAddr[0], pstSrc->pu8VirAddr[0], pstBuf->u16Stride[0] * pstBuf->u16Height);
+  memcpy(pstBuf->pu8VirAddr[1], pstSrc->pu8VirAddr[0], pstBuf->u16Stride[0] * pstBuf->u16Height);
+  memcpy(pstBuf->pu8VirAddr[2], pstSrc->pu8VirAddr[0], pstBuf->u16Stride[0] * pstBuf->u16Height);
+
+  CVI_IVE_BufRequest(pIveHandle, pstBuf);
+  int strideSrc;  //, strideDst;
+
+  switch (ctrl->enMode) {
+    case IVE_CSC_MODE_PIC_RGB2HSV:
+      rgbToHsv((u8 *)pstBuf->pu8VirAddr[0], (u8 *)pstDst->pu8VirAddr[0], (int)pstBuf->u16Width,
+               (int)pstBuf->u16Height, 3);
+      break;
+
+    case IVE_CSC_MODE_PIC_RGB2GRAY:
+      strideSrc = pstBuf->u16Stride[0];
+      // strideDst = pstDst->u16Stride[0];
+      // printf("strideSrc: %d, strideDat: %d\n", strideSrc, strideDst);
+      rgbToGray((u8 *)pstBuf->pu8VirAddr[0], (u8 *)pstDst->pu8VirAddr[0], strideSrc,
+                (int)pstBuf->u16Width, (int)pstBuf->u16Height);
+      break;
+
+    default:
+      strideSrc = pstBuf->u16Stride[0];
+      // strideDst = pstDst->u16Stride[0];
+      // printf("strideSrc: %d, strideDat: %d\n", strideSrc, strideDst);
+      rgbToGray((u8 *)pstBuf->pu8VirAddr[0], (u8 *)pstDst->pu8VirAddr[0], strideSrc,
+                (int)pstBuf->u16Width, (int)pstBuf->u16Height);
+
+      break;
+  }
+
+  CVI_IVE_BufFlush(pIveHandle, pstBuf);
+
+  return CVI_SUCCESS;
+}
+
+#endif

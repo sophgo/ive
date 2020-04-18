@@ -1,6 +1,13 @@
 #ifndef _IVE_H
 #define _IVE_H
 #include "cvi_comm_ive.h"
+
+// for HW CSC/resize
+#include <linux/videodev2.h>
+#include <sys/ioctl.h>
+#include "cvi_common.h"
+// ---
+
 #ifndef __cplusplus
 #include <stdbool.h>
 #endif
@@ -488,6 +495,19 @@ CVI_S32 CVI_IVE_NCC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 
 CVI_S32 CVI_IVE_LBP(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                     IVE_LBP_CTRL_S *ctrl, bool bInstant);
+
+CVI_S32 set_fmt_ex(CVI_S32 fd, CVI_S32 width, CVI_S32 height,  // enum v4l2_buf_type type,
+                   CVI_U32 pxlfmt, CVI_U32 csc, CVI_U32 quant);
+
+CVI_S32 CVI_IVE_CSC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                    IVE_CSC_CTRL_S *ctrl, bool bInstant);
+
+CVI_S32 CVI_IVE_Resize(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                       IVE_RESIZE_CTRL_S *ctrl, bool bInstant);
+
+CVI_S32 CVI_IVE_FilterAndCSC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
+                             IVE_SRC_IMAGE_S *pstSrcBuf, IVE_DST_IMAGE_S *pstDst,
+                             IVE_FILTER_AND_CSC_CTRL_S *ctrl, bool bInstant);
 
 #ifdef __cplusplus
 }
