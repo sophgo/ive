@@ -214,13 +214,21 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
   pstImg->u16Reserved = fmt_size;
 
   int img_sz = cpp_img->m_tg.stride.h * pstImg->u16Height * fmt_size;
-  for (size_t i = 0; i < cpp_img->m_tg.shape.c; i++) {
-    pstImg->pu8VirAddr[i] = cpp_img->GetVAddr() + i * img_sz;
-    pstImg->u64PhyAddr[i] = cpp_img->GetPAddr() + i * img_sz;
-    pstImg->u16Stride[i] = cpp_img->m_tg.stride.h / fmt_size;
+  size_t i_limit = cpp_img->m_tg.shape.c;
+  if (IVE_IMAGE_TYPE_U8C3_PACKAGE) {
+    i_limit = 1;
+    pstImg->pu8VirAddr[0] = cpp_img->GetVAddr();
+    pstImg->u64PhyAddr[0] = cpp_img->GetPAddr();
+    pstImg->u16Stride[0] = cpp_img->m_tg.stride.h * 3 / fmt_size;
+  } else {
+    for (size_t i = 0; i < i_limit; i++) {
+      pstImg->pu8VirAddr[i] = cpp_img->GetVAddr() + i * img_sz;
+      pstImg->u64PhyAddr[i] = cpp_img->GetPAddr() + i * img_sz;
+      pstImg->u16Stride[i] = cpp_img->m_tg.stride.h / fmt_size;
+    }
   }
 
-  for (size_t i = cpp_img->m_tg.shape.c; i < 3; i++) {
+  for (size_t i = i_limit; i < 3; i++) {
     pstImg->pu8VirAddr[i] = NULL;
     pstImg->u64PhyAddr[i] = -1;
     pstImg->u16Stride[i] = 0;
@@ -276,6 +284,9 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
     case IVE_IMAGE_TYPE_U8C3_PLANAR:
       desiredNChannels = STBI_rgb;
       break;
+    case IVE_IMAGE_TYPE_U8C3_PACKAGE:
+      desiredNChannels = STBI_rgb;
+      break;
     default:
       std::cerr << "Not support channel " << enType;
       break;
@@ -290,7 +301,17 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
       return img;
     }
     printf("desiredNChannels, width, height: %d %d %d\n", desiredNChannels, width, height);
-    memcpy(img.pu8VirAddr[0], stbi_data, desiredNChannels * width * height);
+    if (IVE_IMAGE_TYPE_U8C3_PLANAR) {
+      size_t image_total = width * height;
+      for (size_t i = 0; i < image_total; i++) {
+        size_t stb_idx = i * 3;
+        img.pu8VirAddr[0][i] = stbi_data[stb_idx];
+        img.pu8VirAddr[1][i] = stbi_data[stb_idx + 1];
+        img.pu8VirAddr[2][i] = stbi_data[stb_idx + 2];
+      }
+    } else {
+      memcpy(img.pu8VirAddr[0], stbi_data, desiredNChannels * width * height);
+    }
     CVI_IVE_BufFlush(pIveHandle, &img);
     stbi_image_free(stbi_data);
   }
@@ -299,21 +320,43 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
 
 CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAGE_S *pstImg) {
   int desiredNChannels = -1;
+  int stride = 1;
+  uint8_t *arr = nullptr;
+  bool remove_buffer = false;
   switch (pstImg->enType) {
     case IVE_IMAGE_TYPE_U8C1:
       desiredNChannels = STBI_grey;
+      arr = pstImg->pu8VirAddr[0];
       break;
-    case IVE_IMAGE_TYPE_U8C3_PLANAR:
+    case IVE_IMAGE_TYPE_U8C3_PLANAR: {
       desiredNChannels = STBI_rgb;
-      break;
+      stride = 1;
+      arr = new uint8_t[pstImg->u16Stride[0] * pstImg->u16Height * desiredNChannels];
+      size_t image_total = pstImg->u16Stride[0] * pstImg->u16Height;
+      for (size_t i = 0; i < image_total; i++) {
+        size_t stb_idx = i * 3;
+        arr[stb_idx] = pstImg->pu8VirAddr[0][i];
+        arr[stb_idx + 1] = pstImg->pu8VirAddr[1][i];
+        arr[stb_idx + 2] = pstImg->pu8VirAddr[2][i];
+      }
+      stride = 3;
+      remove_buffer = true;
+    } break;
+    case IVE_IMAGE_TYPE_U8C3_PACKAGE:
+      desiredNChannels = STBI_rgb;
+      arr = pstImg->pu8VirAddr[0];
+      stride = 3;
     default:
       std::cerr << "Not support channel " << pstImg->enType;
       return CVI_FAILURE;
       break;
   }
   CVI_IVE_BufRequest(pIveHandle, pstImg);
-  stbi_write_png(filename, pstImg->u16Width, pstImg->u16Height, desiredNChannels,
-                 pstImg->pu8VirAddr[0], pstImg->u16Stride[0]);
+  stbi_write_png(filename, pstImg->u16Width, pstImg->u16Height, desiredNChannels, arr,
+                 pstImg->u16Stride[0] * stride);
+  if (remove_buffer) {
+    delete[] arr;
+  }
   return CVI_SUCCESS;
 }
 
