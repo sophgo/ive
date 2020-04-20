@@ -5,6 +5,8 @@ class IveTPUThreshold : public IveCore {
  public:
   void setThreshold(int threshold);
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) override;
+
+ protected:
   virtual int runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,

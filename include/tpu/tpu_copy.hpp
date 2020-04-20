@@ -11,6 +11,8 @@ class IveTPUCopyInterval : public IveCore {
  public:
   void setInvertal(u32 hori, u32 verti);
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) override;
+
+ protected:
   virtual int sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res) override;
   virtual int runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                        const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
