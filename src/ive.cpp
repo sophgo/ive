@@ -1741,7 +1741,8 @@ CVI_S32 CVI_IVE_LBP(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   return CVI_SUCCESS;
 }
 
-#include "avir.h"
+#include "avir/avir.h"
+
 CVI_S32 CVI_IVE_Resize(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_RESIZE_CTRL_S *ctrl, bool bInstant) {
   if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
