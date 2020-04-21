@@ -215,7 +215,7 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
 
   int img_sz = cpp_img->m_tg.stride.h * pstImg->u16Height * fmt_size;
   size_t i_limit = cpp_img->m_tg.shape.c;
-  if (IVE_IMAGE_TYPE_U8C3_PACKAGE) {
+  if (pstImg->enType == IVE_IMAGE_TYPE_U8C3_PACKAGE) {
     i_limit = 1;
     pstImg->pu8VirAddr[0] = cpp_img->GetVAddr();
     pstImg->u64PhyAddr[0] = cpp_img->GetPAddr();
@@ -301,7 +301,7 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
       return img;
     }
     printf("desiredNChannels, width, height: %d %d %d\n", desiredNChannels, width, height);
-    if (IVE_IMAGE_TYPE_U8C3_PLANAR) {
+    if (enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
       size_t image_total = width * height;
       for (size_t i = 0; i < image_total; i++) {
         size_t stb_idx = i * 3;
@@ -346,6 +346,7 @@ CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAG
       desiredNChannels = STBI_rgb;
       arr = pstImg->pu8VirAddr[0];
       stride = 3;
+      break;
     default:
       std::cerr << "Not support channel " << pstImg->enType;
       return CVI_FAILURE;
