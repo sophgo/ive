@@ -42,10 +42,21 @@ else()
 endif()
 
 # Check if tracer exists.
-if(EXISTS "${CMAKE_SOURCE_DIR}/3rdparty/tracer")
+if ("${TRACER_ROOT}" STREQUAL "")
+  set(TRACER_ROOT ${CMAKE_SOURCE_DIR}/3rdparty/tracer)
+endif()
+if(EXISTS "${TRACER_ROOT}")
+  execute_process(COMMAND git remote -v
+                  OUTPUT_VARIABLE TRACER_REMOTE_URL)
+  if (NOT ${TRACER_REMOTE_URL} MATCHES 10.34.33.3)
+    message(AUTHOR_WARNING "Warning, this tracer is not cloned from GitLab. "
+                           "May cause error while compiling or running.")
+  endif()
   message("-- Found Tracer (directory: ${CMAKE_SOURCE_DIR}/3rdparty/tracer)")
+  include(cmake/tracer.cmake)
 else()
-  message(FATAL_ERROR "Tracer folder not found. Git clone to 3rdparty at http://10.34.33.3:8480/sys_app/tracer.")
+  message(FATAL_ERROR "Tracer folder not found. Git clone to 3rdparty at "
+                      "http://10.34.33.3:8480/sys_app/tracer.")
 endif()
 if (ENABLE_SYSTRACE)
   add_definitions(-DENABLE_TRACE)

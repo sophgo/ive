@@ -8,15 +8,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/middleware/include
 )
 
-if (ENABLE_SYSTRACE)
-  set(IVE_TRACER ${CMAKE_CURRENT_SOURCE_DIR}/ive_tracer.cpp)
-else()
-  set(IVE_TRACER)
-endif()
-
 set(SRC
-    ${IVE_TRACER}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/tracer/tracer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ive.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/kernel_generator.cpp
@@ -50,12 +42,15 @@ set(SRC
 )
 
 add_library(cvi_ive_tpu SHARED ${SRC})
-target_link_libraries(cvi_ive_tpu ${MLIR_LIBS})
+add_dependencies(cvi_ive_tpu tracer)
+target_link_libraries(cvi_ive_tpu ${TRACER_LIB_DIR}/libtracer.so ${MLIR_LIBS})
 set_target_properties(cvi_ive_tpu PROPERTIES
+                     IMPORTED_LOCATION ${TRACER_LIB_DIR}/libtracer.so
                      VERSION ${CVI_IVE_MAJOR_VERSION}
                      SOVERSION ${CVI_IVE_SO_VERSION})
 add_library(cvi_ive_tpu-static ${SRC})
-target_link_libraries(cvi_ive_tpu-static ${MLIR_LIBS})
+add_dependencies(cvi_ive_tpu-static tracer)
+target_link_libraries(cvi_ive_tpu-static ${TRACER_LIB_DIR}/libtracer.so ${MLIR_LIBS})
 install(TARGETS cvi_ive_tpu DESTINATION lib)
 install(TARGETS cvi_ive_tpu-static DESTINATION lib)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/cvi_comm_ive.h DESTINATION include/ive)
