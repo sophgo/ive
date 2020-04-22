@@ -118,6 +118,7 @@ inline void constantFillTL(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, const u16 
   bmk1880v2_tdma_tg2l_bf16_tensor_fill_constant(bk_ctx, &p_fill);
 }
 
+// FIXME: O0 may crash. Reason unknown.
 inline void bf16LookupTable(bmk1880v2_context_t *bk_ctx,
                             const bmk1880v2_tiu_non_atomic_mask_param_t *mask) {
   bmk1880v2_tdma_l2l_tensor_copy_param_t p10;
