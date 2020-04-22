@@ -57,7 +57,7 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_shape2.h = tg_out_slices[0].h;
   tl_shape2.w = tg_out_slices[0].w;
   auto *tl_output = allocTLMem(bk_ctx, tl_shape2, FMT_BF16, 1);
-  auto *tl_output_thresh = allocTLMem(bk_ctx, tl_shape2, FMT_BF16, 1);
+  auto *tl_output_thresh = m_do_threshold ? allocTLMem(bk_ctx, tl_shape2, FMT_BF16, 1) : nullptr;
 
   auto *tl_abs_tmp = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
 
