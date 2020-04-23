@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
   for (size_t i = 0; i < numOfBlk; i++) {
     printf("\n");
     for (size_t j = 0; j < blkUnitLength; j++) {
-      printf("%.3f ", ((float *)dstHist.pu8VirAddr)[i + j]);
+      printf("%.3f ", ((float *)dstHist.pu8VirAddr)[i * blkUnitLength + j]);
     }
   }
   printf("\n");
