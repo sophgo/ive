@@ -147,8 +147,8 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE
       size_t offset_t = (i - 1) * src->u16Stride[0] + j;
       size_t offset_b = (i + 1) * src->u16Stride[0] + j;
 #if HOG_SZ == 1
-      int g_h = (int)src_ptr[offset + 1] - src_ptr[offset - 1];
-      int g_v = (int)src_ptr[offset_b] - src_ptr[offset_t];
+      int g_h = (int)src_ptr[offset_b] - src_ptr[offset_t];
+      int g_v = (int)src_ptr[offset + 1] - src_ptr[offset - 1];
 #else
       int g_h = -(int)src_ptr[offset_t - 1] - (2 * src_ptr[offset_t]) - src_ptr[offset_t + 1] +
                 (int)src_ptr[offset_b - 1] + (2 * src_ptr[offset_b]) + src_ptr[offset_b + 1];
