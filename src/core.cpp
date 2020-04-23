@@ -351,6 +351,20 @@ IveCore::IveCore() {
 
 int IveCore::run(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
                  std::vector<CviImg> *output, bool legacy_mode) {
+  for (const auto &img : input) {
+    if (!img.IsStideCEQ()) {
+      std::cout << "Input image ( " << img.GetImgWidth() << ", " << img.GetImgHeight() << ") "
+                << "appears does not have equal strides in different channels." << std::endl;
+      return CVI_FAILURE;
+    }
+  }
+  for (const auto &img : (*output)) {
+    if (!img.IsStideCEQ()) {
+      std::cout << "Output image ( " << img.GetImgWidth() << ", " << img.GetImgHeight() << ") "
+                << "appears does not have equal strides in different channels." << std::endl;
+      return CVI_FAILURE;
+    }
+  }
   int ret = CVI_SUCCESS;
   if (legacy_mode) {
     ret = runSingleSizeKernel(ctx, bk_ctx, input, output);

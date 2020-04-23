@@ -6,9 +6,10 @@ CviImg::CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt) {
 }
 
 CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) {
-  this->m_tg = img.m_tg;
-  this->m_bmmem = img.m_bmmem;
-  this->m_size = img.m_size;
+  if (!this->m_is_stride_ceq) {
+    std::cerr << "Error, sub-image does not support non-equal stride in different channels."
+              << std::endl;
+  }
   if (x1 > x2) {
     u32 tmp = x1;
     x1 = x2;
@@ -31,6 +32,19 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) 
   }
 
   // Update subimage shape
+  this->m_bmmem = img.m_bmmem;
+  this->m_size = img.m_size;
+  this->m_fmt = img.m_fmt;
+  this->m_channel = img.m_channel;
+  this->m_width = new_width;
+  this->m_height = new_height;
+  this->m_strides = img.m_strides;
+  this->m_heights = img.m_heights;
+  this->m_img_type = img.m_img_type;
+  this->m_is_planar = img.m_is_planar;
+  this->m_is_stride_ceq = img.m_is_stride_ceq;
+
+  this->m_tg = img.m_tg;
   this->m_tg.shape.h = new_height;
   this->m_tg.shape.w = new_width;
   u32 start_offset = y1_new * img.m_tg.stride.h + x1_new * getFmtSize(img.m_tg.fmt);
@@ -40,21 +54,60 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) 
   this->m_is_sub_img = true;
 }
 
-CviImg::CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, bmmem_device_t bmmem) {
-  this->m_bmmem = bmmem;
-  Init(ctx, img_c, img_h, img_w, fmt);
-}
+CviImg::CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides,
+               std::vector<u32> heights, CVIIMGTYPE img_type, fmt_t fmt) {
+  if (strides.size() == 0) {
+    std::cerr << "No stride given." << std::endl;
+    return;
+  }
+  if (strides.size() != heights.size()) {
+    std::cerr << "Strides size and heights size must be the same." << std::endl;
+    return;
+  }
+  this->m_fmt = fmt;
+  this->m_channel = strides.size();
+  this->m_width = img_w;
+  this->m_height = img_h;
+  this->m_strides = strides;
+  this->m_heights = heights;
+  this->m_img_type = img_type;
+  this->m_is_planar = IsImgPlanar(this->m_img_type);
+  this->m_size = strides[0] * heights[0];
+  for (size_t i = 1; i < strides.size(); i++) {
+    if (strides[i] != strides[0]) {
+      m_is_stride_ceq = false;
+    }
+    this->m_size += strides[i] * heights[i];
+  }
 
-CviImg::CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, u8 *data) {
-  Init(ctx, img_c, img_h, img_w, fmt);
-  memcpy(this->m_vaddr, data, this->m_size);
+  AllocateDevice(ctx);
 }
 
 int CviImg::Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt) {
-  this->m_tg.shape = {1, img_c, img_h, img_w};
-  this->m_tg.fmt = fmt;
-  this->m_size = this->m_tg.shape.n * this->m_tg.shape.c * this->m_tg.shape.h * this->m_tg.shape.w *
-                 getFmtSize(m_tg.fmt);
+  this->m_fmt = fmt;
+  this->m_channel = img_c;
+  this->m_width = img_w;
+  this->m_height = img_h;
+  // FIXME: Think a method for kernels.
+  // u32 w_mod = img_w % 16;
+  u32 w_stride = img_w;  // (w_mod == 0) ? img_w : img_w + (16 - w_mod);
+  this->m_strides.resize(this->m_channel, w_stride);
+  this->m_heights.resize(this->m_channel, this->m_height);
+  this->m_size = 1 * this->m_channel * this->m_height * w_stride * getFmtSize(this->m_fmt);
+  if (this->m_fmt == FMT_U8) {
+    if (this->m_channel == 1) {
+      this->m_img_type = CVI_GRAY;
+    } else if (this->m_channel == 3) {
+      this->m_img_type = CVI_RGB_PLANAR;
+    } else if (this->m_channel == 4) {
+      this->m_img_type = CVI_RGBA_PLANAR;
+    } else {
+      this->m_img_type = CVI_MULTI;
+    }
+  } else {
+    this->m_img_type = (this->m_channel == 1) ? CVI_SINGLE : CVI_MULTI;
+  }
+  this->m_is_planar = true;
   return AllocateDevice(ctx);
 }
 
@@ -64,45 +117,37 @@ uint8_t *CviImg::GetVAddr() { return m_vaddr; }
 
 uint64_t CviImg::GetPAddr() const { return m_paddr; }
 
+const u32 CviImg::GetImgChannel() const { return m_channel; }
+
+const u32 CviImg::GetImgWidth() const { return m_width; }
+
+const u32 CviImg::GetImgHeight() const { return m_height; }
+
+const std::vector<u32> CviImg::GetImgStrides() const { return m_strides; }
+
+const std::vector<u32> CviImg::GetImgHeights() const { return m_heights; }
+
 const u64 CviImg::GetImgSize() const { return m_size; }
 
 const bool CviImg::IsSubImg() const { return m_is_sub_img; }
+
+const bool CviImg::IsStideCEQ() const { return m_is_stride_ceq; }
 
 int CviImg::AllocateDevice(bmctx_t *ctx) {
   int ret = 1;
   if (this->m_bmmem == NULL) {
     ret = 0;
-    bmshape_t bms;
-    switch (m_tg.fmt) {
-      case FMT_U8:
-      case FMT_I8: {
-        bms = BM_TENSOR_INT8((int)m_tg.shape.n, (int)m_tg.shape.c, (int)m_tg.shape.h,
-                             (int)m_tg.shape.w);
-      } break;
-      case FMT_U16:
-      case FMT_I16: {
-        bms = BM_TENSOR_INT16((int)m_tg.shape.n, (int)m_tg.shape.c, (int)m_tg.shape.h,
-                              (int)m_tg.shape.w);
-      } break;
-      case FMT_BF16: {
-        bms = BM_TENSOR_BF16((int)m_tg.shape.n, (int)m_tg.shape.c, (int)m_tg.shape.h,
-                             (int)m_tg.shape.w);
-      } break;
-      case FMT_F32: {
-        bms = BM_TENSOR_FP32((int)m_tg.shape.n, (int)m_tg.shape.c, (int)m_tg.shape.h,
-                             (int)m_tg.shape.w);
-      } break;
-      default: { std::cerr << "Unsupported bmshape_t type" << std::endl; } break;
-    }
+    this->m_bmmem = bmmem_device_alloc_raw(*ctx, this->m_size);
 
-    this->m_bmmem = bmmem_device_alloc(*ctx, &bms);
-    this->m_tg.base_reg_index = 0;
-    this->m_tg.start_address = bmmem_device_addr(this->m_bmmem);
-    // FIXME: bmk1880v2_bf16_tensor_tgmem_default_stride is bugged.
-    // this->m_tg.stride = bmk1880v2_bf16_tensor_tgmem_default_stride(m_tg.shape, m_tg.fmt);
-    this->m_tg.stride.h = m_tg.shape.w * getFmtSize(m_tg.fmt);
-    this->m_tg.stride.c = m_tg.shape.h * this->m_tg.stride.h;
-    this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+    if (m_is_stride_ceq) {
+      this->m_tg.start_address = bmmem_device_addr(this->m_bmmem);
+      this->m_tg.base_reg_index = 0;
+      this->m_tg.fmt = this->m_fmt;
+      this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
+      this->m_tg.stride.h = this->m_strides[0] * getFmtSize(this->m_tg.fmt);
+      this->m_tg.stride.c = m_tg.shape.h * this->m_tg.stride.h;
+      this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+    }
   }
   m_vaddr = (uint8_t *)bmmem_device_v_addr(this->m_bmmem);
   m_paddr = bmmem_device_addr(this->m_bmmem);

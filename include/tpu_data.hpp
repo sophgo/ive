@@ -23,7 +23,7 @@ typedef struct cvi_chip_info {
  * @return int Actual data type size
  */
 static int getFmtSize(fmt_t fmt) {
-  int fmt_size = 1;
+  int fmt_size = 0;
   switch (fmt) {
     case FMT_I8:
     case FMT_U8:
@@ -113,8 +113,35 @@ struct img_multiplier {
   int shift = 0;
 };
 
+enum CVIIMGTYPE {
+  CVI_RGB_PLANAR = 0,
+  CVI_RGB_PACKED,
+  CVI_RGBA_PLANAR,
+  CVI_GRAY,
+  CVI_YUV420,
+  CVI_YUV422,
+  CVI_SINGLE,
+  CVI_MULTI
+};
+
+inline bool IsImgPlanar(CVIIMGTYPE img_type) {
+  bool is_planar = true;
+  switch (img_type) {
+    case CVI_RGB_PACKED:
+    case CVI_YUV422:
+      is_planar = false;
+      break;
+    default:
+      break;
+  }
+  return is_planar;
+}
+
 /**
  * @brief A wrapper for TPU device memory defined in runtime.
+ *        This is a class originally designed for TPU, so the default setup for image is planar.
+ *        The sub-image constructor only supports planar images. If you want to create packed
+ *        image, use the constructor with CVIIMGTYPE variable input.
  *
  */
 class CviImg {
@@ -124,6 +151,7 @@ class CviImg {
    *
    */
   CviImg();
+
   /**
    * @brief Construct a new CviImg object
    *
@@ -136,7 +164,7 @@ class CviImg {
   CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt);
 
   /**
-   * @brief Construct a new Cvi Img object
+   * @brief Construct a new CviImg object from an existing CviImg with given region.
    *
    * @param ctx bm context
    * @param img cvi_img
@@ -144,28 +172,18 @@ class CviImg {
   CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2);
 
   /**
-   * @brief Construct a new CviImg object
+   * @brief Construct a new CviImg object with given strides.
    *
    * @param ctx bm context
-   * @param img_c Image channel
-   * @param img_h Image height
-   * @param img_w Image width
+   * @param img_h Image height.
+   * @param img_w Image width.
+   * @param strides Image strides, the channel of CviImg will be set to the size of strides.
+   * @param heights Image heights.
+   * @param CVIIMGTYPE CviImg type enum.
    * @param fmt fmt_t type
-   * @param m_bmmem Pre-allocate bmmem_device_t memory pointer
    */
-  CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, bmmem_device_t m_bmmem);
-
-  /**
-   * @brief Construct a new CviImg object
-   *
-   * @param ctx bm context
-   * @param img_c Image channel
-   * @param img_h Image height
-   * @param img_w Image width
-   * @param fmt fmt_t type
-   * @param data Pre-allocate data array
-   */
-  CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, u8 *data);
+  CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> heights,
+         CVIIMGTYPE img_type, fmt_t fmt);
 
   /**
    * @brief Init CviImg if default constructor is used.
@@ -202,6 +220,41 @@ class CviImg {
   uint64_t GetPAddr() const;
 
   /**
+   * @brief Get the channel of the image.
+   *
+   * @return const u32 image channel.
+   */
+  const u32 GetImgChannel() const;
+
+  /**
+   * @brief Get the width of the image.
+   *
+   * @return const u32 image width.
+   */
+  const u32 GetImgWidth() const;
+
+  /**
+   * @brief Get the height of the image.
+   *
+   * @return const u32 image height.
+   */
+  const u32 GetImgHeight() const;
+
+  /**
+   * @brief Get the strides of the image.
+   *
+   * @return const std::vector<u32> image strides.
+   */
+  const std::vector<u32> GetImgStrides() const;
+
+  /**
+   * @brief Get the heights of the image.
+   *
+   * @return const std::vector<u32> image heights.
+   */
+  const std::vector<u32> GetImgHeights() const;
+
+  /**
    * @brief Get the size of the image in bytes.
    *
    * @return const u64 image size
@@ -215,6 +268,14 @@ class CviImg {
    * @return false Not a sub-image.
    */
   const bool IsSubImg() const;
+
+  /**
+   * @brief Tells if the image's strides differ bwtween channels.
+   *
+   * @return true All strides are the same.
+   * @return false Not the same.
+   */
+  const bool IsStideCEQ() const;
 
   /**
    * @brief Release allocated device memory.
@@ -263,11 +324,28 @@ class CviImg {
    */
   int AllocateDevice(bmctx_t *ctx);
 
+  u32 m_channel = 0;
+  u32 m_width = 0;
+  u32 m_height = 0;
+  std::vector<u32> m_strides;
+  std::vector<u32> m_heights;
+  fmt_t m_fmt = FMT_U8;
+  u64 m_size = 0;  // Total size of memory
+
   bmmem_device_t m_bmmem = NULL;  // Set to NULL if not initialized
   uint64_t m_paddr = -1;          // Set to maximum of uint64_t if not initaulized
   uint8_t *m_vaddr = nullptr;     // Set to nullptr if not initualized
-  u64 m_size = 0;                 // Total size of memory
-  bool m_is_sub_img = false;      // Is sub-image flag.
+
+  /**
+   * These are variables used for different framework.
+   * In order to know the format stored in CvImage from CSC, CVIIMAGETYPE is used. m_is_planar,
+   * m_is_stride_ceq variables are used to check if TPU supports. As for m_is_sub_img, this
+   * variable is used to check if ive should use channelExtension or not.
+   */
+  CVIIMGTYPE m_img_type;
+  bool m_is_planar = true;      // Is image planar.
+  bool m_is_sub_img = false;    // Is sub-image flag.
+  bool m_is_stride_ceq = true;  // Are all the strides in every channel equal.
 };
 
 /**

@@ -143,33 +143,62 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
   int c = 1;
   int fmt_size = 1;
   fmt_t fmt = FMT_U8;
+  CVIIMGTYPE img_type;
+  std::vector<u32> strides;
+  std::vector<u32> heights;
   switch (enType) {
     case IVE_IMAGE_TYPE_S8C1:
+      img_type = CVI_SINGLE;
       fmt = FMT_I8;
       break;
     case IVE_IMAGE_TYPE_U8C1:
+      img_type = CVI_GRAY;
+      break;
+    case IVE_IMAGE_TYPE_YUV420P:
+      img_type = CVI_YUV420;
+      strides.push_back(u16Width);
+      strides.push_back(u16Width >> 1);
+      strides.push_back(u16Width >> 1);
+      heights.push_back(u16Height);
+      heights.push_back(u16Height >> 1);
+      heights.push_back(u16Height >> 1);
+      break;
+    case IVE_IMAGE_TYPE_YUV422P:
+      img_type = CVI_YUV422;
+      strides.push_back(u16Width * 2);
+      heights.push_back(u16Height);
       break;
     case IVE_IMAGE_TYPE_U8C3_PACKAGE:
+      img_type = CVI_RGB_PACKED;
+      strides.push_back(u16Width * 3);
+      heights.push_back(u16Height);
+      break;
     case IVE_IMAGE_TYPE_U8C3_PLANAR:
+      img_type = CVI_RGB_PLANAR;
       c = 3;
       break;
     case IVE_IMAGE_TYPE_BF16C1:
+      img_type = CVI_SINGLE;
       fmt_size = 2;
       fmt = FMT_BF16;
       break;
     case IVE_IMAGE_TYPE_U16C1:
+      img_type = CVI_SINGLE;
       fmt_size = 2;
       fmt = FMT_U16;
       break;
     case IVE_IMAGE_TYPE_S16C1:
+      img_type = CVI_SINGLE;
       fmt_size = 2;
       fmt = FMT_I16;
       break;
     case IVE_IMAGE_TYPE_U32C1:
+      img_type = CVI_SINGLE;
       fmt_size = 4;
       fmt = FMT_U32;
       break;
     case IVE_IMAGE_TYPE_FP32C1:
+      img_type = CVI_SINGLE;
       fmt_size = 4;
       fmt = FMT_F32;
       break;
@@ -202,27 +231,23 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
     return CVI_SUCCESS;
   }
 
-  auto *cpp_img = new CviImg(&handle_ctx->ctx, c, u16Height, u16Width, fmt);
+  auto *cpp_img = strides.size() == 0 ? new CviImg(&handle_ctx->ctx, c, u16Height, u16Width, fmt)
+                                      : new CviImg(&handle_ctx->ctx, u16Height, u16Width, strides,
+                                                   heights, img_type, fmt);
+
   pstImg->tpu_block = reinterpret_cast<CVI_IMG *>(cpp_img);
 
   pstImg->enType = enType;
-  pstImg->u16Width = cpp_img->m_tg.shape.w;
-  pstImg->u16Height = cpp_img->m_tg.shape.h;
+  pstImg->u16Width = cpp_img->GetImgWidth();
+  pstImg->u16Height = cpp_img->GetImgHeight();
   pstImg->u16Reserved = fmt_size;
 
-  int img_sz = cpp_img->m_tg.stride.h * pstImg->u16Height * fmt_size;
-  size_t i_limit = cpp_img->m_tg.shape.c;
-  if (pstImg->enType == IVE_IMAGE_TYPE_U8C3_PACKAGE) {
-    i_limit = 1;
-    pstImg->pu8VirAddr[0] = cpp_img->GetVAddr();
-    pstImg->u64PhyAddr[0] = cpp_img->GetPAddr();
-    pstImg->u16Stride[0] = cpp_img->m_tg.stride.h * 3 / fmt_size;
-  } else {
-    for (size_t i = 0; i < i_limit; i++) {
-      pstImg->pu8VirAddr[i] = cpp_img->GetVAddr() + i * img_sz;
-      pstImg->u64PhyAddr[i] = cpp_img->GetPAddr() + i * img_sz;
-      pstImg->u16Stride[i] = cpp_img->m_tg.stride.h / fmt_size;
-    }
+  size_t i_limit = cpp_img->GetImgChannel();
+  for (size_t i = 0; i < i_limit; i++) {
+    int img_sz = cpp_img->GetImgStrides()[i] * cpp_img->GetImgHeights()[i] * fmt_size;
+    pstImg->pu8VirAddr[i] = cpp_img->GetVAddr() + i * img_sz;
+    pstImg->u64PhyAddr[i] = cpp_img->GetPAddr() + i * img_sz;
+    pstImg->u16Stride[i] = cpp_img->GetImgStrides()[i];
   }
 
   for (size_t i = i_limit; i < 3; i++) {
@@ -260,7 +285,7 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   for (size_t i = 0; i < cpp_img->m_tg.shape.c; i++) {
     pstDst->pu8VirAddr[i] = cpp_img->GetVAddr() + i * img_sz;
     pstDst->u64PhyAddr[i] = cpp_img->GetPAddr() + i * img_sz;
-    pstDst->u16Stride[i] = cpp_img->m_tg.stride.h;
+    pstDst->u16Stride[i] = cpp_img->GetImgStrides()[i];
   }
 
   for (size_t i = cpp_img->m_tg.shape.c; i < 3; i++) {
@@ -818,24 +843,6 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
       }
     }
   }
-  // for (u32 i = 1; i < (u32)(pstDstAng->u16Height - 1); i++) {
-  //   u32 &&row_skip = pstDstAng->u16Stride[0] * i;
-  //   for (u32 j = 1; j < (u32)(pstDstAng->u16Width - 1); j++) {
-  //     float degree = convert_bf16_fp32(cell_ptr[j + row_skip]);
-  //     u32 bin_index = degree < 0 ? (u32)((360.f + degree) / div) : (u32)(degree / div);
-  //     u32 &&cell_index =
-  //         (u32)((i / pstHogCtrl->u32CellSize) * width_cell + (u32)(j / pstHogCtrl->u32CellSize))
-  //         * pstHogCtrl->u8BinSize;
-  //     if (bin_index >= pstHogCtrl->u8BinSize) {
-  //       std::cerr << "Pixel value " << degree << " at " << i << ", " << j << " exceed bin size "
-  //                 << pstHogCtrl->u8BinSize << std::endl;
-  //       Tracer::TraceEnd();
-  //       Tracer::TraceEnd();
-  //       return CVI_FAILURE;
-  //     }
-  //     cell_histogram[cell_index + bin_index]++;
-  //   }
-  // }
   Tracer::TraceEnd();
 
   Tracer::TraceBegin("Generate HOG histogram");
