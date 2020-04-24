@@ -10,8 +10,6 @@ int main(int argc, char **argv) {
     printf("Incorrect loop value. Usage: %s\n", argv[0]);
     return CVI_FAILURE;
   }
-  // Redirect logging to file.
-  CVI_SYS_LOGGING(argv[0]);
   // Create instance
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
   printf("BM Kernel init.\n");

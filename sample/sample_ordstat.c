@@ -9,8 +9,6 @@ int main(int argc, char **argv) {
     printf("Incorrect loop value. Usage: %s <file name>\n", argv[0]);
     return CVI_FAILURE;
   }
-  // Redirect logging to file.
-  CVI_SYS_LOGGING(argv[0]);
   const char *filename = argv[1];
 
   // Create instance

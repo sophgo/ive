@@ -1,7 +1,6 @@
 #include "ive.h"
 #include <linux/videodev2.h>
 
-#include <glog/logging.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -68,8 +67,6 @@ struct IVE_HANDLE_CTX {
   TPU_HANDLE t_h;
   // VIP
 };
-
-void CVI_SYS_LOGGING(char *argv0) { google::InitGoogleLogging(argv0); }
 
 IVE_HANDLE CVI_IVE_CreateHandle() {
   IVE_HANDLE_CTX *handle_ctx = new IVE_HANDLE_CTX;

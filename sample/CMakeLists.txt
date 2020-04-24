@@ -1,6 +1,6 @@
 function(buildninstall_test FNAME)
   add_executable(${FNAME} ${FNAME}.c)
-  target_link_libraries(${FNAME} cvi_ive_tpu ${GLOG_LIBRARIES} -lm)
+  target_link_libraries(${FNAME} cvi_ive_tpu -lm)
   install(TARGETS ${FNAME} DESTINATION bin)
   install(FILES ${FNAME}.c DESTINATION sample)
 endfunction()

@@ -25,7 +25,6 @@ int main(int argc, char **argv) {
     printf("Usage: %s <fullpath.txt> <number> <out_fea.txt>\n", argv[0]);
     return CVI_FAILURE;
   }
-  CVI_SYS_LOGGING(argv[0]);
   const char *img_path_file = argv[1];
   const char *fea_path_file = argv[3];
   size_t total_run = atoi(argv[2]);  // total number of images
@@ -35,7 +34,6 @@ int main(int argc, char **argv) {
     printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
     return CVI_FAILURE;
   }
-  CVI_SYS_LOGGING(argv[0]);
   const char *filename = argv[1];
   size_t total_run = atoi(argv[2]);
 //#endif

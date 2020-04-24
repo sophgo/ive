@@ -31,17 +31,3 @@ if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "SDKRelease")
   install(DIRECTORY ${MLIR_SDK_ROOT}/include/ DESTINATION ${CMAKE_INSTALL_PREFIX}/include/)
   install(FILES ${MLIR_LIBS} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/)
 endif()
-
-if(CMAKE_TOOLCHAIN_FILE)
-  project(glog)
-  set(GLOG_LIBRARIES
-      ${MLIR_SDK_ROOT}/lib/libglog.so
-      ${MLIR_SDK_ROOT}/lib/libglog.so.0
-      ${MLIR_SDK_ROOT}/lib/libglog.so.0.0
-      ${MLIR_SDK_ROOT}/lib/libglog.so.0.0.0
-  )
-
-  if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "SDKRelease")
-    install(FILES ${GLOG_LIBRARIES} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
-  endif()
-endif()

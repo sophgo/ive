@@ -16,13 +16,6 @@
 extern "C" {
 #endif
 /**
- * @brief Direct GLOG notes to file instead of stdio.
- *
- * @param argv0 char array from main function.
- */
-void CVI_SYS_LOGGING(char *argv0);
-
-/**
  * @brief Create an IVE instance handler.
  *
  * @return IVE_HANDLE An IVE instance handle.

@@ -14,7 +14,6 @@ int main(int argc, char** argv) {
            argv[0]);
     return CVI_FAILURE;
   }
-  CVI_SYS_LOGGING(argv[0]);
   const char* filename = argv[1];
   const char* filename2 = argv[2];
   size_t total_run = atoi(argv[3]);

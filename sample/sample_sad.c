@@ -8,8 +8,6 @@ int main(int argc, char** argv) {
     printf("Incorrect loop value. Usage: %s <file_name_1> <file_name_2>\n", argv[0]);
     return CVI_FAILURE;
   }
-  // Redirect logging to file.
-  CVI_SYS_LOGGING(argv[0]);
   const char* filename1 = argv[1];
   const char* filename2 = argv[2];
 

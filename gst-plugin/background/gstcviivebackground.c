@@ -174,7 +174,6 @@ static void
 gst_cvi_ive_background_init (GstCviIveBackground *cviivebackground)
 {
   CVI_SYS_TraceBegin("cvi_ive_init");
-  CVI_SYS_LOGGING("gstcviivebackground");
   cviivebackground->bk_handle = malloc(sizeof(GST_CVI_IVE_BACKGROUND_HANDLE_S));
   cviivebackground->bk_handle->handle = CVI_IVE_CreateHandle();
   cviivebackground->bk_handle->count = 0;
