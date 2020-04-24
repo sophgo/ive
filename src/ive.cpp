@@ -70,8 +70,14 @@ struct IVE_HANDLE_CTX {
 
 IVE_HANDLE CVI_IVE_CreateHandle() {
   IVE_HANDLE_CTX *handle_ctx = new IVE_HANDLE_CTX;
-  createHandle(&handle_ctx->ctx, &handle_ctx->bk_ctx);
-  handle_ctx->t_h.t_tblmgr.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+  if (createHandle(&handle_ctx->ctx, &handle_ctx->bk_ctx) != CVI_SUCCESS) {
+    delete handle_ctx;
+    return NULL;
+  }
+  if (handle_ctx->t_h.t_tblmgr.init(&handle_ctx->ctx, handle_ctx->bk_ctx) != CVI_SUCCESS) {
+    delete handle_ctx;
+    return NULL;
+  }
   return (void *)handle_ctx;
 }
 

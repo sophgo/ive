@@ -16,14 +16,15 @@
 
 #define MULTIPLIER_ONLY_PACKED_DATA_SIZE 5
 
-inline void createHandle(bmctx_t *ctx, bmk1880v2_context_t **bmk) {
+inline int createHandle(bmctx_t *ctx, bmk1880v2_context_t **bmk) {
   int ret = bm_init(0, ctx);
   if (ret != BM_SUCCESS) {
-    fprintf(stderr, "bm_init failed, err %d\n", ret);
-    exit(-1);
+    fprintf(stderr, "cvi_init failed, err %d\n", ret);
+    return ret;
   }
 
   cviruntime_cvikernel_create(*ctx, (void **)bmk);
+  return ret;
 }
 
 inline void destroyHandle(bmctx_t *ctx) {
