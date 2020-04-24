@@ -11,28 +11,40 @@ void IveTPUMagAndAng::exportOption(bool mag_value, bool ang_value, bool output_d
                                    bool use_accurate_atan2) {
   m_export_mag = mag_value;
   m_export_ang = ang_value;
-  m_p_atan2.high_acc = use_accurate_atan2;
+  m_p_atan2.high_acc = m_export_ang ? use_accurate_atan2 : false;
   m_p_atan2.output_degree = output_degree;
+}
+
+void IveTPUMagAndAng::magNormMethod(int method) {
+  if (method != 0 && method != 1) {
+    std::cerr << "Unsupported norm method." << std::endl;
+  }
+  m_norm_method = method;
 }
 
 void IveTPUMagAndAng::noNegative(bool value) { m_no_negative = value; }
 
 int IveTPUMagAndAng::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_cmdbuf_subfix = "magnang";
+  m_slice_info.io_fmt = FMT_BF16;
   // 2 input tl
   // 6 tmp buf
   // 1 atan & 1 final sqrt result
   int total_tls = 10;
   int total_table = 9;
+
+  if (!m_export_mag) {
+    total_tls -= 1;
+    total_table -= 2;
+  }
+
   if (!m_p_atan2.high_acc) {
     total_tls -= 3;
     total_table -= 2;  // No slope and 0_idx
   }
-  if (!m_export_mag) {
-    total_tls -= 1;
-  }
   if (!m_export_ang) {
-    total_tls -= 1;
+    total_tls -= 3;
+    total_table -= 5;
   }
   m_slice_info.nums_of_tl = total_tls * 2;
   m_slice_info.nums_of_table = total_table * 2;
@@ -58,86 +70,144 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   auto *tl_angle = m_export_ang ? allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1) : NULL;
 
   auto *tl_buf = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_buf2 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_buf3 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  bmk1880v2_tensor_lmem_t *tl_buf4 = NULL, *tl_buf5 = NULL, *tl_buf6 = NULL;
-  if (m_p_atan2.high_acc) {
-    tl_buf4 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-    tl_buf5 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-    tl_buf6 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+  bmk1880v2_tensor_lmem_t *tl_buf2 = NULL, *tl_buf3 = NULL, *tl_buf4 = NULL, *tl_buf5 = NULL,
+                          *tl_buf6 = NULL;
+  if (m_export_ang) {
+    tl_buf2 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+    tl_buf3 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+    if (m_p_atan2.high_acc) {
+      tl_buf4 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+      tl_buf5 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+      tl_buf6 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+    }
   }
 
   const bmk1880v2_tensor_lmem_shape_t tl_table_s = mp_tblmgr->getTblTLShape(FMT_BF16);
-  // atan buf
-  auto *tl_y0_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-  auto *tl_invert_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-  auto *tl_pos_neg_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-  {
-    const CviImg *table_data_atan_y0 = m_p_atan2.output_degree
-                                           ? mp_tblmgr->atan(TBLATAN::TBLATAN_Y0_DEGREE)
-                                           : mp_tblmgr->atan(TBLATAN::TBLATAN_Y0);
-    const CviImg *table_data_atan_invert = mp_tblmgr->atan(TBLATAN::TBLATAN_INVERT);
-    const CviImg *table_data_atan_pos_neg = mp_tblmgr->atan(TBLATAN::TBLATAN_POSNEG);
-    cviImg2TL(ctx, bk_ctx, *table_data_atan_y0, tl_y0_table);
-    cviImg2TL(ctx, bk_ctx, *table_data_atan_invert, tl_invert_table);
-    cviImg2TL(ctx, bk_ctx, *table_data_atan_pos_neg, tl_pos_neg_table);
-  }
-  auto *tl_reciprocal_table_answer = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-  auto *tl_reciprocal_table_answer_mantissa =
-      allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-  {
-    const CviImg *table_data = mp_tblmgr->reciprocal(TBLRECIPROCAL::TBLRECIPROCAL_DATA);
-    const CviImg *table_data_mantissa =
-        mp_tblmgr->reciprocal(TBLRECIPROCAL::TBLRECIPROCAL_MANTISSA);
-    cviImg2TL(ctx, bk_ctx, *table_data, tl_reciprocal_table_answer);
-    cviImg2TL(ctx, bk_ctx, *table_data_mantissa, tl_reciprocal_table_answer_mantissa);
-  }
-  auto *tl_sqrt_table_answer = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-  auto *tl_sqrt_table_answer_mantissa =
-      allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-  {
+  bmk1880v2_tensor_lmem_t *tl_sqrt_table_answer = NULL, *tl_sqrt_table_answer_mantissa = NULL;
+  if (m_export_mag) {
+    tl_sqrt_table_answer = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+    tl_sqrt_table_answer_mantissa = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
     const CviImg *table_data = mp_tblmgr->sqrt(TBLSQRT::TBLSQRT_DATA);
     const CviImg *table_data_mantissa = mp_tblmgr->sqrt(TBLSQRT::TBLSQRT_MANTISSA);
     cviImg2TL(ctx, bk_ctx, *table_data, tl_sqrt_table_answer);
     cviImg2TL(ctx, bk_ctx, *table_data_mantissa, tl_sqrt_table_answer_mantissa);
   }
 
-  bmk1880v2_tensor_lmem_t *tl_slope_table = NULL, *tl_idx_0_table = NULL;
-  if (m_p_atan2.high_acc) {
-    tl_slope_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-    const CviImg *table_data_atan_slope = mp_tblmgr->atan(TBLATAN::TBLATAN_SLOPE);
-    cviImg2TL(ctx, bk_ctx, *table_data_atan_slope, tl_slope_table);
-    tl_idx_0_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-    const CviImg *idx_0_table_data = mp_tblmgr->mask(TBLMASK::TBLMASK_ZERO);
-    cviImg2TL(ctx, bk_ctx, *idx_0_table_data, tl_idx_0_table);
+  bmk1880v2_tensor_lmem_t *tl_y0_table = NULL, *tl_invert_table = NULL, *tl_pos_neg_table = NULL,
+                          *tl_reciprocal_table_answer = NULL,
+                          *tl_reciprocal_table_answer_mantissa = NULL, *tl_slope_table = NULL,
+                          *tl_idx_0_table = NULL;
+  if (m_export_ang) {
+    // atan buf
+    {
+      tl_y0_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+      tl_invert_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+      tl_pos_neg_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+      const CviImg *table_data_atan_y0 = m_p_atan2.output_degree
+                                             ? mp_tblmgr->atan(TBLATAN::TBLATAN_Y0_DEGREE)
+                                             : mp_tblmgr->atan(TBLATAN::TBLATAN_Y0);
+      const CviImg *table_data_atan_invert = mp_tblmgr->atan(TBLATAN::TBLATAN_INVERT);
+      const CviImg *table_data_atan_pos_neg = mp_tblmgr->atan(TBLATAN::TBLATAN_POSNEG);
+      cviImg2TL(ctx, bk_ctx, *table_data_atan_y0, tl_y0_table);
+      cviImg2TL(ctx, bk_ctx, *table_data_atan_invert, tl_invert_table);
+      cviImg2TL(ctx, bk_ctx, *table_data_atan_pos_neg, tl_pos_neg_table);
+    }
+    {
+      tl_reciprocal_table_answer = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+      tl_reciprocal_table_answer_mantissa =
+          allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+      const CviImg *table_data = mp_tblmgr->reciprocal(TBLRECIPROCAL::TBLRECIPROCAL_DATA);
+      const CviImg *table_data_mantissa =
+          mp_tblmgr->reciprocal(TBLRECIPROCAL::TBLRECIPROCAL_MANTISSA);
+      cviImg2TL(ctx, bk_ctx, *table_data, tl_reciprocal_table_answer);
+      cviImg2TL(ctx, bk_ctx, *table_data_mantissa, tl_reciprocal_table_answer_mantissa);
+    }
+    if (m_p_atan2.high_acc) {
+      tl_slope_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+      const CviImg *table_data_atan_slope = mp_tblmgr->atan(TBLATAN::TBLATAN_SLOPE);
+      cviImg2TL(ctx, bk_ctx, *table_data_atan_slope, tl_slope_table);
+      tl_idx_0_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+      const CviImg *idx_0_table_data = mp_tblmgr->mask(TBLMASK::TBLMASK_ZERO);
+      cviImg2TL(ctx, bk_ctx, *idx_0_table_data, tl_idx_0_table);
+    }
   }
+  // L2 norm start
+  if (m_norm_method == 0) {
+    m_p_mul_a.rshift_bits = 0;
+    m_p_mul_a.relu_enable = 1;
+    m_p_mul_a.bf16_enable = 1;
+    m_p_mul_a.res_high = NULL;
+    m_p_mul_a.res_low = tl_buf;
+    m_p_mul_a.a = tl_input;
+    m_p_mul_a.b_is_const = 1;
+    m_p_mul_a.b_val = convert_fp32_bf16(-1.f);
+    m_p_max_a.a = tl_input;
+    m_p_max_a.b = tl_buf;
+    m_p_max_a.max = tl_input;
+    m_p_max_a.b_is_const = 0;
+    m_p_max_a.bf16_enable = 1;
 
-  m_p_mul.rshift_bits = 0;
-  m_p_mul.relu_enable = 1;
-  m_p_mul.bf16_enable = 1;
+    m_p_mul_b.rshift_bits = 0;
+    m_p_mul_b.relu_enable = 1;
+    m_p_mul_b.bf16_enable = 1;
+    m_p_mul_b.res_high = NULL;
+    m_p_mul_b.res_low = tl_buf;
+    m_p_mul_b.a = tl_input2;
+    m_p_mul_b.b_is_const = 1;
+    m_p_mul_b.b_val = convert_fp32_bf16(-1.f);
+    m_p_max_b.a = tl_input2;
+    m_p_max_b.b = tl_buf;
+    m_p_max_b.max = tl_input2;
+    m_p_max_b.b_is_const = 0;
+    m_p_max_b.bf16_enable = 1;
 
-  m_p_mac.res_is_int8 = 0;
-  m_p_mac.lshift_bits = 0;
-  m_p_mac.rshift_bits = 0;
-  m_p_mac.relu_enable = 1;
-  m_p_mac.bf16_enable = 1;
+    m_p_add.a_low = tl_input;
+    m_p_add.a_high = NULL;
+    m_p_add.b_low = tl_input2;
+    m_p_add.b_high = NULL;
+    m_p_add.res_low = tl_mag;
+    m_p_add.res_high = NULL;
+    m_p_add.bf16_enable = 1;
+    m_p_add.relu_enable = 0;
+    m_p_add.b_is_const = 0;
+    m_p_add.rshift_bits = 0;
 
-  m_p_mul.res_high = NULL;
-  m_p_mul.res_low = tl_buf;
-  m_p_mul.a = tl_input;
-  m_p_mul.b_is_const = 0;
-  m_p_mul.b = tl_input;
-  m_p_mac.res_high = NULL;
-  m_p_mac.res_low = tl_buf;
-  m_p_mac.a = tl_input2;
-  m_p_mac.b_is_const = 0;
-  m_p_mac.b = tl_input2;
+    m_p_mul_0_5.a = tl_mag;
+    m_p_mul_0_5.b = NULL;
+    m_p_mul_0_5.res_low = tl_mag;
+    m_p_mul_0_5.res_high = NULL;
+    m_p_mul_0_5.b_is_const = 1;
+    m_p_mul_0_5.b_val = convert_fp32_bf16(0.5f);
+    m_p_mul_0_5.bf16_enable = 1;
+    m_p_mul_0_5.relu_enable = 0;
+    m_p_mul_0_5.rshift_bits = 0;
+  } else if (m_norm_method == 1) {
+    m_p_mul_a.rshift_bits = 0;
+    m_p_mul_a.relu_enable = 1;
+    m_p_mul_a.bf16_enable = 1;
+    m_p_mul_a.res_high = NULL;
+    m_p_mul_a.res_low = tl_buf;
+    m_p_mul_a.a = tl_input;
+    m_p_mul_a.b_is_const = 0;
+    m_p_mul_a.b = tl_input;
 
-  m_p_sqrt.a = tl_buf;
-  m_p_sqrt.res = tl_mag;
-  m_p_sqrt.buf = tl_buf2;
-  m_p_sqrt.sqrt_table_answer = tl_sqrt_table_answer;
-  m_p_sqrt.sqrt_table_answer_mantissa = tl_sqrt_table_answer_mantissa;
+    m_p_mac.res_is_int8 = 0;
+    m_p_mac.lshift_bits = 0;
+    m_p_mac.rshift_bits = 0;
+    m_p_mac.relu_enable = 1;
+    m_p_mac.bf16_enable = 1;
+    m_p_mac.res_high = NULL;
+    m_p_mac.res_low = tl_buf;
+    m_p_mac.a = tl_input2;
+    m_p_mac.b_is_const = 0;
+    m_p_mac.b = tl_input2;
+
+    m_p_sqrt.a = tl_buf;
+    m_p_sqrt.res = tl_mag;
+    m_p_sqrt.buf = tl_buf2;
+    m_p_sqrt.sqrt_table_answer = tl_sqrt_table_answer;
+    m_p_sqrt.sqrt_table_answer_mantissa = tl_sqrt_table_answer_mantissa;
+  }
 
   m_p_atan2.a = tl_input;
   m_p_atan2.b = tl_input2;
@@ -198,10 +268,19 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
 void IveTPUMagAndAng::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
   if (m_export_mag) {
-    bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul);
-    bmk1880v2_tiu_bf16_element_wise_mac(bk_ctx, &m_p_mac);
-    bf16_emit_sqrt(bk_ctx, m_p_sqrt.a, m_p_sqrt.buf, m_p_sqrt.sqrt_table_answer,
-                   m_p_sqrt.sqrt_table_answer_mantissa, m_p_sqrt.res);
+    if (m_norm_method == 0) {
+      bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_a);
+      bmk1880v2_tiu_bf16_element_wise_max(bk_ctx, &m_p_max_a);
+      bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_b);
+      bmk1880v2_tiu_bf16_element_wise_max(bk_ctx, &m_p_max_b);
+      bmk1880v2_tiu_bf16_element_wise_add(bk_ctx, &m_p_add);
+      bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_0_5);
+    } else if (m_norm_method == 1) {
+      bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_a);
+      bmk1880v2_tiu_bf16_element_wise_mac(bk_ctx, &m_p_mac);
+      bf16_emit_sqrt(bk_ctx, m_p_sqrt.a, m_p_sqrt.buf, m_p_sqrt.sqrt_table_answer,
+                     m_p_sqrt.sqrt_table_answer_mantissa, m_p_sqrt.res);
+    }
   }
   if (m_export_ang) {
     // sqrt goes first cause atan2 changes y value

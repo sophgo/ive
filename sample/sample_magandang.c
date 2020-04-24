@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
   iveSblCtrl.u8MaskSize = 3;
   IVE_MAG_AND_ANG_CTRL_S pstMaaCtrl;
   pstMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG;
-
+  pstMaaCtrl.enNormCtrl = IVE_MAG_NORM_L2;
   printf("Run TPU Sobel grad.\n");
   int ret = CVI_IVE_Sobel(handle, &src, &dstH, &dstV, &iveSblCtrl, 0);
   printf("Run TPU magnitude and angle.\n");
