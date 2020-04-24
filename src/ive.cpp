@@ -464,6 +464,17 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       neonBF162U16Normalize(src_ptr, dst_ptr, img_size, min, max);
       cpp_src->Flush(&handle_ctx->ctx);
       cpp_dst->Flush(&handle_ctx->ctx);
+    } else if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_I16) {
+      cpp_src->Invld(&handle_ctx->ctx);
+      cpp_dst->Invld(&handle_ctx->ctx);
+      u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
+      s16 *dst_ptr = (s16 *)cpp_dst->GetVAddr();
+      float min = std::numeric_limits<float>::max(), max = std::numeric_limits<float>::min();
+      u64 img_size = cpp_src->m_tg.shape.c * cpp_src->m_tg.shape.h * cpp_src->m_tg.shape.w;
+      neonBF16FindMinMax(src_ptr, img_size, &min, &max);
+      neonBF162S16Normalize(src_ptr, dst_ptr, img_size, min, max);
+      cpp_src->Flush(&handle_ctx->ctx);
+      cpp_dst->Flush(&handle_ctx->ctx);
     } else if (cpp_src->m_tg.fmt == FMT_U16 &&
                (cpp_dst->m_tg.fmt == FMT_U8 || cpp_dst->m_tg.fmt == FMT_I8)) {
       cpp_src->Invld(&handle_ctx->ctx);
@@ -514,6 +525,15 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       u16 *dst_ptr = (u16 *)cpp_dst->GetVAddr();
       u64 img_size = cpp_src->GetImgSize() / 2;
       neonBF162U16(src_ptr, dst_ptr, img_size);
+      cpp_src->Flush(&handle_ctx->ctx);
+      cpp_dst->Flush(&handle_ctx->ctx);
+    } else if (cpp_src->m_tg.fmt == FMT_BF16 && cpp_dst->m_tg.fmt == FMT_I16) {
+      cpp_src->Invld(&handle_ctx->ctx);
+      cpp_dst->Invld(&handle_ctx->ctx);
+      u16 *src_ptr = (u16 *)cpp_src->GetVAddr();
+      s16 *dst_ptr = (s16 *)cpp_dst->GetVAddr();
+      u64 img_size = cpp_src->GetImgSize() / 2;
+      neonBF162S16(src_ptr, dst_ptr, img_size);
       cpp_src->Flush(&handle_ctx->ctx);
       cpp_dst->Flush(&handle_ctx->ctx);
     } else if ((cpp_src->m_tg.fmt == FMT_BF16 || cpp_src->m_tg.fmt == FMT_U8 ||

@@ -294,6 +294,37 @@ inline void neonBF162U16Normalize(u16 *src_ptr, u16 *dst_ptr, const u64 arr_size
   }
 }
 
+inline void neonBF162S16Normalize(u16 *src_ptr, s16 *dst_ptr, const u64 arr_size, const float min,
+                                  const float max) {
+  u64 neon_turn = arr_size / 8;
+  float multiplier = 65535.f / (max - min);
+  float32x4_t v_fmin = vdupq_n_f32(min);
+  float32x4_t v_fmultiplier = vdupq_n_f32(multiplier);
+  float32x4_t v_foffset = vdupq_n_f32(-32768.f);
+  uint16x8_t zeros = vdupq_n_u16(0);
+  u16 *src_ptr1 = src_ptr;
+  s16 *dst_ptr1 = dst_ptr;
+  for (u64 i = 0; i < neon_turn; i++) {
+    uint16x8_t v16 = vld1q_u16(src_ptr1);
+    neonfloatshort n_float_short;
+    n_float_short.v_u16 = vzipq_u16(zeros, v16);
+    float32x4_t fsub_0 = vsubq_f32(n_float_short.v_f32.val[0], v_fmin);
+    float32x4_t fsub_1 = vsubq_f32(n_float_short.v_f32.val[1], v_fmin);
+    float32x4_t fmul_0 = vfmaq_f32(v_foffset, fsub_0, v_fmultiplier);
+    float32x4_t fmul_1 = vfmaq_f32(v_foffset, fsub_1, v_fmultiplier);
+    int32x4_t s32mul_0 = vcvtq_s32_f32_r(fmul_0);
+    int32x4_t s32mul_1 = vcvtq_s32_f32_r(fmul_1);
+    int16x8_t s16_mul = vcombine_s16(vqmovn_s32(s32mul_0), vqmovn_s32(s32mul_1));
+    vst1q_s16(dst_ptr1, s16_mul);
+    src_ptr1 += 8;
+    dst_ptr1 += 8;
+  }
+  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+    float tmp = convert_bf16_fp32(src_ptr[i]);
+    dst_ptr[i] = std::round((float)(multiplier * (tmp - min))) - 32768;
+  }
+}
+
 inline void neonBF162U16(u16 *src_ptr, u16 *dst_ptr, const u64 arr_size) {
   u64 neon_turn = arr_size / 8;
   uint16x8_t zeros = vdupq_n_u16(0);
@@ -314,6 +345,30 @@ inline void neonBF162U16(u16 *src_ptr, u16 *dst_ptr, const u64 arr_size) {
     int val = std::round(convert_bf16_fp32(src_ptr[i]));
     if (val > 65535) val = 65535;
     if (val < 0) val = 0;
+    dst_ptr[i] = val;
+  }
+}
+
+inline void neonBF162S16(u16 *src_ptr, s16 *dst_ptr, const u64 arr_size) {
+  u64 neon_turn = arr_size / 8;
+  uint16x8_t zeros = vdupq_n_u16(0);
+  u16 *src_ptr1 = src_ptr;
+  s16 *dst_ptr1 = dst_ptr;
+  for (u64 i = 0; i < neon_turn; i++) {
+    uint16x8_t v16 = vld1q_u16(src_ptr1);
+    neonfloatshort n_float_short;
+    n_float_short.v_u16 = vzipq_u16(zeros, v16);
+    int32x4_t s32_0 = vcvtq_s32_f32_r(n_float_short.v_f32.val[0]);
+    int32x4_t s32_1 = vcvtq_s32_f32_r(n_float_short.v_f32.val[1]);
+    int16x8_t s16_res = vcombine_s16(vqmovn_s32(s32_0), vqmovn_s32(s32_1));
+    vst1q_s16(dst_ptr1, s16_res);
+    src_ptr1 += 8;
+    dst_ptr1 += 8;
+  }
+  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+    int val = std::round(convert_bf16_fp32(src_ptr[i]));
+    if (val > 32767) val = 32767;
+    if (val < -32768) val = -32768;
     dst_ptr[i] = val;
   }
 }
