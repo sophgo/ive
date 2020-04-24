@@ -45,8 +45,8 @@ int main(int argc, char** argv) {
 
   // Write result to disk. CVI_IVE_WriteImage will do the request for you.
   printf("Save to image.\n");
-  CVI_IVE_WriteImage(handle, "test_sad_c.png", &dst_u8);
-  CVI_IVE_WriteImage(handle, "test_sadt_c.png", &dst_thresh);
+  CVI_IVE_WriteImage(handle, "sample_sad.png", &dst_u8);
+  CVI_IVE_WriteImage(handle, "sample_sadthresh.png", &dst_thresh);
 
   // Free memory, instance.
   CVI_SYS_FreeI(handle, &srcL);

@@ -40,8 +40,8 @@ int main(int argc, char **argv) {
 
   // write result to disk
   printf("Save to image.\n");
-  CVI_IVE_WriteImage(handle, "test_max_c.png", &dst);
-  CVI_IVE_WriteImage(handle, "test_min_c.png", &dst2);
+  CVI_IVE_WriteImage(handle, "sample_ordstatmax.png", &dst);
+  CVI_IVE_WriteImage(handle, "sample_ordstatmin.png", &dst2);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);
