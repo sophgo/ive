@@ -94,6 +94,9 @@ else()
     message(FATAL_ERROR "No build type!!!")
 endif()
 
+#include sysroot/include
+include_directories(${CMAKE_SYSROOT}/include)
+
 # Get current commit
 execute_process(COMMAND git show --oneline -s OUTPUT_VARIABLE CURRENT_COMMIT)
 
@@ -104,6 +107,7 @@ message("C   compiler ${CMAKE_C_COMPILER}")
 message("CXX compiler ${CMAKE_CXX_COMPILER}")
 message("C Flags      ${CMAKE_C_FLAGS}")
 message("CXX Flags    ${CMAKE_CXX_FLAGS}")
+message("SYSROOT      ${CMAKE_SYSROOT}")
 message("Target       ${CVI_TARGET}")
 message("Build type   ${CMAKE_BUILD_TYPE}")
 message("Install dir  ${CMAKE_INSTALL_PREFIX}")
