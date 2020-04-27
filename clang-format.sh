@@ -1,7 +1,10 @@
-clang-format -i include/*.h
-clang-format -i include/*.hpp
-clang-format -i include/tpu/*.hpp
-clang-format -i src/*.cpp
-clang-format -i src/tpu/*.cpp
-clang-format -i sample/*.c
-clang-format -i test/*.c
+#!/bin/bash
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+CLANG_ROOT=$(readlink -f $SCRIPT_DIR)
+
+find $CLANG_ROOT/include -regex '.*\.\(cpp\|h\|hpp\|cc\|c\|cxx\|inc\)' -exec clang-format -i {} \;
+find $CLANG_ROOT/include/tpu -regex '.*\.\(cpp\|h\|hpp\|cc\|c\|cxx\|inc\)' -exec clang-format -i {} \;
+find $CLANG_ROOT/src -regex '.*\.\(cpp\|h\|hpp\|cc\|c\|cxx\|inc\)' -exec clang-format -i {} \;
+find $CLANG_ROOT/src/tpu -regex '.*\.\(cpp\|h\|hpp\|cc\|c\|cxx\|inc\)' -exec clang-format -i {} \;
+find $CLANG_ROOT/sample -regex '.*\.\(cpp\|h\|hpp\|cc\|c\|cxx\|inc\)' -exec clang-format -i {} \;
+find $CLANG_ROOT/test -regex '.*\.\(cpp\|h\|hpp\|cc\|c\|cxx\|inc\)' -exec clang-format -i {} \;
