@@ -916,7 +916,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
     for (u32 j = neon_turn_left; j < block_data_length; j++) {
       count_total += hog_ptr[skip_i + j] * hog_ptr[skip_i + j];
     }
-    float count = 1.f / sqrt(count_total);
+    float count = count_total == 0 ? 0 : 1.f / sqrt(count_total);
     float32x4_t m = vdupq_n_f32(count);
     block_head = hog_ptr + skip_i;
     for (u32 j = 0; j < neon_turn; j++) {
