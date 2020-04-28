@@ -82,6 +82,19 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
                             CVI_U16 u16Width, CVI_U16 u16Height);
 
 /**
+ * @brief Create an IVE_IMAGE_S with a given buffer from another IVE_IMAGE_S.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstImg The input image stucture.
+ * @param enType The image type. e.g. IVE_IMAGE_TYPE_U8C1.
+ * @param u16Width The image width.
+ * @param u16Height The image height.
+ * @param pstBuffer Use another IVE_IMAGE_S as buffer.
+ * @return CVI_S32 Return CVI_SUCCESS if operation succeed.
+ */
+CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
+                             CVI_U16 u16Width, CVI_U16 u16Height, IVE_IMAGE_S *pstBuffer);
+/**
  * @brief Get the sub image from an image with the given coordiantes. The data is shared without
  * copy.
  *

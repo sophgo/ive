@@ -1,14 +1,15 @@
 #include "tpu_data.hpp"
 
 CviImg::CviImg() {}
-CviImg::CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt) {
-  Init(ctx, img_c, img_h, img_w, fmt);
+CviImg::CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, CviImg *cvi_img) {
+  Init(ctx, img_c, img_h, img_w, fmt, cvi_img);
 }
 
 CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) {
   if (!this->m_is_stride_ceq) {
     std::cerr << "Error, sub-image does not support non-equal stride in different channels."
               << std::endl;
+    return;
   }
   if (x1 > x2) {
     u32 tmp = x1;
@@ -29,6 +30,7 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) 
   if (new_width == 0 || new_height == 0) {
     std::cerr << "Error width " << new_width << " or height " << new_height << " cannot be 0."
               << std::endl;
+    return;
   }
 
   // Update subimage shape
@@ -55,7 +57,7 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) 
 }
 
 CviImg::CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides,
-               std::vector<u32> heights, CVIIMGTYPE img_type, fmt_t fmt) {
+               std::vector<u32> heights, CVIIMGTYPE img_type, fmt_t fmt, CviImg *cvi_img) {
   if (strides.size() == 0) {
     std::cerr << "No stride given." << std::endl;
     return;
@@ -80,17 +82,20 @@ CviImg::CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides,
     this->m_size += strides[i] * heights[i];
   }
 
+  if (cvi_img != nullptr) {
+    if (this->m_size < cvi_img->m_size) {
+      this->m_bmmem = cvi_img->m_bmmem;
+    }
+  }
   AllocateDevice(ctx);
 }
 
-int CviImg::Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt) {
+void CviImg::SetupImageInfo(u32 img_c, u32 img_h, u32 img_w, fmt_t fmt) {
   this->m_fmt = fmt;
   this->m_channel = img_c;
   this->m_width = img_w;
   this->m_height = img_h;
-  // FIXME: Think a method for kernels.
-  // u32 w_mod = img_w % 16;
-  u32 w_stride = img_w;  // (w_mod == 0) ? img_w : img_w + (16 - w_mod);
+  u32 w_stride = img_w;
   this->m_strides.resize(this->m_channel, w_stride);
   this->m_heights.resize(this->m_channel, this->m_height);
   this->m_size = 1 * this->m_channel * this->m_height * w_stride * getFmtSize(this->m_fmt);
@@ -108,6 +113,15 @@ int CviImg::Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt) {
     this->m_img_type = (this->m_channel == 1) ? CVI_SINGLE : CVI_MULTI;
   }
   this->m_is_planar = true;
+}
+
+int CviImg::Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, CviImg *cvi_img) {
+  SetupImageInfo(img_c, img_h, img_w, fmt);
+  if (cvi_img != nullptr) {
+    if (this->m_size < cvi_img->m_size) {
+      this->m_bmmem = cvi_img->m_bmmem;
+    }
+  }
   return AllocateDevice(ctx);
 }
 
@@ -134,24 +148,21 @@ const bool CviImg::IsSubImg() const { return m_is_sub_img; }
 const bool CviImg::IsStideCEQ() const { return m_is_stride_ceq; }
 
 int CviImg::AllocateDevice(bmctx_t *ctx) {
-  int ret = 1;
   if (this->m_bmmem == NULL) {
-    ret = 0;
     this->m_bmmem = bmmem_device_alloc_raw(*ctx, this->m_size);
-
-    if (m_is_stride_ceq) {
-      this->m_tg.start_address = bmmem_device_addr(this->m_bmmem);
-      this->m_tg.base_reg_index = 0;
-      this->m_tg.fmt = this->m_fmt;
-      this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
-      this->m_tg.stride.h = this->m_strides[0] * getFmtSize(this->m_tg.fmt);
-      this->m_tg.stride.c = m_tg.shape.h * this->m_tg.stride.h;
-      this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
-    }
+  }
+  if (m_is_stride_ceq) {
+    this->m_tg.start_address = bmmem_device_addr(this->m_bmmem);
+    this->m_tg.base_reg_index = 0;
+    this->m_tg.fmt = this->m_fmt;
+    this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
+    this->m_tg.stride.h = this->m_strides[0] * getFmtSize(this->m_tg.fmt);
+    this->m_tg.stride.c = m_tg.shape.h * this->m_tg.stride.h;
+    this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
   }
   m_vaddr = (uint8_t *)bmmem_device_v_addr(this->m_bmmem);
   m_paddr = bmmem_device_addr(this->m_bmmem);
-  return ret;
+  return CVI_SUCCESS;
 }
 
 int CviImg::Free(bmctx_t *ctx) {

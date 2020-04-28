@@ -129,8 +129,8 @@ CVI_S32 CVI_IVE_CreateMemInfo(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo,
   return CVI_SUCCESS;
 }
 
-CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
-                            u16 u16Width, u16 u16Height) {
+CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
+                             u16 u16Width, u16 u16Height, IVE_IMAGE_S *pstBuffer) {
   if (u16Width == 0 || u16Height == 0) {
     std::cerr << "Image width or height cannot be 0." << std::endl;
     pstImg->tpu_block = NULL;
@@ -213,33 +213,13 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
       return CVI_FAILURE;
       break;
   }
-  // Special case for unsupported I32/U32 images
-  // FIXME: Put thosinto bmkernel, bmruntime
-  if (fmt == FMT_U32) {
-    pstImg->tpu_block = NULL;
-    pstImg->enType = enType;
-    pstImg->u16Width = u16Width;
-    pstImg->u16Height = u16Height;
-    pstImg->u16Reserved = fmt_size;
-    int img_sz = pstImg->u16Width * pstImg->u16Height * fmt_size * c;
-    uint8_t *arr = new uint8_t[img_sz];
-    for (size_t i = 0; i < (size_t)c; i++) {
-      pstImg->pu8VirAddr[i] = arr + i * img_sz;
-      pstImg->u64PhyAddr[i] = i * img_sz;
-      pstImg->u16Stride[i] = pstImg->u16Width;
-    }
 
-    for (size_t i = c; i < 3; i++) {
-      pstImg->pu8VirAddr[i] = NULL;
-      pstImg->u64PhyAddr[i] = -1;
-      pstImg->u16Stride[i] = 0;
-    }
-    return CVI_SUCCESS;
-  }
-
-  auto *cpp_img = strides.size() == 0 ? new CviImg(&handle_ctx->ctx, c, u16Height, u16Width, fmt)
-                                      : new CviImg(&handle_ctx->ctx, u16Height, u16Width, strides,
-                                                   heights, img_type, fmt);
+  CviImg *buffer_ptr =
+      pstBuffer == NULL ? nullptr : reinterpret_cast<CviImg *>(pstBuffer->tpu_block);
+  auto *cpp_img = strides.size() == 0
+                      ? new CviImg(&handle_ctx->ctx, c, u16Height, u16Width, fmt, buffer_ptr)
+                      : new CviImg(&handle_ctx->ctx, u16Height, u16Width, strides, heights,
+                                   img_type, fmt, buffer_ptr);
 
   pstImg->tpu_block = reinterpret_cast<CVI_IMG *>(cpp_img);
 
@@ -262,6 +242,11 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
     pstImg->u16Stride[i] = 0;
   }
   return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
+                            CVI_U16 u16Width, CVI_U16 u16Height) {
+  return CVI_IVE_CreateImage2(pIveHandle, pstImg, enType, u16Width, u16Height, NULL);
 }
 
 CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
@@ -397,13 +382,9 @@ CVI_S32 CVI_SYS_FreeM(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo) {
 
 CVI_S32 CVI_SYS_FreeI(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  if (pstImg->tpu_block == NULL) {
-    delete[] pstImg->pu8VirAddr[0];
-  } else {
-    auto *cpp_img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
-    cpp_img->Free(&handle_ctx->ctx);
-    delete cpp_img;
-  }
+  auto *cpp_img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
+  cpp_img->Free(&handle_ctx->ctx);
+  delete cpp_img;
   return CVI_SUCCESS;
 }
 

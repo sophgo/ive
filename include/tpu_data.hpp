@@ -31,11 +31,11 @@ static int getFmtSize(fmt_t fmt) {
       break;
     case FMT_U16:
     case FMT_I16:
-      fmt_size = 2;
-      break;
     case FMT_BF16:
       fmt_size = 2;
       break;
+    case FMT_U32:
+    case FMT_I32:
     case FMT_F32:
       fmt_size = 4;
       break;
@@ -161,7 +161,7 @@ class CviImg {
    * @param img_w Image width
    * @param fmt fmt_t type
    */
-  CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt);
+  CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, CviImg *cvi_img = nullptr);
 
   /**
    * @brief Construct a new CviImg object from an existing CviImg with given region.
@@ -183,7 +183,7 @@ class CviImg {
    * @param fmt fmt_t type
    */
   CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> heights,
-         CVIIMGTYPE img_type, fmt_t fmt);
+         CVIIMGTYPE img_type, fmt_t fmt, CviImg *cvi_img = nullptr);
 
   /**
    * @brief Init CviImg if default constructor is used.
@@ -195,7 +195,7 @@ class CviImg {
    * @param fmt fmt_t type
    * @return int Return 0 if success
    */
-  int Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt);
+  int Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, CviImg *img_ptr);
 
   /**
    * @brief Check if device memory is allocated.
@@ -316,6 +316,16 @@ class CviImg {
   bmk1880v2_tensor_tgmem_t m_tg;
 
  private:
+  /**
+   * @brief Setup image structure information. This mode does not support padding and packed mode.
+   *
+   * @param img_c Input image channel.
+   * @param img_h Input image height.
+   * @param img_w Input image width.
+   * @param fmt fmt type.
+   */
+  inline void SetupImageInfo(u32 img_c, u32 img_h, u32 img_w, fmt_t fmt);
+
   /**
    * @brief Allocate device memory.
    *
