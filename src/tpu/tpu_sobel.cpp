@@ -24,9 +24,8 @@ int IveTPUSobel::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   // 2 conv result
   // 0 a^2 + b^2 result (reuse input tl)
   // 1 buf & 1 final sqrt result
-  u32 total_tls = m_dist_method == 0 ? 3 : 4;
   u32 total_tables = m_dist_method == 0 ? 0 : 2;
-  m_slice_info.nums_of_tl = total_tls * 2;        // in bf16
+  m_slice_info.nums_of_tl = 4 * 2;                // in bf16
   m_slice_info.nums_of_table = total_tables * 2;  // sqrt 2 table 256 * 2 in bf16
   m_kernel_info.nums_of_kernel = 4;               // 2 BF16 kernels
   return BM_SUCCESS;
@@ -49,7 +48,7 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   auto *tl_input = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
   auto *tl_gx = allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
   auto *tl_gy = allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
-  auto *tl_aabb = m_dist_method == 0 ? nullptr : allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
+  auto *tl_buf = allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
 
   bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, m_kernel_x->img.m_tg.shape.c, m_kernel_info.size,
                                                m_kernel_info.size};
@@ -119,7 +118,7 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     m_p_mul_b.relu_enable = 0;
     m_p_mul_b.bf16_enable = 1;
     m_p_mul_b.res_high = NULL;
-    m_p_mul_b.res_low = tl_input;
+    m_p_mul_b.res_low = tl_buf;
     m_p_mul_b.a = tl_gy;
     m_p_mul_b.b_is_const = 1;
     m_p_mul_b.b_val = convert_fp32_bf16(-1.f);
@@ -127,7 +126,7 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     m_p_max_b.bf16_enable = 1;
     m_p_max_b.b_is_const = 0;
     m_p_max_b.a = tl_gy;
-    m_p_max_b.b = tl_input;
+    m_p_max_b.b = tl_buf;
     m_p_max_b.max = tl_gy;
 
     m_p_add.bf16_enable = 1;
@@ -145,7 +144,7 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     m_p_mul_a.relu_enable = 1;
     m_p_mul_a.bf16_enable = 1;
     m_p_mul_a.res_high = NULL;
-    m_p_mul_a.res_low = tl_aabb;
+    m_p_mul_a.res_low = tl_buf;
     m_p_mul_a.a = tl_gx;
     m_p_mul_a.b_is_const = 0;
     m_p_mul_a.b = tl_gx;
@@ -156,12 +155,12 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     m_p_mac.relu_enable = 1;
     m_p_mac.bf16_enable = 1;
     m_p_mac.res_high = NULL;
-    m_p_mac.res_low = tl_aabb;
+    m_p_mac.res_low = tl_buf;
     m_p_mac.a = tl_gy;
     m_p_mac.b_is_const = 0;
     m_p_mac.b = tl_gy;
 
-    m_p_sqrt.a = tl_aabb;
+    m_p_sqrt.a = tl_buf;
     m_p_sqrt.res = tl_gx;
     m_p_sqrt.buf = tl_gy;
     m_p_sqrt.sqrt_table_answer = tl_table_data;
