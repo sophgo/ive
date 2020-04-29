@@ -999,11 +999,36 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
                          IVE_DST_IMAGE_S *pstDstV, IVE_DST_IMAGE_S *pstDstHV,
                          IVE_NORM_GRAD_CTRL_S *pstNormGradCtrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
+  if (pstDstH != NULL) {
+    if (pstDstH->enType != IVE_IMAGE_TYPE_S16C1 && pstDstH->enType != IVE_IMAGE_TYPE_U8C1) {
+      std::cerr << "pstDstH must S16 or U8." << std::endl;
+      return CVI_FAILURE;
+    }
+  }
+  if (pstDstV != NULL) {
+    if (pstDstV->enType != IVE_IMAGE_TYPE_S16C1 && pstDstH->enType != IVE_IMAGE_TYPE_U8C1) {
+      std::cerr << "pstDstV must S16 or U8." << std::endl;
+      return CVI_FAILURE;
+    }
+  }
+  if (pstDstHV != NULL) {
+    if (pstDstHV->enType != IVE_IMAGE_TYPE_U16C1 && pstDstHV->enType != IVE_IMAGE_TYPE_U8C1) {
+      std::cerr << "pstDstHV must U16 or U8." << std::endl;
+      return CVI_FAILURE;
+    }
+  }
+  int kernel_size = pstNormGradCtrl->u8MaskSize;
+  if (kernel_size != 1 && kernel_size != 3) {
+    std::cerr << "Kernel size currently only supports 1 and 3." << std::endl;
+    return CVI_FAILURE;
+  }
+
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   int npu_num = handle_ctx->t_h.t_sobel_gradonly.getNpuNum();
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs;
+  bool do_free = false;
   if (pstNormGradCtrl->enOutCtrl == IVE_NORM_GRAD_OUT_CTRL_HOR_AND_VER) {
     IVE_IMAGE_S dstH_BF16, dstV_BF16;
     CVI_IVE_CreateImage(pIveHandle, &dstH_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
@@ -1014,67 +1039,102 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
     CviImg *cpp_dsth = reinterpret_cast<CviImg *>(dstH_BF16.tpu_block);
     outputs.emplace_back(*cpp_dstv);
     outputs.emplace_back(*cpp_dsth);
-    IveKernel kernel_w = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_X);
-    IveKernel kernel_h = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_Y);
+    IveKernel kernel_w =
+        createKernel(&handle_ctx->ctx, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_X);
+    IveKernel kernel_h =
+        createKernel(&handle_ctx->ctx, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_sobel_gradonly.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_sobel_gradonly.setKernel(kernel_w, kernel_h);
     handle_ctx->t_h.t_sobel_gradonly.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
     kernel_h.img.Free(&handle_ctx->ctx);
     IVE_ITC_CRTL_S iveItcCtrl;
-    iveItcCtrl.enType = IVE_ITC_NORMALIZE;
+    iveItcCtrl.enType = pstNormGradCtrl->enITCType;
     CVI_IVE_ImageTypeConvert(pIveHandle, &dstV_BF16, pstDstV, &iveItcCtrl, 0);
     CVI_IVE_ImageTypeConvert(pIveHandle, &dstH_BF16, pstDstH, &iveItcCtrl, 0);
     CVI_SYS_FreeI(pIveHandle, &dstV_BF16);
     CVI_SYS_FreeI(pIveHandle, &dstH_BF16);
   } else if (pstNormGradCtrl->enOutCtrl == IVE_NORM_GRAD_OUT_CTRL_HOR) {
     IVE_IMAGE_S dst_BF16;
-    CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
-                        pstSrc->u16Height);
-    CviImg *cpp_dsth = reinterpret_cast<CviImg *>(dst_BF16.tpu_block);
-    outputs.emplace_back(*cpp_dsth);
-    IveKernel kernel_h = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_Y);
+    if (pstDstH->enType == IVE_IMAGE_TYPE_U16C1 ||
+        pstNormGradCtrl->enITCType == IVE_ITC_NORMALIZE) {
+      CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
+                          pstSrc->u16Height);
+      CviImg *cpp_dsth = reinterpret_cast<CviImg *>(dst_BF16.tpu_block);
+      outputs.emplace_back(*cpp_dsth);
+      do_free = true;
+    } else {
+      CviImg *cpp_dsth = reinterpret_cast<CviImg *>(pstDstH->tpu_block);
+      outputs.emplace_back(*cpp_dsth);
+    }
+    IveKernel kernel_h =
+        createKernel(&handle_ctx->ctx, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_filter_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_h);
     handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_h.img.Free(&handle_ctx->ctx);
-    IVE_ITC_CRTL_S iveItcCtrl;
-    iveItcCtrl.enType = IVE_ITC_NORMALIZE;
-    CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstH, &iveItcCtrl, 0);
-    CVI_SYS_FreeI(pIveHandle, &dst_BF16);
+    if (do_free) {
+      IVE_ITC_CRTL_S iveItcCtrl;
+      iveItcCtrl.enType = pstNormGradCtrl->enITCType;
+      CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstH, &iveItcCtrl, 0);
+      CVI_SYS_FreeI(pIveHandle, &dst_BF16);
+    }
   } else if (pstNormGradCtrl->enOutCtrl == IVE_NORM_GRAD_OUT_CTRL_VER) {
     IVE_IMAGE_S dst_BF16;
-    CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
-                        pstSrc->u16Height);
-    CviImg *cpp_dstv = reinterpret_cast<CviImg *>(dst_BF16.tpu_block);
-    outputs.emplace_back(*cpp_dstv);
-    IveKernel kernel_w = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_X);
+    if (pstDstV->enType == IVE_IMAGE_TYPE_U16C1 ||
+        pstNormGradCtrl->enITCType == IVE_ITC_NORMALIZE) {
+      CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
+                          pstSrc->u16Height);
+      CviImg *cpp_dstv = reinterpret_cast<CviImg *>(dst_BF16.tpu_block);
+      outputs.emplace_back(*cpp_dstv);
+      do_free = true;
+    } else {
+      CviImg *cpp_dstv = reinterpret_cast<CviImg *>(pstDstV->tpu_block);
+      outputs.emplace_back(*cpp_dstv);
+    }
+    IveKernel kernel_w =
+        createKernel(&handle_ctx->ctx, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_X);
     handle_ctx->t_h.t_filter_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_w);
     handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
-    IVE_ITC_CRTL_S iveItcCtrl;
-    iveItcCtrl.enType = IVE_ITC_NORMALIZE;
-    CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstV, &iveItcCtrl, 0);
-    CVI_SYS_FreeI(pIveHandle, &dst_BF16);
+    if (do_free) {
+      IVE_ITC_CRTL_S iveItcCtrl;
+      iveItcCtrl.enType = pstNormGradCtrl->enITCType;
+      CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstV, &iveItcCtrl, 0);
+      CVI_SYS_FreeI(pIveHandle, &dst_BF16);
+    }
   } else if (pstNormGradCtrl->enOutCtrl == IVE_NORM_GRAD_OUT_CTRL_COMBINE) {
     IVE_IMAGE_S dst_BF16;
-    CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
-                        pstSrc->u16Height);
-    CviImg *cpp_dsthv = reinterpret_cast<CviImg *>(dst_BF16.tpu_block);
-    outputs.emplace_back(*cpp_dsthv);
-    IveKernel kernel_w = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_X);
-    IveKernel kernel_h = createKernel(&handle_ctx->ctx, npu_num, 3, 3, IVE_KERNEL::SOBEL_Y);
+    if (pstDstHV->enType == IVE_IMAGE_TYPE_U16C1 ||
+        pstNormGradCtrl->enITCType == IVE_ITC_NORMALIZE) {
+      CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
+                          pstSrc->u16Height);
+      CviImg *cpp_dsthv = reinterpret_cast<CviImg *>(dst_BF16.tpu_block);
+      outputs.emplace_back(*cpp_dsthv);
+      do_free = true;
+    } else {
+      CviImg *cpp_dsthv = reinterpret_cast<CviImg *>(pstDstHV->tpu_block);
+      outputs.emplace_back(*cpp_dsthv);
+    }
+    IveKernel kernel_w =
+        createKernel(&handle_ctx->ctx, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_X);
+    IveKernel kernel_h =
+        createKernel(&handle_ctx->ctx, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_Y);
+
     handle_ctx->t_h.t_sobel.setTblMgr(&handle_ctx->t_h.t_tblmgr);
+    handle_ctx->t_h.t_sobel.magDistMethod(pstNormGradCtrl->enDistCtrl);
     handle_ctx->t_h.t_sobel.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_sobel.setKernel(kernel_w, kernel_h);
     handle_ctx->t_h.t_sobel.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
     kernel_h.img.Free(&handle_ctx->ctx);
-    IVE_ITC_CRTL_S iveItcCtrl;
-    iveItcCtrl.enType = IVE_ITC_NORMALIZE;
-    CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstHV, &iveItcCtrl, 0);
-    CVI_SYS_FreeI(pIveHandle, &dst_BF16);
+    if (do_free) {
+      IVE_ITC_CRTL_S iveItcCtrl;
+      iveItcCtrl.enType = pstNormGradCtrl->enITCType;
+      CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstHV, &iveItcCtrl, 0);
+      CVI_SYS_FreeI(pIveHandle, &dst_BF16);
+    }
   } else {
     return CVI_FAILURE;
   }

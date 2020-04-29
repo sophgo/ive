@@ -29,6 +29,9 @@ int main(int argc, char **argv) {
   printf("Run norm gradient.\n");
   IVE_NORM_GRAD_CTRL_S pstNormGradCtrl;
   pstNormGradCtrl.enOutCtrl = IVE_NORM_GRAD_OUT_CTRL_HOR_AND_VER;
+  pstNormGradCtrl.enDistCtrl = IVE_MAG_DIST_L2;
+  pstNormGradCtrl.enITCType = IVE_ITC_NORMALIZE;
+  pstNormGradCtrl.u8MaskSize = 3;
   int ret = CVI_IVE_NormGrad(handle, &src, &dstH_u8, &dstV_u8, NULL, &pstNormGradCtrl, 0);
 
   // Output normalized L2 norm Sobel result.

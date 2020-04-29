@@ -36,6 +36,9 @@ int main(int argc, char **argv) {
   printf("Run norm gradient.\n");
   IVE_NORM_GRAD_CTRL_S pstNormGradCtrl;
   pstNormGradCtrl.enOutCtrl = IVE_NORM_GRAD_OUT_CTRL_HOR_AND_VER;
+  pstNormGradCtrl.enDistCtrl = IVE_MAG_DIST_L2;
+  pstNormGradCtrl.enITCType = IVE_ITC_NORMALIZE;
+  pstNormGradCtrl.u8MaskSize = 3;
   struct timeval t0, t1;
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < total_run; i++) {
@@ -48,7 +51,7 @@ int main(int argc, char **argv) {
   pstNormGradCtrl.enOutCtrl = IVE_NORM_GRAD_OUT_CTRL_COMBINE;
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < total_run; i++) {
-    CVI_IVE_NormGrad(handle, &src, &dstH_u8, &dstV_u8, &dstHV_u8, &pstNormGradCtrl, 0);
+    CVI_IVE_NormGrad(handle, &src, NULL, NULL, &dstHV_u8, &pstNormGradCtrl, 0);
   }
   gettimeofday(&t1, NULL);
   unsigned long elapsed_tpu_combine =
