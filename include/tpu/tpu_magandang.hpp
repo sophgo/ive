@@ -7,9 +7,8 @@
 class IveTPUMagAndAng : public IveCore {
  public:
   void setTblMgr(TblMgr *tblmgr);
-  void exportOption(bool mag_value, bool ang_value, bool output_degree = true,
-                    bool use_accurate_atan2 = false);
-  void magNormMethod(int method);
+  void exportOption(bool mag_value, bool ang_value, bool output_degree = true);
+  void magDistMethod(int method);
   void noNegative(bool value);
   virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) override;
 
@@ -24,15 +23,15 @@ class IveTPUMagAndAng : public IveCore {
  private:
   TblMgr *mp_tblmgr = nullptr;
   bool m_export_mag = true;
-  int m_norm_method = 1;
+  int m_dist_method = 1;
   bmk1880v2_tiu_element_wise_mul_param_t m_p_mul_a;
-  // L1 norm
+  // L1 dist
   bmk1880v2_tiu_element_wise_mul_param_t m_p_mul_b;
   bmk1880v2_tiu_element_wise_max_param_t m_p_max_a;
   bmk1880v2_tiu_element_wise_max_param_t m_p_max_b;
   bmk1880v2_tiu_element_wise_add_param_t m_p_add;
-  bmk1880v2_tiu_element_wise_mul_param_t m_p_mul_0_5;
-  // L2 norm
+
+  // L2 dist
   bmk1880v2_tiu_element_wise_mac_param_t m_p_mac;
   bmk1880v2_tiu_non_atomic_sqrt_param_t m_p_sqrt;
   bool m_export_ang = true;

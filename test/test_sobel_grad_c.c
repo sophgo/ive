@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
   iveSblCtrl.u8MaskSize = 3;
   IVE_MAG_AND_ANG_CTRL_S pstMaaCtrl;
   pstMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG;
-  pstMaaCtrl.enNormCtrl = IVE_MAG_NORM_L2;
+  pstMaaCtrl.enDistCtrl = IVE_MAG_DIST_L2;
   unsigned long total_s = 0;
   unsigned long total_mag = 0;
   struct timeval t0, t1, t2;
@@ -80,8 +80,8 @@ int main(int argc, char **argv) {
   total_mag /= total_run;
 
   pstMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_MAG;
-  pstMaaCtrl.enNormCtrl = IVE_MAG_NORM_L1;
-  CVI_IVE_MagAndAng(handle, &dstH, &dstV, &dstMagL1, &dstAng, &pstMaaCtrl, 0);
+  pstMaaCtrl.enDistCtrl = IVE_MAG_DIST_L1;
+  CVI_IVE_MagAndAng(handle, &dstH, &dstV, &dstMagL1, NULL, &pstMaaCtrl, 0);
 
   printf("Normalize result to 0-255.\n");
   IVE_ITC_CRTL_S iveItcCtrl;
@@ -153,7 +153,7 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE
     float dstH_f = convert_bf16_fp32(dstH_ptr[i]);
     float dstV_f = convert_bf16_fp32(dstV_ptr[i]);
     float dstMag_f = convert_bf16_fp32(dstMagL1_ptr[i]);
-    float abs_res = (fabs(dstV_f) + fabs(dstH_f)) / 2.f;
+    float abs_res = fabs(dstV_f) + fabs(dstH_f);
     float error = fabs(abs_res - dstMag_f);
     if (error > abs_epsilon) {
       printf("[%lu] (|%f| + |%f|) / 2 = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f,

@@ -163,18 +163,18 @@ typedef enum IVE_MAG_AND_ANG_OUT_CTRL {
   IVE_MAG_AND_ANG_OUT_CTRL_BUTT
 } IVE_MAG_AND_ANG_OUT_CTRL_E;
 
-typedef enum IVE_MAG_NORM {
-  IVE_MAG_NORM_L1 = 0x0,
-  IVE_MAG_NORM_L2 = 0x1,
-  IVE_MAG_NORM_BUTT
-} IVE_MAG_NORM_E;
+typedef enum IVE_MAG_DIST {
+  IVE_MAG_DIST_L1 = 0x0,
+  IVE_MAG_DIST_L2 = 0x1,
+  IVE_MAG_DIST_BUTT
+} IVE_MAG_DIST_E;
 
 /*
  *Magnitude and angle control parameter
  */
 typedef struct IVE_MAG_AND_ANG_CTRL {
   IVE_MAG_AND_ANG_OUT_CTRL_E enOutCtrl;
-  IVE_MAG_NORM_E enNormCtrl;
+  IVE_MAG_DIST_E enDistCtrl;
 } IVE_MAG_AND_ANG_CTRL_S;
 
 typedef enum IVE_ORD_STAT_FILTER_MODE {

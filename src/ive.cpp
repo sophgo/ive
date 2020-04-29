@@ -803,7 +803,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   }
   IVE_MAG_AND_ANG_CTRL_S iveMaaCtrl;
   iveMaaCtrl.enOutCtrl = IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG;
-  iveMaaCtrl.enNormCtrl = IVE_MAG_NORM_L2;
+  iveMaaCtrl.enDistCtrl = IVE_MAG_DIST_L2;
   if (CVI_IVE_MagAndAng(pIveHandle, pstDstH, pstDstV, pstDstMag, pstDstAng, &iveMaaCtrl, 0) !=
       CVI_SUCCESS) {
     return CVI_FAILURE;
@@ -965,7 +965,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
   }
   // True accuracy too low.
   handle_ctx->t_h.t_magandang.noNegative(false);
-  handle_ctx->t_h.t_magandang.magNormMethod(pstMaaCtrl->enNormCtrl);
+  handle_ctx->t_h.t_magandang.magDistMethod(pstMaaCtrl->enDistCtrl);
   handle_ctx->t_h.t_magandang.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   handle_ctx->t_h.t_magandang.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   return CVI_SUCCESS;
