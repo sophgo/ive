@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
   }
   const char *file_name = argv[1];
   size_t total_run = atoi(argv[2]);
-  printf("Loop value: %lu\n", total_run);
+  printf("Loop value: %zu\n", total_run);
   if (total_run > 1000 || total_run == 0) {
     printf("Incorrect loop value. Usage: %s <file_name> <loop in value (1-1000)>\n", argv[0]);
     return CVI_FAILURE;
@@ -136,7 +136,7 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src1, IVE_SRC_IMAGE_S *src2,
   for (size_t i = 0; i < channels * src1->u16Width * src1->u16Height; i++) {
     int res = abs((int)src1_ptr[i] - (int)src2_ptr[i]);
     if (res != dst_ptr[i]) {
-      printf("[%lu] %d - %d = TPU %d, CPU %d\n", i, src1_ptr[i], src2_ptr[i], dst_ptr[i], (int)res);
+      printf("[%zu] %d - %d = TPU %d, CPU %d\n", i, src1_ptr[i], src2_ptr[i], dst_ptr[i], (int)res);
       ret = CVI_FAILURE;
       break;
     }

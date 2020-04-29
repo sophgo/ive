@@ -51,12 +51,20 @@ $ ninja -j8
 $ mkdir build_soc
 $ cd build
 $ cmake -G Ninja .. -DCVI_TARGET=soc \
-                    -DTOOLCHAIN_ROOT_DIR=${PWD}/../../gcc-linaro-6.3.1-2017.05-i686_arm-linux-gnueabihf \
+                    -DTOOLCHAIN_ROOT_DIR=${PWD}/../../gcc-linaro-6.3.1-2017.05-x86_64_arm-linux-gnueabihf \
                     -DCMAKE_TOOLCHAIN_FILE=${PWD}/../toolchain/toolchain-gnueabihf-linux.cmake \
                     -DMLIR_SDK_ROOT=${PWD}/../../cvitek_tpu_sdk \
                     -DMIDDLEWARE_SDK_ROOT=${PWD}/../../middleware \
                     -DCMAKE_BUILD_TYPE=Release
 $ ninja -j8
+```
+
+**Note:** To make sure everytime you configure cmake correctly, you can set the compiler flags to empty with command.
+
+```
+cmake -G Ninja .. -DCMAKE_C_COMPILER="" \
+                  -DCMAKE_CXX_COMPILER="" \
+                  ......
 ```
 
 You may install the library with the following command.

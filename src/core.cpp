@@ -107,9 +107,9 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
     u32 total_addr = is_1d ? input[k].m_tg.stride.n : input[k].m_tg.stride.c;
     if (jumped_value != total_addr) {
       printf(
-          "Error! Input %lu jumped value %lu not align to image size %u, start addr "
+          "Error! Input %u jumped value %lu not align to image size %u, start addr "
           "%lu\n",
-          k, jumped_value, total_addr, bm_start_addr);
+          (u32)k, (long uint)jumped_value, total_addr, (long uint)bm_start_addr);
       ret = BM_ERR_FAILURE;
     }
   }
@@ -122,9 +122,9 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
                  ((output[k].m_tg.stride.h * pad_t) + (pad_l * bm_dest_info.fns_vec[k].getSize())));
     if (jumped_value != total_addr) {
       printf(
-          "Error! Output %lu jumped value %lu not align to image size %u, start addr "
+          "Error! Output %u jumped value %lu not align to image size %u, start addr "
           "%lu\n",
-          k, jumped_value, total_addr, bm_des_addr);
+          (u32)k, (long uint)jumped_value, total_addr, (long uint)bm_des_addr);
       ret = BM_ERR_FAILURE;
     }
   }

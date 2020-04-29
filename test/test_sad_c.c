@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
     return CVI_FAILURE;
   }
   size_t total_run = atoi(argv[1]);
-  printf("Loop value: %lu\n", total_run);
+  printf("Loop value: %zu\n", total_run);
   if (total_run > 1000 || total_run == 0) {
     printf("Incorrect loop value. Usage: %s <loop in value (1-1000)>\n", argv[0]);
     return CVI_FAILURE;
@@ -185,7 +185,7 @@ int cpu_ref(const int width, const int height, const int window_size,
         int int_result = round(f_res);
 
         if (int_result != dst_addr[i * width + j]) {
-          printf("[%lu, %lu] %d %d \n", j, i, int_result, dst_addr[i * width + j]);
+          printf("[%zu, %zu] %d %d \n", j, i, int_result, dst_addr[i * width + j]);
           ret = CVI_FAILURE;
           break;
         }
@@ -200,7 +200,7 @@ int cpu_ref(const int width, const int height, const int window_size,
         int int_result = f_res;
 
         if (int_result != dst_addr[i * width + j]) {
-          printf("[%lu, %lu] %d %d \n", j, i, int_result, dst_addr[i * width + j]);
+          printf("[%zu, %zu] %d %d \n", j, i, int_result, dst_addr[i * width + j]);
           ret = CVI_FAILURE;
           break;
         }
@@ -213,7 +213,7 @@ int cpu_ref(const int width, const int height, const int window_size,
     for (size_t j = pad_0; j < width - pad_1; j++) {
       int value = cpu_result[i * width + j] >= threshold ? max : min;
       if (value != dst_thresh_addr[i * width + j]) {
-        printf("[%lu, %lu] %d %d \n", j, i, value,
+        printf("[%zu, %zu] %d %d \n", j, i, value,
                                             (int)dst_thresh_addr[i * width + j]);
         ret = CVI_FAILURE;
         break;

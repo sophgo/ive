@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
   }
   const char *filename = argv[1];
   size_t total_run = atoi(argv[2]);
-  printf("Loop value: %lu\n", total_run);
+  printf("Loop value: %zu\n", total_run);
   if (total_run > 1000 || total_run == 0) {
     printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
     return CVI_FAILURE;
@@ -159,19 +159,19 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE
       float dstV_f = convert_bf16_fp32(dstV_ptr[offset]);
       if ((int)dstH_f != g_h) {
 #if HOG_SZ == 1
-        printf("H (%lu, %lu) %u - %u = TPU %f CPU %d\n", j, i, src_ptr[offset + 1],
+        printf("H (%zu, %zu) %u - %u = TPU %f CPU %d\n", j, i, src_ptr[offset + 1],
                src_ptr[offset - 1], dstH_f, g_h);
 #else
-        printf("H (%lu, %lu) TPU %f CPU %d\n", j, i, dstH_f, g_h);
+        printf("H (%zu, %zu) TPU %f CPU %d\n", j, i, dstH_f, g_h);
 #endif
         ret = CVI_FAILURE;
       }
       if ((int)dstV_f != g_v) {
 #if HOG_SZ == 1
-        printf("V (%lu, %lu) %u - %u = TPU %f CPU %d\n", j, i, src_ptr[offset_b], src_ptr[offset_t],
+        printf("V (%zu, %zu) %u - %u = TPU %f CPU %d\n", j, i, src_ptr[offset_b], src_ptr[offset_t],
                dstV_f, g_v);
 #else
-        printf("V (%lu, %lu) TPU %f CPU %d\n", j, i, dstV_f, g_v);
+        printf("V (%zu, %zu) TPU %f CPU %d\n", j, i, dstV_f, g_v);
 #endif
         ret = CVI_FAILURE;
       }
@@ -185,7 +185,7 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE
     float sqrt_res = sqrtf(dstV_f * dstV_f + dstH_f * dstH_f);
     float error = fabs(sqrt_res - dstMag_f);
     if (error > sqrt_epsilon) {
-      printf("[%lu] sqrt( %f^2 + %f^2) = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f,
+      printf("[%zu] sqrt( %f^2 + %f^2) = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f,
              dstMag_f, sqrt_res, error);
       ret = CVI_FAILURE;
     }
@@ -198,7 +198,7 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE
     float atan2_res = (float)atan2(dstV_f, dstH_f) * mul_val;
     float error = fabs(atan2_res - dstAng_f);
     if (error > ang_abs_limit) {
-      printf("[%lu] atan2( %f, %f) = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f, dstAng_f,
+      printf("[%zu] atan2( %f, %f) = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f, dstAng_f,
              atan2_res, error);
       ret = CVI_FAILURE;
     }

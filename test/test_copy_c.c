@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
   }
   const char *file_name = argv[1];
   size_t total_run = atoi(argv[2]);
-  printf("Loop value: %lu\n", total_run);
+  printf("Loop value: %zu\n", total_run);
   if (total_run > 1000 || total_run == 0) {
     printf("Incorrect loop value. Usage: %s <file_name> <loop in value (1-1000)>\n", argv[0]);
     return CVI_FAILURE;
@@ -121,7 +121,7 @@ int cpu_ref(const int channels, const int x_sz, const int y_sz, IVE_SRC_IMAGE_S 
   int ret = CVI_SUCCESS;
   for (size_t i = 0; i < channels * src->u16Width * src->u16Height; i++) {
     if (src->pu8VirAddr[0][i] != dst_copy->pu8VirAddr[0][i]) {
-      printf("[%lu] original %d copied %d", i, src->pu8VirAddr[0][i], dst_copy->pu8VirAddr[0][i]);
+      printf("[%zu] original %d copied %d", i, src->pu8VirAddr[0][i], dst_copy->pu8VirAddr[0][i]);
       ret = CVI_FAILURE;
       break;
     }
@@ -138,7 +138,7 @@ int cpu_ref(const int channels, const int x_sz, const int y_sz, IVE_SRC_IMAGE_S 
           src_val = 0;
         }
         if (src_val != dst_val) {
-          printf("[%lu][%lu][%lu] original %d copied %d\n", k, i, j, src_val, dst_val);
+          printf("[%zu][%zu][%zu] original %d copied %d\n", k, i, j, src_val, dst_val);
           ret = CVI_FAILURE;
           break;
         }

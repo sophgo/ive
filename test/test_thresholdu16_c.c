@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
   }
   const char* filename = argv[1];
   size_t total_run = atoi(argv[2]);
-  printf("Loop value: %lu\n", total_run);
+  printf("Loop value: %zu\n", total_run);
   if (total_run > 1000 || total_run == 0) {
     printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
     return CVI_FAILURE;
@@ -151,7 +151,7 @@ int cpu_ref_check(IVE_SRC_IMAGE_S* src_u16, IVE_DST_IMAGE_S* dst_ive, IVE_DST_IM
   CVI_U8* cpu_ptr = dst_cpu->pu8VirAddr[0];
   for (size_t i = 0; i < img_data_sz; i++) {
     if (dst_ptr[i] != cpu_ptr[i]) {
-      printf("index %lu val neon %u cpu %u, origin %u\n", i, dst_ptr[i], cpu_ptr[i], ptr[i]);
+      printf("index %zu val neon %u cpu %u, origin %u\n", i, dst_ptr[i], cpu_ptr[i], ptr[i]);
       return CVI_FAILURE;
     }
   }

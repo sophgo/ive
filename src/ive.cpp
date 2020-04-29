@@ -882,18 +882,24 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   hog_ptr = (float *)pstDstHist->pu8VirAddr;
   u32 &&block_data_length = block_length * pstHogCtrl->u8BinSize;
   u32 nums_of_block_feature = hog_hist_length / block_data_length;
+#ifdef __ARM_ARCH_7A__
+  const u32 neon_turn = 0;
+#else
   u32 neon_turn = block_data_length / 4;
+#endif
   u32 neon_turn_left = neon_turn * 4;
   for (u32 i = 0; i < nums_of_block_feature; i++) {
     float count_total = 0;
     auto &&skip_i = i * block_data_length;
     float *block_head = hog_ptr + skip_i;
+#ifndef __ARM_ARCH_7A__
     for (u32 j = 0; j < neon_turn; j++) {
       float32x4_t f = vld1q_f32(block_head);
       float32x4_t result = vmulq_f32(f, f);
       count_total += vaddvq_f32(result);
       block_head += 4;
     }
+#endif
     for (u32 j = neon_turn_left; j < block_data_length; j++) {
       count_total += hog_ptr[skip_i + j] * hog_ptr[skip_i + j];
     }

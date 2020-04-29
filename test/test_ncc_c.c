@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
   const char* filename = argv[1];
   const char* filename2 = argv[2];
   size_t total_run = atoi(argv[3]);
-  printf("Loop value: %lu\n", total_run);
+  printf("Loop value: %zu\n", total_run);
   if (total_run > 1000 || total_run == 0) {
     printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
     return CVI_FAILURE;

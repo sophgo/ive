@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
   }
   const char *filename = argv[1];
   size_t total_run = atoi(argv[2]);
-  printf("Loop value: %lu\n", total_run);
+  printf("Loop value: %zu\n", total_run);
   if (total_run > 1000 || total_run == 0) {
     printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
     return CVI_FAILURE;
@@ -94,7 +94,7 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE
     float atan2_res = (float)atan2(dstV_f, dstH_f) * mul_val;
     float error = fabs(atan2_res - dstAng_f);
     if (error > ang_abs_limit) {
-      printf("[%lu] atan2( %f, %f) = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f, dstAng_f,
+      printf("[%zu] atan2( %f, %f) = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f, dstAng_f,
              atan2_res, error);
       ret = CVI_FAILURE;
     }
