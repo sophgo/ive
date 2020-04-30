@@ -31,14 +31,15 @@ int main(int argc, char **argv) {
   IVE_IMAGE_S src1 = CVI_IVE_ReadImage(handle, file_name, IVE_IMAGE_TYPE_U8C1);
   int nChannels = 1;
   int width = src1.u16Width;
+  int stride = src1.u16Stride[0];
   int height = src1.u16Height;
 
   IVE_SRC_IMAGE_S src2;
   CVI_IVE_CreateImage(handle, &src2, IVE_IMAGE_TYPE_U8C1, width, height);
-  memset(src2.pu8VirAddr[0], 255, nChannels * width * height);
+  memset(src2.pu8VirAddr[0], 255, nChannels * stride * height);
   for (int j = height / 10; j < height * 9 / 10; j++) {
     for (int i = width / 10; i < width * 9 / 10; i++) {
-      src2.pu8VirAddr[0][i + j * width] = 0;
+      src2.pu8VirAddr[0][i + j * stride] = 0;
     }
   }
   CVI_IVE_BufFlush(handle, &src2);

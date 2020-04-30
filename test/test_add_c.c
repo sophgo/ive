@@ -33,15 +33,16 @@ int main(int argc, char **argv) {
   IVE_IMAGE_S src1 = CVI_IVE_ReadImage(handle, file_name, IVE_IMAGE_TYPE_U8C1);
   int nChannels = 1;
   int width = src1.u16Width;
+  int stride = src1.u16Stride[0];
   int height = src1.u16Height;
-  u32 img_sz = nChannels * width * height;
+  u32 img_sz = nChannels * stride * height;
   printf("Image size is %d X %d\n", width, height);
   IVE_SRC_IMAGE_S src2;
   CVI_IVE_CreateImage(handle, &src2, IVE_IMAGE_TYPE_U8C1, width, height);
   memset(src2.pu8VirAddr[0], 255, img_sz);
   for (int j = height / 10; j < height * 9 / 10; j++) {
     for (int i = width / 10; i < width * 9 / 10; i++) {
-      src2.pu8VirAddr[0][i + j * width] = 0;
+      src2.pu8VirAddr[0][i + j * stride] = 0;
     }
   }
   CVI_IVE_BufFlush(handle, &src2);
@@ -117,7 +118,7 @@ int main(int argc, char **argv) {
   }
   gettimeofday(&t1, NULL);
   unsigned long elapsed_cpu = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
-  unsigned char *ptr4 = malloc(width * height * sizeof(unsigned char));
+  unsigned char *ptr4 = malloc(stride * height * sizeof(unsigned char));
   gettimeofday(&t0, NULL);
   for (size_t i = 0; i < img_sz; i++) {
     int res = (int)ptr1[i] + ptr2[i];

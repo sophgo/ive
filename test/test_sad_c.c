@@ -167,8 +167,8 @@ int cpu_ref(const int width, const int height, const int window_size,
       int total = 0;
       for (size_t a = 0; a < window_size; a++) {
         for (size_t b = 0; b < window_size; b++) {
-          int val = src->pu8VirAddr[0][(i + a) * width + (j + b)];
-          int val2 = src2->pu8VirAddr[0][(i + a) * width + (j + b)];
+          int val = src->pu8VirAddr[0][(i + a) * src->u16Stride[0] + (j + b)];
+          int val2 = src2->pu8VirAddr[0][(i + a) * src2->u16Stride[0] + (j + b)];
           total += abs(val - val2);
         }
       }
@@ -184,8 +184,8 @@ int cpu_ref(const int width, const int height, const int window_size,
         float f_res = cpu_result[i * width + j];
         int int_result = round(f_res);
 
-        if (int_result != dst_addr[i * width + j]) {
-          printf("[%zu, %zu] %d %d \n", j, i, int_result, dst_addr[i * width + j]);
+        if (int_result != dst_addr[i * dst->u16Stride[0] + j]) {
+          printf("[%zu, %zu] %d %d \n", j, i, int_result, dst_addr[i * dst->u16Stride[0] + j]);
           ret = CVI_FAILURE;
           break;
         }
@@ -199,8 +199,8 @@ int cpu_ref(const int width, const int height, const int window_size,
         float f_res = cpu_result[i * width + j];
         int int_result = f_res;
 
-        if (int_result != dst_addr[i * width + j]) {
-          printf("[%zu, %zu] %d %d \n", j, i, int_result, dst_addr[i * width + j]);
+        if (int_result != dst_addr[i * dst->u16Stride[0] + j]) {
+          printf("[%zu, %zu] %d %d \n", j, i, int_result, dst_addr[i * dst->u16Stride[0] + j]);
           ret = CVI_FAILURE;
           break;
         }
@@ -212,9 +212,9 @@ int cpu_ref(const int width, const int height, const int window_size,
   for (size_t i = pad_0; i < height - pad_1; i++) {
     for (size_t j = pad_0; j < width - pad_1; j++) {
       int value = cpu_result[i * width + j] >= threshold ? max : min;
-      if (value != dst_thresh_addr[i * width + j]) {
+      if (value != dst_thresh_addr[i * dst->u16Stride[0] + j]) {
         printf("[%zu, %zu] %d %d \n", j, i, value,
-                                            (int)dst_thresh_addr[i * width + j]);
+                                            (int)dst_thresh_addr[i * dst->u16Stride[0] + j]);
         ret = CVI_FAILURE;
         break;
       }
@@ -226,14 +226,14 @@ int cpu_ref(const int width, const int height, const int window_size,
   unsigned short *dstu16 = (unsigned short*)dst->pu8VirAddr[0];
   for (size_t i = 0; i < height; i++) {
     for (size_t j = 0; j < width; j++) {
-      printf("%d ", (int)dstu16[j + i * width]);
+      printf("%d ", (int)dstu16[j + i * dst->u16Stride[0]]);
     }
     printf("\n");
   }
   printf("Threshold:\n");
   for (size_t i = 0; i < height; i++) {
     for (size_t j = 0; j < width; j++) {
-      printf("%d ", dst_thresh->pu8VirAddr[0][j + i * width]);
+      printf("%d ", dst_thresh->pu8VirAddr[0][j + i * dst_thresh->u16Stride[0]]);
     }
     printf("\n");
   }

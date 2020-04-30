@@ -74,7 +74,7 @@ CviImg::CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides,
   this->m_heights = heights;
   this->m_img_type = img_type;
   this->m_is_planar = IsImgPlanar(this->m_img_type);
-  this->m_size = strides[0] * heights[0];
+  this->m_size = strides[0] * heights[0] * getFmtSize(this->m_fmt);
   for (size_t i = 1; i < strides.size(); i++) {
     if (strides[i] != strides[0]) {
       m_is_stride_ceq = false;

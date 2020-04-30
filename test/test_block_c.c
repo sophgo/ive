@@ -55,7 +55,10 @@ int main(int argc, char **argv) {
 
   IVE_SRC_IMAGE_S src;
   CVI_IVE_CreateImage(handle, &src, IVE_IMAGE_TYPE_U8C1, TEST_W, TEST_H);
-  memcpy(src.pu8VirAddr[0], test_array, TEST_W * TEST_H);
+  for (size_t i = 0; i < TEST_H; i++) {
+    memcpy(src.pu8VirAddr[0] + (i * src.u16Stride[0]), test_array + (i * TEST_W), TEST_W);
+  }
+
   CVI_IVE_BufFlush(handle, &src);
 
   int res_w = TEST_W / CELL_SZ;
@@ -122,7 +125,7 @@ int cpu_ref(const int res_w, const int res_h, const CVI_U32 bin_size,
   memset(cpu_result, 0, res_h * res_w * sizeof(float));
   for (size_t i = 0; i < TEST_H; i++) {
     for (size_t j = 0; j < TEST_W; j++) {
-      char val = src->pu8VirAddr[0][i * TEST_W + j];
+      char val = src->pu8VirAddr[0][i * src->u16Stride[0] + j];
       cpu_result[(int)(i / CELL_SZ) * res_w + (int)(j / CELL_SZ)] += val;
     }
   }
@@ -131,13 +134,14 @@ int cpu_ref(const int res_w, const int res_h, const CVI_U32 bin_size,
       cpu_result[i * res_w + j] /= CELL_SZ * CELL_SZ * bin_size;
     }
   }
+
   printf("U8 check:\n");
   for (size_t i = 0; i < res_h; i++) {
     for (size_t j = 0; j < res_w; j++) {
       float f_res = cpu_result[i * res_w + j];
       int int_result = round(f_res);
-      if (int_result != dst_u8->pu8VirAddr[0][i * res_w + j]) {
-        printf("%d %d \n", int_result, dst_u8->pu8VirAddr[0][i * res_w + j]);
+      if (int_result != dst_u8->pu8VirAddr[0][i * dst_u8->u16Stride[0] + j]) {
+        printf("%d %d \n", int_result, dst_u8->pu8VirAddr[0][i * dst_u8->u16Stride[0] + j]);
         ret = CVI_FAILURE;
         break;
       }
@@ -146,9 +150,9 @@ int cpu_ref(const int res_w, const int res_h, const CVI_U32 bin_size,
   printf("BF16 check:\n");
   for (size_t i = 0; i < res_h; i++) {
     for (size_t j = 0; j < res_w; j++) {
-      if (cpu_result[i * res_w + j] != ((float*)dst_fp32->pu8VirAddr[0])[i * res_w + j]) {
+      if (cpu_result[i * res_w + j] != ((float*)dst_fp32->pu8VirAddr[0])[i * dst_fp32->u16Stride[0] + j]) {
         printf("%f %f \n", cpu_result[i * res_w + j],
-                           ((float*)dst_fp32->pu8VirAddr[0])[i * res_w + j]);
+                           ((float*)dst_fp32->pu8VirAddr[0])[i * dst_fp32->u16Stride[0] + j]);
         ret = CVI_FAILURE;
         break;
       }

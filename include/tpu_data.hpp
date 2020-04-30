@@ -137,6 +137,14 @@ inline bool IsImgPlanar(CVIIMGTYPE img_type) {
   return is_planar;
 }
 
+inline u32 WidthAlign(const u32 width, const u32 align) {
+  u32 stride = (u32)(width / align) * align;
+  if (stride < width) {
+    stride += align;
+  }
+  return stride;
+}
+
 /**
  * @brief A wrapper for TPU device memory defined in runtime.
  *        This is a class originally designed for TPU, so the default setup for image is planar.

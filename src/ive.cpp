@@ -146,80 +146,109 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
     return CVI_FAILURE;
   }
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  int c = 1;
   int fmt_size = 1;
   fmt_t fmt = FMT_U8;
   CVIIMGTYPE img_type;
   std::vector<u32> strides;
   std::vector<u32> heights;
+  const u32 align = 16;
   switch (enType) {
-    case IVE_IMAGE_TYPE_S8C1:
+    case IVE_IMAGE_TYPE_S8C1: {
       img_type = CVI_SINGLE;
+      const u32 stride = WidthAlign(u16Width, align);
+      strides.push_back(stride);
+      heights.push_back(u16Height);
       fmt = FMT_I8;
-      break;
-    case IVE_IMAGE_TYPE_U8C1:
+    } break;
+    case IVE_IMAGE_TYPE_U8C1: {
+      const u32 stride = WidthAlign(u16Width, align);
+      strides.push_back(stride);
+      heights.push_back(u16Height);
       img_type = CVI_GRAY;
-      break;
-    case IVE_IMAGE_TYPE_YUV420P:
+    } break;
+    case IVE_IMAGE_TYPE_YUV420P: {
       img_type = CVI_YUV420;
-      strides.push_back(u16Width);
-      strides.push_back(u16Width >> 1);
-      strides.push_back(u16Width >> 1);
+      const u32 stride = WidthAlign(u16Width, align);
+      strides.push_back(stride);
+      const u32 stride2 = WidthAlign(u16Width >> 1, align);
+      strides.push_back(stride2);
+      strides.push_back(stride2);
       heights.push_back(u16Height);
       heights.push_back(u16Height >> 1);
       heights.push_back(u16Height >> 1);
-      break;
-    case IVE_IMAGE_TYPE_YUV422P:
+    } break;
+    case IVE_IMAGE_TYPE_YUV422P: {
       img_type = CVI_YUV422;
-      strides.push_back(u16Width * 2);
+      const u32 stride = WidthAlign(u16Width * 2, align);
+      strides.push_back(stride);
       heights.push_back(u16Height);
-      break;
-    case IVE_IMAGE_TYPE_U8C3_PACKAGE:
+    } break;
+    case IVE_IMAGE_TYPE_U8C3_PACKAGE: {
       img_type = CVI_RGB_PACKED;
-      strides.push_back(u16Width * 3);
+      const u32 stride = WidthAlign(u16Width * 3, align);
+      strides.push_back(stride);
       heights.push_back(u16Height);
-      break;
-    case IVE_IMAGE_TYPE_U8C3_PLANAR:
+    } break;
+    case IVE_IMAGE_TYPE_U8C3_PLANAR: {
       img_type = CVI_RGB_PLANAR;
-      c = 3;
-      break;
-    case IVE_IMAGE_TYPE_BF16C1:
+      const u32 stride = WidthAlign(u16Width, align);
+      strides.resize(3, stride);
+      heights.resize(3, u16Height);
+    } break;
+    case IVE_IMAGE_TYPE_BF16C1: {
       img_type = CVI_SINGLE;
+      const u32 stride = WidthAlign(u16Width, align);
+      strides.push_back(stride);
+      heights.push_back(u16Height);
       fmt_size = 2;
       fmt = FMT_BF16;
-      break;
-    case IVE_IMAGE_TYPE_U16C1:
+    } break;
+    case IVE_IMAGE_TYPE_U16C1: {
       img_type = CVI_SINGLE;
+      const u32 stride = WidthAlign(u16Width, align);
+      strides.push_back(stride);
+      heights.push_back(u16Height);
       fmt_size = 2;
       fmt = FMT_U16;
-      break;
-    case IVE_IMAGE_TYPE_S16C1:
+    } break;
+    case IVE_IMAGE_TYPE_S16C1: {
       img_type = CVI_SINGLE;
+      const u32 stride = WidthAlign(u16Width, align);
+      strides.push_back(stride);
+      heights.push_back(u16Height);
       fmt_size = 2;
       fmt = FMT_I16;
-      break;
-    case IVE_IMAGE_TYPE_U32C1:
+    } break;
+    case IVE_IMAGE_TYPE_U32C1: {
       img_type = CVI_SINGLE;
+      const u32 stride = WidthAlign(u16Width, align);
+      strides.push_back(stride);
+      heights.push_back(u16Height);
       fmt_size = 4;
       fmt = FMT_U32;
-      break;
-    case IVE_IMAGE_TYPE_FP32C1:
+    } break;
+    case IVE_IMAGE_TYPE_FP32C1: {
       img_type = CVI_SINGLE;
+      const u32 stride = WidthAlign(u16Width, align);
+      strides.push_back(stride);
+      heights.push_back(u16Height);
       fmt_size = 4;
       fmt = FMT_F32;
-      break;
+    } break;
     default:
       std::cerr << "Not supported enType " << enType << std::endl;
       return CVI_FAILURE;
       break;
   }
+  if (strides.size() == 0 || heights.size() == 0) {
+    std::cerr << "[DEV] Stride not set." << std::endl;
+    return CVI_FAILURE;
+  }
 
   CviImg *buffer_ptr =
       pstBuffer == NULL ? nullptr : reinterpret_cast<CviImg *>(pstBuffer->tpu_block);
-  auto *cpp_img = strides.size() == 0
-                      ? new CviImg(&handle_ctx->ctx, c, u16Height, u16Width, fmt, buffer_ptr)
-                      : new CviImg(&handle_ctx->ctx, u16Height, u16Width, strides, heights,
-                                   img_type, fmt, buffer_ptr);
+  auto *cpp_img = new CviImg(&handle_ctx->ctx, u16Height, u16Width, strides, heights, img_type, fmt,
+                             buffer_ptr);
 
   pstImg->tpu_block = reinterpret_cast<CVI_IMG *>(cpp_img);
 
@@ -315,15 +344,23 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
     }
     printf("desiredNChannels, width, height: %d %d %d\n", desiredNChannels, width, height);
     if (enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
-      size_t image_total = width * height;
-      for (size_t i = 0; i < image_total; i++) {
-        size_t stb_idx = i * 3;
-        img.pu8VirAddr[0][i] = stbi_data[stb_idx];
-        img.pu8VirAddr[1][i] = stbi_data[stb_idx + 1];
-        img.pu8VirAddr[2][i] = stbi_data[stb_idx + 2];
+      for (size_t i = 0; i < (size_t)height; i++) {
+        for (size_t j = 0; j < (size_t)width; j++) {
+          size_t stb_idx = (i * width + j) * 3;
+          size_t img_idx = (i * img.u16Stride[0] + j);
+          img.pu8VirAddr[0][img_idx] = stbi_data[stb_idx];
+          img.pu8VirAddr[1][img_idx] = stbi_data[stb_idx + 1];
+          img.pu8VirAddr[2][img_idx] = stbi_data[stb_idx + 2];
+        }
       }
     } else {
-      memcpy(img.pu8VirAddr[0], stbi_data, desiredNChannels * width * height);
+      stbi_uc *ptr = stbi_data;
+      for (size_t i = 0; i < (size_t)desiredNChannels; i++) {
+        for (size_t j = 0; j < (size_t)height; j++) {
+          memcpy(img.pu8VirAddr[i] + (j * img.u16Stride[i]), ptr, width);
+          ptr += width;
+        }
+      }
     }
     CVI_IVE_BufFlush(pIveHandle, &img);
     stbi_image_free(stbi_data);

@@ -148,44 +148,52 @@ int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE
   float sqrt_epsilon = 2;
   float ang_abs_limit = 1;
   printf("Check Mag Abs:\n");
-
-  for (size_t i = 0; i < channels * src->u16Width * src->u16Height; i++) {
-    float dstH_f = convert_bf16_fp32(dstH_ptr[i]);
-    float dstV_f = convert_bf16_fp32(dstV_ptr[i]);
-    float dstMag_f = convert_bf16_fp32(dstMagL1_ptr[i]);
-    float abs_res = fabs(dstV_f) + fabs(dstH_f);
-    float error = fabs(abs_res - dstMag_f);
-    if (error > abs_epsilon) {
-      printf("[%zu] (|%f| + |%f|) / 2 = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f,
-             dstMag_f, abs_res, error);
-      ret = CVI_FAILURE;
+  for (size_t i = 0; i < channels * src->u16Height; i++) {
+    for (size_t j = 0; j < src->u16Width; j++) {
+      size_t idx = j + i * src->u16Stride[0];
+      float dstH_f = convert_bf16_fp32(dstH_ptr[idx]);
+      float dstV_f = convert_bf16_fp32(dstV_ptr[idx]);
+      float dstMag_f = convert_bf16_fp32(dstMagL1_ptr[idx]);
+      float abs_res = fabs(dstV_f) + fabs(dstH_f);
+      float error = fabs(abs_res - dstMag_f);
+      if (error > abs_epsilon) {
+        printf("[%zu] (|%f| + |%f|) / 2 = TPU %f, CPU %f. eplison = %f\n", idx, dstV_f, dstH_f,
+               dstMag_f, abs_res, error);
+        ret = CVI_FAILURE;
+      }
     }
   }
   printf("Check Mag Sqrt:\n");
-  for (size_t i = 0; i < channels * src->u16Width * src->u16Height; i++) {
-    float dstH_f = convert_bf16_fp32(dstH_ptr[i]);
-    float dstV_f = convert_bf16_fp32(dstV_ptr[i]);
-    float dstMag_f = convert_bf16_fp32(dstMagL2_ptr[i]);
-    float sqrt_res = sqrtf(dstV_f * dstV_f + dstH_f * dstH_f);
-    float error = fabs(sqrt_res - dstMag_f);
-    if (error > sqrt_epsilon) {
-      printf("[%zu] sqrt( %f^2 + %f^2) = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f,
-             dstMag_f, sqrt_res, error);
-      ret = CVI_FAILURE;
+  for (size_t i = 0; i < channels * src->u16Height; i++) {
+    for (size_t j = 0; j < src->u16Width; j++) {
+      size_t idx = j + i * src->u16Stride[0];
+      float dstH_f = convert_bf16_fp32(dstH_ptr[idx]);
+      float dstV_f = convert_bf16_fp32(dstV_ptr[idx]);
+      float dstMag_f = convert_bf16_fp32(dstMagL2_ptr[idx]);
+      float sqrt_res = sqrtf(dstV_f * dstV_f + dstH_f * dstH_f);
+      float error = fabs(sqrt_res - dstMag_f);
+      if (error > sqrt_epsilon) {
+        printf("[%zu] sqrt( %f^2 + %f^2) = TPU %f, CPU %f. eplison = %f\n", idx, dstV_f, dstH_f,
+               dstMag_f, sqrt_res, error);
+        ret = CVI_FAILURE;
+      }
     }
   }
 
   printf("Check Ang:\n");
-  for (size_t i = 0; i < channels * src->u16Width * src->u16Height; i++) {
-    float dstH_f = convert_bf16_fp32(dstH_ptr[i]);
-    float dstV_f = convert_bf16_fp32(dstV_ptr[i]);
-    float dstAng_f = convert_bf16_fp32(dstAng_ptr[i]);
-    float atan2_res = (float)atan2(dstV_f, dstH_f) * mul_val;
-    float error = fabs(atan2_res - dstAng_f);
-    if (error > ang_abs_limit) {
-      printf("[%zu] atan2( %f, %f) = TPU %f, CPU %f. eplison = %f\n", i, dstV_f, dstH_f, dstAng_f,
-             atan2_res, error);
-      ret = CVI_FAILURE;
+  for (size_t i = 0; i < channels * src->u16Height; i++) {
+    for (size_t j = 0; j < src->u16Width; j++) {
+      size_t idx = j + i * src->u16Stride[0];
+      float dstH_f = convert_bf16_fp32(dstH_ptr[idx]);
+      float dstV_f = convert_bf16_fp32(dstV_ptr[idx]);
+      float dstAng_f = convert_bf16_fp32(dstAng_ptr[idx]);
+      float atan2_res = (float)atan2(dstV_f, dstH_f) * mul_val;
+      float error = fabs(atan2_res - dstAng_f);
+      if (error > ang_abs_limit) {
+        printf("[%zu] atan2( %f, %f) = TPU %f, CPU %f. eplison = %f\n", idx, dstV_f, dstH_f,
+               dstAng_f, atan2_res, error);
+        ret = CVI_FAILURE;
+      }
     }
   }
   return ret;

@@ -31,8 +31,8 @@ int main(int argc, char **argv) {
   printf("BM Kernel init.\n");
   int size = 1933155;
   int div = (size % 16) == 0 ? size / 16 : (size / 16) + 1;
-  int width = div;
-  int height = 16;
+  int width = 16;
+  int height = div;
   // Generate information
   IVE_SRC_IMAGE_S src;
   CVI_IVE_CreateImage(handle, &src, IVE_IMAGE_TYPE_S8C1, width, height);
