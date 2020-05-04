@@ -351,7 +351,8 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   auto *src_img = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   auto *cpp_img = new CviImg(&handle_ctx->ctx, *src_img, u16X1, u16Y1, u16X2, u16Y2);
-  if (cpp_img == nullptr) {
+  if (cpp_img->GetVAddr() == nullptr) {
+    delete cpp_img;
     return CVI_FAILURE;
   }
   pstDst->tpu_block = reinterpret_cast<CVI_IMG *>(cpp_img);

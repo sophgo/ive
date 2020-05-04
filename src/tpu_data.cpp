@@ -7,8 +7,11 @@ CviImg::CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, CviImg 
 
 CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) {
   if (!this->m_is_stride_ceq) {
-    std::cerr << "Error, sub-image does not support non-equal stride in different channels."
-              << std::endl;
+    std::cerr << "Sub-image does not support non-equal stride in different channels." << std::endl;
+    return;
+  }
+  if (!this->m_is_planar) {
+    std::cerr << "Sub-image only supports planar images." << std::endl;
     return;
   }
   if (x1 > x2) {
