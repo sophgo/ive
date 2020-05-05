@@ -488,6 +488,7 @@ CVI_S32 CVI_SYS_FreeI(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
   auto *cpp_img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
   cpp_img->Free(&handle_ctx->ctx);
   delete cpp_img;
+  cpp_img = nullptr;
   return CVI_SUCCESS;
 }
 
