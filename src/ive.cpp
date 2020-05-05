@@ -305,7 +305,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
       fmt = FMT_F32;
     } break;
     default:
-      std::cerr << "Not supported enType " << enType << std::endl;
+      std::cerr << "Not supported enType " << imgEnTypeStr[enType] << std::endl;
       return CVI_FAILURE;
       break;
   }
@@ -396,7 +396,7 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
       desiredNChannels = STBI_rgb;
       break;
     default:
-      std::cerr << "Not support channel " << enType;
+      std::cerr << "Not support channel " << imgEnTypeStr[enType] << std::endl;
       break;
   }
   IVE_IMAGE_S img;
@@ -464,7 +464,7 @@ CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAG
       stride = 3;
       break;
     default:
-      std::cerr << "Not support channel " << pstImg->enType;
+      std::cerr << "Not support channel " << imgEnTypeStr[pstImg->enType] << std::endl;
       return CVI_FAILURE;
       break;
   }
