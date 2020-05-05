@@ -2,12 +2,6 @@
 #define _IVE_H
 #include "cvi_comm_ive.h"
 
-// for HW CSC/resize
-#include <linux/videodev2.h>
-#include <sys/ioctl.h>
-#include "cvi_common.h"
-// ---
-
 #ifndef __cplusplus
 #include <stdbool.h>
 #endif

@@ -1,5 +1,10 @@
 #include "ive.h"
+
+// for HW CSC/resize
 #include <linux/videodev2.h>
+#include <sys/ioctl.h>
+#include "cvi_common.h"
+// ---
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
