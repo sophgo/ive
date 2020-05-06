@@ -38,6 +38,19 @@ elif [[ "$1" == "soc" ]]; then
                              -DCMAKE_TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-aarch64-linux.cmake
     ninja -j8 && ninja install
     popd
+elif [[ "$1" == "soc32" ]]; then
+    mkdir -p $TMP_WORKING_DIR/build_sdk
+    pushd $TMP_WORKING_DIR/build_sdk
+    cmake -G Ninja $IVE_ROOT -DCVI_TARGET=soc \
+                             -DENABLE_SYSTRACE=OFF \
+                             -DCMAKE_BUILD_TYPE=SDKRelease \
+                             -DMLIR_SDK_ROOT=$TPU_SDK_INSTALL_PATH \
+                             -DMIDDLEWARE_SDK_ROOT=$MW_PATH \
+                             -DCMAKE_INSTALL_PREFIX=$IVE_SDK_INSTALL_PATH \
+                             -DTOOLCHAIN_ROOT_DIR=$HOST_TOOL_PATH \
+                             -DCMAKE_TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-gnueabihf-linux.cmake
+    ninja -j8 && ninja install
+    popd
 else
   echo "Unsupported build type."
   exit 1
