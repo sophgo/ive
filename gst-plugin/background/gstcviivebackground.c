@@ -43,7 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <ive_tracer.h>
+#include <cvi_tracer.h>
 
 GST_DEBUG_CATEGORY_STATIC (gst_cvi_ive_background_debug_category);
 #define GST_CAT_DEFAULT gst_cvi_ive_background_debug_category
