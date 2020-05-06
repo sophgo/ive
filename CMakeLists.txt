@@ -46,8 +46,10 @@ if ("${TRACER_ROOT}" STREQUAL "")
 endif()
 if(EXISTS "${TRACER_ROOT}")
   execute_process(COMMAND git remote -v
+                  WORKING_DIRECTORY ${TRACER_ROOT}
                   OUTPUT_VARIABLE TRACER_REMOTE_URL)
-  if (NOT ${TRACER_REMOTE_URL} MATCHES 10.34.33.3)
+  if (NOT "${TRACER_REMOTE_URL}" MATCHES "10.34.33.3:8480" OR
+          "${TRACER_REMOTE_URL}" MATCHES "10.34.33.3:8422")
     message(AUTHOR_WARNING "Warning, this tracer is not cloned from GitLab. "
                            "May cause error while compiling or running.")
   endif()
