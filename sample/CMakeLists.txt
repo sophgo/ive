@@ -28,3 +28,11 @@ buildninstall_test(sample_sad)
 buildninstall_test(sample_sub)
 buildninstall_test(sample_thresh16)
 buildninstall_test(sample_xor)
+
+
+buildninstall_test(sample_16bitTo8bit)
+buildninstall_test(sample_histEq)
+buildninstall_test(sample_histogram)
+buildninstall_test(sample_integral_image)
+buildninstall_test(sample_ncc)
+buildninstall_test(sample_lbp)
