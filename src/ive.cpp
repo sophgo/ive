@@ -522,7 +522,8 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
     std::vector<CviImg> inputs = {*cpp_src};
     std::vector<CviImg> outputs = {*cpp_dst};
 
-    handle_ctx->t_h.t_copy_int.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs, true);
+    ret = handle_ctx->t_h.t_copy_int.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs,
+                                         true);
   }
   return ret;
 }
