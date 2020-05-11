@@ -12,7 +12,7 @@ int IveTPUThresholdSlope::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_cmdbuf_subfix = "threshSlope";
   m_slice_info.nums_of_tl = 1;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUThresholdSlope::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -45,7 +45,7 @@ int IveTPUThresholdSlope::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(0);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUThresholdSlope::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

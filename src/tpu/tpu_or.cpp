@@ -5,7 +5,7 @@ int IveTPUOr::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_cmdbuf_subfix = "or";
   m_slice_info.nums_of_tl = 2;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUOr::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -29,7 +29,7 @@ int IveTPUOr::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_in_idx->push_back(0);
   tl_in_idx->push_back(1);
   tl_out_idx->push_back(0);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUOr::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

@@ -47,7 +47,7 @@ int IveTPUMagAndAng::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.nums_of_table = total_table * 2;
   m_kernel_info.nums_of_kernel = 0;  // 2 BF16 kernels
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -238,7 +238,7 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 #ifdef MAGnANG_DEBUG
   counting = 0;
 #endif
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUMagAndAng::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

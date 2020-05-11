@@ -13,7 +13,7 @@ int IveTPUNormalize::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.ping_pong_size = 2;
   m_slice_info.nums_of_tl = 1 * 2;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUNormalize::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -63,7 +63,7 @@ int IveTPUNormalize::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     tl_in_idx->push_back(0 + pp);
     tl_out_idx->push_back(0 + pp);
   }
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUNormalize::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

@@ -22,7 +22,7 @@ int IveTPUBlock::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.fix_lmem_size = m_channel * MULTIPLIER_ONLY_PACKED_DATA_SIZE;
   m_kernel_info.nums_of_kernel = 1;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUBlock::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res) {
@@ -34,7 +34,7 @@ int IveTPUBlock::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *
   tg_out_res->w.slice /= m_kernel_info.size;
   tg_out_res->h.left /= m_kernel_info.size;
   tg_out_res->w.left /= m_kernel_info.size;
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUBlock::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -103,7 +103,7 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(1);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUBlock::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
@@ -114,5 +114,5 @@ int IveTPUBlock::freeChildTGMem(bmctx_t *ctx) {
   mp_multiplier->Free(ctx);
   delete mp_multiplier;
   mp_multiplier = nullptr;
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }

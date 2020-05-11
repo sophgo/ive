@@ -21,7 +21,7 @@ int IveTPUBlockBF16::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.nums_of_tl = 3 * 2;
   m_kernel_info.nums_of_kernel = 1;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUBlockBF16::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res) {
@@ -33,7 +33,7 @@ int IveTPUBlockBF16::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceR
   tg_out_res->w.slice /= m_kernel_info.size;
   tg_out_res->h.left /= m_kernel_info.size;
   tg_out_res->w.left /= m_kernel_info.size;
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUBlockBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -97,7 +97,7 @@ int IveTPUBlockBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(2);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUBlockBF16::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

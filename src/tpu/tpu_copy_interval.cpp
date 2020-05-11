@@ -10,7 +10,7 @@ int IveTPUCopyInterval::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_cmdbuf_subfix = "intCopy";
   m_slice_info.nums_of_tl = 1 + m_hori * m_verti;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUCopyInterval::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res) {
@@ -22,7 +22,7 @@ int IveTPUCopyInterval::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, Sli
   tg_out_res->h.slice *= m_verti;
   tg_out_res->w.slice *= m_hori;
   tg_out_res->w.left *= m_hori;
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUCopyInterval::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -53,7 +53,7 @@ int IveTPUCopyInterval::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(1);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUCopyInterval::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

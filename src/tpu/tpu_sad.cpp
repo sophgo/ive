@@ -36,7 +36,7 @@ int IveTPUSAD::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   }
   m_kernel_info.nums_of_kernel = 1;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -147,7 +147,7 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
     tl_out_idx->push_back(3);
   }
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUSAD::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
@@ -167,5 +167,5 @@ int IveTPUSAD::freeChildTGMem(bmctx_t *ctx) {
     delete mp_table_pos_neg;
     mp_table_pos_neg = nullptr;
   }
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }

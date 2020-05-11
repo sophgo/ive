@@ -12,7 +12,7 @@ int IveTPUSubAbs::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.ping_pong_share_tl = 1;
   m_slice_info.nums_of_tl = 4;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUSubAbs::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -56,7 +56,7 @@ int IveTPUSubAbs::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     tl_in_idx->push_back(1 + pp * 3);
     tl_out_idx->push_back(0 + pp * 3);
   }
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUSubAbs::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

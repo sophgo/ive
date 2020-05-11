@@ -98,9 +98,9 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
                                  const BMAddrInfo &bm_dest_info, const int &pad_l, const int &pad_t,
                                  const bool is_1d) {
 #if DISABLE_OVERFLOWCHECK
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 #else
-  int ret = BM_SUCCESS;
+  int ret = CVI_SUCCESS;
   for (size_t k = 0; k < input.size(); k++) {
     const u64 bm_start_addr = input[k].GetPAddr();
     u64 jumped_value = bm_src_info.addr_vec[k] - bm_start_addr;
@@ -110,7 +110,7 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
           "Error! Input %u jumped value %lu not align to image size %u, start addr "
           "%lu\n",
           (u32)k, (long unsigned int)jumped_value, total_addr, (long unsigned int)bm_start_addr);
-      ret = BM_ERR_FAILURE;
+      ret = CVI_FAILURE;
     }
   }
   for (size_t k = 0; k < output.size(); k++) {
@@ -125,7 +125,7 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
           "Error! Output %u jumped value %lu not align to image size %u, start addr "
           "%lu\n",
           (u32)k, (long unsigned int)jumped_value, total_addr, (long unsigned int)bm_des_addr);
-      ret = BM_ERR_FAILURE;
+      ret = CVI_FAILURE;
     }
   }
   return ret;
@@ -165,7 +165,7 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
     const u32 in_ih = ih + pad_top + pad_bottom;
     updateTSIInfo(bk_ctx, 1, ic, in_ih, iw, 1, ic, ih, iw, tl_fmt_type, tgin_fmt_type,
                   tgout_fmt_type, tsi);
-    return BM_SUCCESS;
+    return CVI_SUCCESS;
   }
   bmk1880v2_tensor_lmem_shape_t tl_weight_shape;
   bmk1880v2_tensor_lmem_shape_t tl_bias_shape;
@@ -175,7 +175,7 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
                                     &tsi->tg_load.shape, &tsi->tg_load.stride, &tl_weight_shape,
                                     &tl_bias_shape, &tsi->tl_store.shape, tl_fmt_type, 1) == -1) {
     std::cerr << "Extend failed." << std::endl;
-    return BM_ERR_FAILURE;
+    return CVI_FAILURE;
   }
   // FIXME: Temporarily solution for mix precision hack.
   if (tgin_fmt_type != tl_fmt_type) {
@@ -243,10 +243,10 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
       std::cerr << "This is a dev warning only." << std::endl;
     } else {
       std::cerr << "Slice failed." << std::endl;
-      return BM_ERR_FAILURE;
+      return CVI_FAILURE;
     }
   }
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 inline bool calculateOutExtHSlice(const int &npu_num, const int &img_c, const u32 &max_slice,
@@ -392,7 +392,7 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32
                       sliceUnit *unit_w, const bool enable_cext) {
   if (c > 32) {
     std::cerr << "Channel exceed limitation." << std::endl;
-    return BM_ERR_FAILURE;
+    return CVI_FAILURE;
   }
   // Calculate fixed kernel size
   u32 kernel_sz = (kernel_info.nums_of_kernel * kernel_info.size * kernel_info.size +
@@ -402,7 +402,7 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32
                    (int64_t)fixed_lmem_size;
   if (result < 0) {
     std::cerr << "Insufficient memory: " << result << std::endl;
-    return BM_ERR_FAILURE;
+    return CVI_FAILURE;
   }
   const u32 available_lmem_per_tl = (u32)result / nums_of_lmem;
   u32 w_length = w;
@@ -478,7 +478,7 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32
             unit_h->left);
   IVE_DEBUG("W slice %d skip %d turn %d left %d\n", unit_w->slice, unit_w->skip, unit_w->turn,
             unit_w->left);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 bmk1880v2_tensor_lmem_t *IveCore::allocTLMem(bmk1880v2_context_t *bk_ctx,
@@ -505,16 +505,16 @@ int IveCore::freeTLMems(bmk1880v2_context_t *bk_ctx) {
   }
   m_tl_type.clear();
   m_tl_vec.clear();
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveCore::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res) {
   *tg_in_res = slice_res;
   *tg_out_res = slice_res;
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
-int IveCore::freeChildTGMem(bmctx_t *ctx) { return BM_SUCCESS; }
+int IveCore::freeChildTGMem(bmctx_t *ctx) { return CVI_SUCCESS; }
 
 int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                                  std::vector<CviImg> &input, std::vector<CviImg> *output,
@@ -553,8 +553,8 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   int ret = getSlice(nums_of_tl, m_slice_info.nums_of_table, fix_lmem_size, batch, channel, height,
                      width, m_table_per_channel_size, m_kernel_info, m_chip_info.npu_num,
                      &slice_res.h, &slice_res.w, false);
-  if (ret != BM_SUCCESS) {
-    return BM_ERR_FAILURE;
+  if (ret != CVI_SUCCESS) {
+    return CVI_FAILURE;
   }
 
   SliceRes in_slice_res, out_slice_res;
@@ -769,7 +769,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   // Dummy gaurd for buffer overflow
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], false);
-  if (ret == BM_SUCCESS) {
+  if (ret == CVI_SUCCESS) {
     submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
   freeTLMems(bk_ctx);
@@ -783,7 +783,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   if (m_slice_info.io_fmt == FMT_INVALID) {
     std::cerr << "Invalid fmt engine type." << std::endl;
     freeChildTGMem(ctx);
-    return BM_ERR_FAILURE;
+    return CVI_FAILURE;
   }
   // FIXME: Support later
   if (m_slice_info.ping_pong_size != 1) {
@@ -808,8 +808,8 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   int ret = getSlice(nums_of_tl, m_slice_info.nums_of_table, fix_lmem_size, batch, channel, height,
                      width, m_table_per_channel_size, m_kernel_info, m_chip_info.npu_num,
                      &slice_res.h, &slice_res.w, true);
-  if (ret != BM_SUCCESS) {
-    return BM_ERR_FAILURE;
+  if (ret != CVI_SUCCESS) {
+    return CVI_FAILURE;
   }
   // FIXME: Slice Setup not supported in this mode yet.
   // sliceSetup(slice_res, &in_slice_res, &out_slice_res);
@@ -1193,13 +1193,13 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   // Dummy gaurd for buffer overflow
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], false);
-  if (ret == BM_SUCCESS) {
+  if (ret == CVI_SUCCESS) {
     submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
 
   freeTLMems(bk_ctx);
   freeChildTGMem(ctx);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
@@ -1207,12 +1207,12 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   // Only supports kernel size = 1. NoKernel means kernel size = 1. You still can use depthwise
   // conv + qdm as u8 div.
   if (m_kernel_info.size != 1) {
-    return BM_ERR_FAILURE;
+    return CVI_FAILURE;
   }
   u32 total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
   if (total_size % 16) {
     std::cerr << "Image size " << total_size << " is not 16 aligned." << std::endl;
-    return BM_ERR_FAILURE;
+    return CVI_FAILURE;
   }
   bmk1880v2_tensor_lmem_shape_t tl_table_s;
   u64 table_sz = bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_U8);
@@ -1453,14 +1453,14 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
       bm_dest_info.addr_vec[k] += 1 * jump_dst * bm_dest_info.fns_vec[k].getSize();
     }
   }
-  int ret = BM_SUCCESS;
+  int ret = CVI_SUCCESS;
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], true);
-  if (ret == BM_SUCCESS) {
+  if (ret == CVI_SUCCESS) {
     submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
 
   freeTLMems(bk_ctx);
   freeChildTGMem(ctx);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }

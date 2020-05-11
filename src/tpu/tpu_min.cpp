@@ -15,7 +15,7 @@ int IveTPUMin::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.io_fmt = FMT_BF16;
   m_slice_info.nums_of_tl = 2 * 2;
   m_kernel_info.nums_of_kernel = 0;
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUMin::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -68,7 +68,7 @@ int IveTPUMin::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(1);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUMin::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

@@ -171,5 +171,5 @@ int CviImg::AllocateDevice(bmctx_t *ctx) {
 int CviImg::Free(bmctx_t *ctx) {
   bmmem_device_free(*ctx, this->m_bmmem);
   this->m_bmmem = NULL;
-  return 0;
+  return CVI_SUCCESS;
 }

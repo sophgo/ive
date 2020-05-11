@@ -28,7 +28,7 @@ int IveTPUSobel::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.nums_of_tl = 4 * 2;                // in bf16
   m_slice_info.nums_of_table = total_tables * 2;  // sqrt 2 table 256 * 2 in bf16
   m_kernel_info.nums_of_kernel = 4;               // 2 BF16 kernels
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -169,7 +169,7 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(1);
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUSobel::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

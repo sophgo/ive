@@ -8,7 +8,7 @@ int IveTPUSigmoid::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.nums_of_tl = 3 * 2;
   m_slice_info.nums_of_table = 2 * 2;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUSigmoid::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -52,7 +52,7 @@ int IveTPUSigmoid::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     tl_in_idx->push_back(0 + pp * 3);
     tl_out_idx->push_back(2 + pp * 3);
   }
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUSigmoid::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
@@ -74,5 +74,5 @@ int IveTPUSigmoid::freeChildTGMem(bmctx_t *ctx) {
     delete table_slope;
     table_slope = nullptr;
   }
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }

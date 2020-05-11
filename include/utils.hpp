@@ -20,11 +20,11 @@ inline int createHandle(bmctx_t *ctx, bmk1880v2_context_t **bmk) {
   int ret = bm_init(0, ctx);
   if (ret != BM_SUCCESS) {
     fprintf(stderr, "cvi_init failed, err %d\n", ret);
-    return ret;
+    return CVI_FAILURE;
   }
 
   cviruntime_cvikernel_create(*ctx, (void **)bmk);
-  return ret;
+  return CVI_SUCCESS;
 }
 
 inline void destroyHandle(bmctx_t *ctx) {

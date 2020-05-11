@@ -15,7 +15,7 @@ int IveTPUMax::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.io_fmt = FMT_U8;
   m_slice_info.nums_of_tl = 2;
   m_kernel_info.nums_of_kernel = 0;
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUMax::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -50,7 +50,7 @@ int IveTPUMax::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(1);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUMax::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

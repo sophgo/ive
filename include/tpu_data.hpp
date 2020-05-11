@@ -301,9 +301,9 @@ class CviImg {
    */
   int Flush(bmctx_t *ctx) {
 #ifdef CVI_SOC
-    return bmmem_device_flush(*ctx, m_bmmem);
+    return bmmem_device_flush(*ctx, m_bmmem) == BM_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
 #else
-    return 0;
+    return CVI_SUCCESS;
 #endif
   }
 
@@ -315,9 +315,9 @@ class CviImg {
    */
   int Invld(bmctx_t *ctx) {
 #ifdef CVI_SOC
-    return bmmem_device_invld(*ctx, m_bmmem);
+    return bmmem_device_invld(*ctx, m_bmmem) == BM_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
 #else
-    return 0;
+    return CVI_SUCCESS;
 #endif
   }
 

@@ -60,7 +60,7 @@ int TblMgr::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
     bf16_atan_pos_neg((u16 *)mp_pos_neg->GetVAddr(), &m_table_s);
     mp_pos_neg->Flush(ctx);
   }
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int TblMgr::free(bmctx_t *ctx) {
@@ -117,7 +117,7 @@ int TblMgr::free(bmctx_t *ctx) {
     delete mp_zero;
     mp_zero = nullptr;
   }
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 const bmk1880v2_tensor_lmem_shape_t TblMgr::getTblTLShape(fmt_t fmt) {

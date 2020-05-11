@@ -22,7 +22,7 @@ int IveTPUSobelGradOnly::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.io_fmt = FMT_BF16;
   m_slice_info.nums_of_tl = 3 * 2;   // in bf16
   m_kernel_info.nums_of_kernel = 4;  // 2 BF16 kernels
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUSobelGradOnly::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -77,7 +77,7 @@ int IveTPUSobelGradOnly::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(1);
   tl_out_idx->push_back(2);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUSobelGradOnly::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

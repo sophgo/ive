@@ -21,7 +21,7 @@ int IveTPUTbl::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.nums_of_tl = 1;
   m_slice_info.nums_of_table = 1;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUTbl::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -52,7 +52,7 @@ int IveTPUTbl::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     tl_in_idx->push_back(pp);
     tl_out_idx->push_back(pp);
   }
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUTbl::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

@@ -9,7 +9,7 @@ int IveTPUThreshold::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_cmdbuf_subfix = "thresh";
   m_slice_info.nums_of_tl = 3;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUThreshold::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -59,7 +59,7 @@ int IveTPUThreshold::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(0);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUThreshold::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

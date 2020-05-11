@@ -13,7 +13,7 @@ int IveTPUThresholdHighLow::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_cmdbuf_subfix = "threshHL";
   m_slice_info.nums_of_tl = 3;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUThresholdHighLow::runSetup(
@@ -76,7 +76,7 @@ int IveTPUThresholdHighLow::runSetup(
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(0);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUThresholdHighLow::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

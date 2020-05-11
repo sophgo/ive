@@ -6,7 +6,7 @@ int IveTPUAnd::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.ping_pong_size = 2;
   m_slice_info.nums_of_tl = 2;
 
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUAnd::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -33,7 +33,7 @@ int IveTPUAnd::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     tl_in_idx->push_back(1 + pp * 2);
     tl_out_idx->push_back(0 + pp * 2);
   }
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUAnd::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {

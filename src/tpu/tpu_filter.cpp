@@ -15,7 +15,7 @@ int IveTPUFilter::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_slice_info.io_fmt = FMT_U8;
   m_slice_info.nums_of_tl = 2;
   m_kernel_info.nums_of_kernel = 1;
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -45,7 +45,7 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, FMT_U8, 1, IVETLType::KERNEL);
   if (m_kernel->img.m_tg.shape.c < tl_shape.c) {
     std::cerr << "kernel size must larger than tl_shape.c" << std::endl;
-    return BM_ERR_FAILURE;
+    return CVI_FAILURE;
   }
   int tmp_c = m_kernel->img.m_tg.shape.c;
   m_kernel->img.m_tg.shape.c = tl_shape.c;
@@ -89,7 +89,7 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(1);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUFilter::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
@@ -100,7 +100,7 @@ int IveTPUFilter::freeChildTGMem(bmctx_t *ctx) {
   mp_multiplier->Free(ctx);
   delete mp_multiplier;
   mp_multiplier = nullptr;
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUFilterBF16::setKernel(const IveKernel &kernel) {
@@ -117,7 +117,7 @@ int IveTPUFilterBF16::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   m_cmdbuf_subfix = "filter";
   m_slice_info.nums_of_tl = 2 * 2;
   m_kernel_info.nums_of_kernel = 1;
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 int IveTPUFilterBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -179,7 +179,7 @@ int IveTPUFilterBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(1);
-  return BM_SUCCESS;
+  return CVI_SUCCESS;
 }
 
 void IveTPUFilterBF16::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
