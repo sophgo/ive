@@ -312,6 +312,9 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
       pstBuffer == NULL ? nullptr : reinterpret_cast<CviImg *>(pstBuffer->tpu_block);
   auto *cpp_img = new CviImg(&handle_ctx->ctx, u16Height, u16Width, strides, heights, img_type, fmt,
                              buffer_ptr);
+  if (!cpp_img->IsInit()) {
+    return CVI_FAILURE;
+  }
 
   pstImg->tpu_block = reinterpret_cast<CVI_IMG *>(cpp_img);
 
