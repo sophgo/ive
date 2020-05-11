@@ -21,7 +21,6 @@ int main(int argc, char **argv) {
   int nChannels = 1;
   int width = src.u16Width;
   int height = src.u16Height;
-  // size_t img_data_sz = nChannels * src.u16Stride[0] * height;
   printf("Image size is %d X %d, channel %d\n", width, height, nChannels);
   CVI_IVE_BufFlush(handle, &src);
 

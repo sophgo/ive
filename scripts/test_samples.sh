@@ -7,12 +7,10 @@
 NBR_ITER=1
 FUNC_NAME=("sample_add"
 "sample_and"
-"sample_copy"
 "sample_filter"
 "sample_hog"
 "sample_magandang"
 "sample_morph"
-"sample_normgrad"
 "sample_or"
 "sample_ordstat"
 "sample_sub"
@@ -23,8 +21,17 @@ FUNC_NAME=("sample_add"
 "sample_integral_image"
 "sample_histEq"
 "sample_lbp"
-#"sample_ncc"
+"sample_ordstat"
+)
+#"sample_normgrad"
+#"sample_copy"
 
+FUNC_NAME_TWO_IMGS=("sample_ncc"
+"sample_sad"
+)
+
+FUNC_NAME_WO_IMGS=("sample_map"
+"sample_block"
 )
 
 
@@ -44,10 +51,38 @@ do
   esac;
 
 done
+
+# w/o images
+for i in ${!FUNC_NAME_WO_IMGS[*]}
+do
+  test_function=${FUNC_NAME_WO_IMGS[$i]}
+  #echo $test_function
+
+  for img in `echo $source_dir/*` ;
+  do
+    source_file=$img
+    PARAM="$NBR_ITER"
+    #echo Processing file : $source_file
+    #echo "./$test_function" $source_file $PARAM
+    {
+      #rtn=$( "./$test_function" $source_file $PARAM )
+      {
+          rtn=$( "./$test_function" )
+      } && {
+          echo $test_function TEST-PASS #"$rtn"
+      }
+    } || {
+      echo $test_function ERROR #"$rtn"
+    }
+  done
+
+done
+
+# one image input
 for i in ${!FUNC_NAME[*]}
 do
   test_function=${FUNC_NAME[$i]}
-  echo $test_function
+  #echo $test_function
 
   for img in `echo $source_dir/*` ;
   do
@@ -63,7 +98,33 @@ do
           echo $test_function TEST-PASS #"$rtn"
       }
     } || {
-      echo ERROR $test_function #"$rtn"
+      echo $test_function ERROR #"$rtn"
+    }
+  done
+
+done
+
+# two images input
+for i in ${!FUNC_NAME_TWO_IMGS[*]}
+do
+  test_function=${FUNC_NAME_TWO_IMGS[$i]}
+  #echo $test_function
+
+  for img in `echo $source_dir/*` ;
+  do
+    source_file=$img
+    PARAM="$NBR_ITER"
+    #echo Processing file : $source_file
+    #echo "./$test_function" $source_file $PARAM
+    {
+      #rtn=$( "./$test_function" $source_file $PARAM )
+      {
+          rtn=$( "./$test_function" $source_file $source_file)
+      } && {
+          echo $test_function TEST-PASS #"$rtn"
+      }
+    } || {
+      echo $test_function ERROR #"$rtn"
     }
   done
 
