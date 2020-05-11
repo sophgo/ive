@@ -317,7 +317,6 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
   }
 
   pstImg->tpu_block = reinterpret_cast<CVI_IMG *>(cpp_img);
-
   pstImg->enType = enType;
   pstImg->u16Width = cpp_img->GetImgWidth();
   pstImg->u16Height = cpp_img->GetImgHeight();
@@ -495,7 +494,6 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   if (pstDmaCtrl->enMode == IVE_DMA_MODE_DIRECT_COPY) {
-    ret = CVI_SUCCESS;
 #ifdef USE_CPU_COPY
     CVI_IVE_BufRequest(pIveHandle, pstSrc);
     CVI_IVE_BufRequest(pIveHandle, pstDst);
@@ -509,7 +507,7 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
     std::vector<CviImg> inputs = {*cpp_src};
     std::vector<CviImg> outputs = {*cpp_dst};
 
-    IveTPUCopyDirect::run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret = IveTPUCopyDirect::run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
 #endif
   } else if (pstDmaCtrl->enMode == IVE_DMA_MODE_INTERVAL_COPY) {
     handle_ctx->t_h.t_copy_int.setInvertal(pstDmaCtrl->u8HorSegSize, pstDmaCtrl->u8VerSegRows);
@@ -678,14 +676,12 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
           ? true
           : false;
   if (((x == 1 && y == 1) || (x == 0.f && y == 0.f)) || !is_bf16) {
-    ret = CVI_SUCCESS;
     handle_ctx->t_h.t_add.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-    handle_ctx->t_h.t_add.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret = handle_ctx->t_h.t_add.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   } else {
-    ret = CVI_SUCCESS;
     handle_ctx->t_h.t_add_bf16.setCoef(x, y);
     handle_ctx->t_h.t_add_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-    handle_ctx->t_h.t_add_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret = handle_ctx->t_h.t_add_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   }
   return ret;
 }
@@ -710,8 +706,7 @@ CVI_S32 CVI_IVE_And(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  handle_ctx->t_h.t_and.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
-  return CVI_SUCCESS;
+  return handle_ctx->t_h.t_and.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
 }
 
 CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
@@ -744,18 +739,20 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
+  int ret = CVI_FAILURE;
   if (cpp_src->m_tg.fmt == FMT_U8 && cpp_dst->m_tg.fmt == FMT_U8) {
     handle_ctx->t_h.t_block.setBinNum(pstBlkCtrl->f32BinSize);
     handle_ctx->t_h.t_block.setCellSize(u32CellSize, cpp_src->m_tg.shape.c);
     handle_ctx->t_h.t_block.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-    handle_ctx->t_h.t_block.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs, true);
+    ret = handle_ctx->t_h.t_block.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs, true);
   } else {
     handle_ctx->t_h.t_block_bf16.setBinNum(pstBlkCtrl->f32BinSize);
     handle_ctx->t_h.t_block_bf16.setCellSize(u32CellSize, cpp_src->m_tg.shape.c);
     handle_ctx->t_h.t_block_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-    handle_ctx->t_h.t_block_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs, true);
+    ret = handle_ctx->t_h.t_block_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs,
+                                           true);
   }
-  return CVI_SUCCESS;
+  return ret;
 }
 
 CVI_S32 CVI_IVE_Dilate(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
@@ -786,9 +783,9 @@ CVI_S32 CVI_IVE_Dilate(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_filter.setKernel(kernel);
-  handle_ctx->t_h.t_filter.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  int ret = handle_ctx->t_h.t_filter.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   kernel.img.Free(&handle_ctx->ctx);
-  return CVI_SUCCESS;
+  return ret;
 }
 
 CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
@@ -819,9 +816,9 @@ CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_erode.setKernel(kernel);
-  handle_ctx->t_h.t_erode.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  int ret = handle_ctx->t_h.t_erode.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   kernel.img.Free(&handle_ctx->ctx);
-  return CVI_SUCCESS;
+  return ret;
 }
 
 CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
@@ -857,9 +854,9 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_filter.setKernel(kernel);
-  handle_ctx->t_h.t_filter.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  int ret = handle_ctx->t_h.t_filter.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   kernel.img.Free(&handle_ctx->ctx);
-  return CVI_SUCCESS;
+  return ret;
 }
 
 inline bool get_hog_feature_info(u16 width, u16 height, u16 u32CellSize, u16 blk_size,
@@ -1126,8 +1123,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
   handle_ctx->t_h.t_magandang.noNegative(false);
   handle_ctx->t_h.t_magandang.magDistMethod(pstMaaCtrl->enDistCtrl);
   handle_ctx->t_h.t_magandang.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-  handle_ctx->t_h.t_magandang.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
-  return CVI_SUCCESS;
+  return handle_ctx->t_h.t_magandang.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
 }
 
 CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO_S *pstMap,
@@ -1152,8 +1148,7 @@ CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO
   std::vector<CviImg> outputs = {*cpp_dst};
   handle_ctx->t_h.t_tbl.setTable(&handle_ctx->ctx, &handle_ctx->t_h.t_tblmgr, pstMap->pu8VirAddr);
   handle_ctx->t_h.t_tbl.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-  handle_ctx->t_h.t_tbl.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
-  return CVI_SUCCESS;
+  return handle_ctx->t_h.t_tbl.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
 }
 
 CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDstH,
@@ -1175,6 +1170,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs;
   bool do_free = false;
+  int ret = CVI_FAILURE;
   if (pstNormGradCtrl->enOutCtrl == IVE_NORM_GRAD_OUT_CTRL_HOR_AND_VER) {
     if (!IsValidImageType(pstDstH, STRFY(pstDstH), IVE_IMAGE_TYPE_S16C1, IVE_IMAGE_TYPE_U8C1)) {
       return CVI_FAILURE;
@@ -1197,15 +1193,16 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
         createKernel(&handle_ctx->ctx, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_sobel_gradonly.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_sobel_gradonly.setKernel(kernel_w, kernel_h);
-    handle_ctx->t_h.t_sobel_gradonly.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret = handle_ctx->t_h.t_sobel_gradonly.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
+                                               &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
     kernel_h.img.Free(&handle_ctx->ctx);
     IVE_ITC_CRTL_S iveItcCtrl;
     iveItcCtrl.enType = pstNormGradCtrl->enITCType;
-    CVI_IVE_ImageTypeConvert(pIveHandle, &dstV_BF16, pstDstV, &iveItcCtrl, 0);
-    CVI_IVE_ImageTypeConvert(pIveHandle, &dstH_BF16, pstDstH, &iveItcCtrl, 0);
-    CVI_SYS_FreeI(pIveHandle, &dstV_BF16);
-    CVI_SYS_FreeI(pIveHandle, &dstH_BF16);
+    ret |= CVI_IVE_ImageTypeConvert(pIveHandle, &dstV_BF16, pstDstV, &iveItcCtrl, 0);
+    ret |= CVI_IVE_ImageTypeConvert(pIveHandle, &dstH_BF16, pstDstH, &iveItcCtrl, 0);
+    ret |= CVI_SYS_FreeI(pIveHandle, &dstV_BF16);
+    ret |= CVI_SYS_FreeI(pIveHandle, &dstH_BF16);
   } else if (pstNormGradCtrl->enOutCtrl == IVE_NORM_GRAD_OUT_CTRL_HOR) {
     if (!IsValidImageType(pstDstH, STRFY(pstDstH), IVE_IMAGE_TYPE_S16C1, IVE_IMAGE_TYPE_U8C1)) {
       return CVI_FAILURE;
@@ -1226,13 +1223,13 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
         createKernel(&handle_ctx->ctx, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_filter_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_h);
-    handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret = handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_h.img.Free(&handle_ctx->ctx);
     if (do_free) {
       IVE_ITC_CRTL_S iveItcCtrl;
       iveItcCtrl.enType = pstNormGradCtrl->enITCType;
-      CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstH, &iveItcCtrl, 0);
-      CVI_SYS_FreeI(pIveHandle, &dst_BF16);
+      ret |= CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstH, &iveItcCtrl, 0);
+      ret |= CVI_SYS_FreeI(pIveHandle, &dst_BF16);
     }
   } else if (pstNormGradCtrl->enOutCtrl == IVE_NORM_GRAD_OUT_CTRL_VER) {
     if (!IsValidImageType(pstDstV, STRFY(pstDstV), IVE_IMAGE_TYPE_S16C1, IVE_IMAGE_TYPE_U8C1)) {
@@ -1254,13 +1251,13 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
         createKernel(&handle_ctx->ctx, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_X);
     handle_ctx->t_h.t_filter_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_w);
-    handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret = handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
     if (do_free) {
       IVE_ITC_CRTL_S iveItcCtrl;
       iveItcCtrl.enType = pstNormGradCtrl->enITCType;
-      CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstV, &iveItcCtrl, 0);
-      CVI_SYS_FreeI(pIveHandle, &dst_BF16);
+      ret |= CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstV, &iveItcCtrl, 0);
+      ret |= CVI_SYS_FreeI(pIveHandle, &dst_BF16);
     }
   } else if (pstNormGradCtrl->enOutCtrl == IVE_NORM_GRAD_OUT_CTRL_COMBINE) {
     if (!IsValidImageType(pstDstHV, STRFY(pstDstHV), IVE_IMAGE_TYPE_U16C1, IVE_IMAGE_TYPE_U8C1)) {
@@ -1287,19 +1284,19 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
     handle_ctx->t_h.t_sobel.magDistMethod(pstNormGradCtrl->enDistCtrl);
     handle_ctx->t_h.t_sobel.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_sobel.setKernel(kernel_w, kernel_h);
-    handle_ctx->t_h.t_sobel.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret = handle_ctx->t_h.t_sobel.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
     kernel_h.img.Free(&handle_ctx->ctx);
     if (do_free) {
       IVE_ITC_CRTL_S iveItcCtrl;
       iveItcCtrl.enType = pstNormGradCtrl->enITCType;
-      CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstHV, &iveItcCtrl, 0);
-      CVI_SYS_FreeI(pIveHandle, &dst_BF16);
+      ret |= CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstDstHV, &iveItcCtrl, 0);
+      ret |= CVI_SYS_FreeI(pIveHandle, &dst_BF16);
     }
   } else {
-    return CVI_FAILURE;
+    return ret;
   }
-  return CVI_SUCCESS;
+  return ret;
 }
 
 CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
@@ -1322,8 +1319,7 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
   std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  handle_ctx->t_h.t_or.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
-  return CVI_SUCCESS;
+  return handle_ctx->t_h.t_or.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
 }
 
 CVI_S32 CVI_IVE_OrdStatFilter(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
@@ -1348,17 +1344,15 @@ CVI_S32 CVI_IVE_OrdStatFilter(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
-  int ret = CVI_FAILURE;
+  int ret = CVI_SUCCESS;
   if (pstOrdStatFltCtrl->enMode == IVE_ORD_STAT_FILTER_MODE_MAX) {
-    ret = CVI_SUCCESS;
     handle_ctx->t_h.t_max.setKernelSize(kz);
     handle_ctx->t_h.t_max.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-    handle_ctx->t_h.t_max.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret |= handle_ctx->t_h.t_max.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   } else if (pstOrdStatFltCtrl->enMode == IVE_ORD_STAT_FILTER_MODE_MIN) {
-    ret = CVI_SUCCESS;
     handle_ctx->t_h.t_min.setKernelSize(kz);
     handle_ctx->t_h.t_min.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-    handle_ctx->t_h.t_min.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret |= handle_ctx->t_h.t_min.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   }
   return ret;
 }
@@ -1379,8 +1373,7 @@ CVI_S32 CVI_IVE_Sigmoid(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
   handle_ctx->t_h.t_sig.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-  handle_ctx->t_h.t_sig.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
-  return BM_SUCCESS;
+  return handle_ctx->t_h.t_sig.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
 }
 
 CVI_S32 CVI_IVE_SAD(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
@@ -1477,12 +1470,12 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
                                      pstSadCtrl->u8MaxVal);
   handle_ctx->t_h.t_sad.setWindowSize(window_size);
   handle_ctx->t_h.t_sad.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
-  handle_ctx->t_h.t_sad.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  ret = handle_ctx->t_h.t_sad.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   if (!is_output_u8) {
     IVE_ITC_CRTL_S iveItcCtrl;
     iveItcCtrl.enType = IVE_ITC_SATURATE;
-    ret = CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstSad, &iveItcCtrl, 0);
-    CVI_SYS_FreeI(pIveHandle, &dst_BF16);
+    ret |= CVI_IVE_ImageTypeConvert(pIveHandle, &dst_BF16, pstSad, &iveItcCtrl, 0);
+    ret |= CVI_SYS_FreeI(pIveHandle, &dst_BF16);
   }
   return ret;
 }
@@ -1501,6 +1494,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs;
   u8 mask_sz = pstSobelCtrl->u8MaskSize;
+  int ret = CVI_FAILURE;
   if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_BOTH) {
     if (!IsValidImageType(pstDstH, STRFY(pstDstH), IVE_IMAGE_TYPE_BF16C1)) {
       return CVI_FAILURE;
@@ -1517,7 +1511,8 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
         createKernel(&handle_ctx->ctx, npu_num, mask_sz, mask_sz, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_sobel_gradonly.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_sobel_gradonly.setKernel(kernel_w, kernel_h);
-    handle_ctx->t_h.t_sobel_gradonly.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret = handle_ctx->t_h.t_sobel_gradonly.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs,
+                                               &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
     kernel_h.img.Free(&handle_ctx->ctx);
   } else if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_HOR) {
@@ -1529,7 +1524,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
                                       IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_filter_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_h);
-    handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret = handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_h.img.Free(&handle_ctx->ctx);
   } else if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_VER) {
     if (!IsValidImageType(pstDstV, STRFY(pstDstV), IVE_IMAGE_TYPE_BF16C1)) {
@@ -1540,12 +1535,12 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
                                       IVE_KERNEL::SOBEL_X);
     handle_ctx->t_h.t_filter_bf16.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_w);
-    handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret = handle_ctx->t_h.t_filter_bf16.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     kernel_w.img.Free(&handle_ctx->ctx);
   } else {
-    return CVI_FAILURE;
+    return ret;
   }
-  return CVI_SUCCESS;
+  return ret;
 }
 
 CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
@@ -1563,7 +1558,6 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   if (ctrl->enMode == IVE_SUB_MODE_NORMAL) {
-    ret = CVI_SUCCESS;
     handle_ctx->t_h.t_sub.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
     CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
@@ -1571,9 +1565,8 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
     std::vector<CviImg> outputs = {*cpp_dst};
 
-    handle_ctx->t_h.t_sub.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret = handle_ctx->t_h.t_sub.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   } else if (ctrl->enMode == IVE_SUB_MODE_ABS) {
-    ret = CVI_SUCCESS;
     handle_ctx->t_h.t_sub_abs.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
     CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
     CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
@@ -1581,7 +1574,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
     std::vector<CviImg> outputs = {*cpp_dst};
 
-    handle_ctx->t_h.t_sub_abs.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+    ret = handle_ctx->t_h.t_sub_abs.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
   }
   return ret;
 }
@@ -1603,15 +1596,14 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   std::vector<CviImg> outputs = {*cpp_dst};
 
   if (ctrl->enMode == IVE_THRESH_MODE_BINARY) {
-    ret = CVI_SUCCESS;
     if (ctrl->u8MinVal == 0 && ctrl->u8MaxVal == 255) {
       handle_ctx->t_h.t_thresh.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
       handle_ctx->t_h.t_thresh.setThreshold(ctrl->u8LowThr);
-      handle_ctx->t_h.t_thresh.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+      ret = handle_ctx->t_h.t_thresh.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     } else {
       handle_ctx->t_h.t_thresh_hl.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
       handle_ctx->t_h.t_thresh_hl.setThreshold(ctrl->u8LowThr, ctrl->u8MinVal, ctrl->u8MaxVal);
-      handle_ctx->t_h.t_thresh_hl.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+      ret = handle_ctx->t_h.t_thresh_hl.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
     }
   }
   return ret;
@@ -1695,8 +1687,7 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  handle_ctx->t_h.t_xor.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
-  return CVI_SUCCESS;
+  return handle_ctx->t_h.t_xor.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
 }
 
 // ---------------------------------
