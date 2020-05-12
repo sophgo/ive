@@ -847,7 +847,7 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   kernel.img.GetVAddr();
   int mask_length = pstFltCtrl->u8MaskSize * pstFltCtrl->u8MaskSize;
   for (size_t i = 0; i < npu_num; i++) {
-    memcpy(kernel.img.GetVAddr() + i * mask_length, pstFltCtrl->as8Mask, mask_length);
+    memcpy((s8 *)(kernel.img.GetVAddr() + i * mask_length), pstFltCtrl->as8Mask, mask_length);
   }
   kernel.img.Flush(&handle_ctx->ctx);
   kernel.multiplier.f = 1.f / pstFltCtrl->u32Norm;

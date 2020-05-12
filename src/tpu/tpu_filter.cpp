@@ -42,7 +42,7 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size,
                                                m_kernel_info.size};
   bmk1880v2_tensor_lmem_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
-  auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, FMT_U8, 1, IVETLType::KERNEL);
+  auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, FMT_I8, 1, IVETLType::KERNEL);
   if (m_kernel->img.m_tg.shape.c < tl_shape.c) {
     std::cerr << "kernel size must larger than tl_shape.c" << std::endl;
     return CVI_FAILURE;
