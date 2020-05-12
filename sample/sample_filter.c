@@ -15,12 +15,12 @@ int main(int argc, char **argv) {
   printf("BM Kernel init.\n");
 
   // Fetch image information. CVI_IVE_ReadImage will do the flush for you.
-  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, filename, IVE_IMAGE_TYPE_U8C1);
+  IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, filename, IVE_IMAGE_TYPE_U8C3_PLANAR);
   int width = src.u16Width;
   int height = src.u16Height;
 
   IVE_DST_IMAGE_S dst;
-  CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
+  CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C3_PLANAR, width, height);
 
   // Setup control parameter
   CVI_S8 arr[] = {1,  4,  7, 4, 1,  4,  16, 26, 16, 4, 7, 26, 26,
