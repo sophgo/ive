@@ -93,40 +93,57 @@ inline void getBMAddrInfo(const std::vector<CviImg> &input, const std::vector<Cv
   }
 }
 
+// FIXME: const size_t b = 0 is used in WORKAROUND_SCALAR_4096_ALIGN_BUG.
 inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
                                  const std::vector<CviImg> &output, const BMAddrInfo &bm_src_info,
                                  const BMAddrInfo &bm_dest_info, const int &pad_l, const int &pad_t,
-                                 const bool is_1d, const bool shift_pad_offset) {
+                                 const bool is_1d, const bool shift_pad_offset,
+                                 const size_t b = 0) {
 #if DISABLE_OVERFLOWCHECK
   return CVI_SUCCESS;
 #else
   int ret = CVI_SUCCESS;
   for (size_t k = 0; k < input.size(); k++) {
+#ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
+    const u64 bm_start_addr = input[k].GetPAddr() + input[k].GetImgCOffsets()[b];
+    u64 jumped_value = bm_src_info.addr_vec[k] - bm_start_addr;
+    u32 total_addr = is_1d ? input[k].GetImgSize() : input[k].m_tg.stride.h * input[k].m_tg.shape.h;
+#else
     const u64 bm_start_addr = input[k].GetPAddr();
     u64 jumped_value = bm_src_info.addr_vec[k] - bm_start_addr;
-    u32 total_addr = is_1d ? input[k].m_tg.stride.n : input[k].m_tg.stride.c;
+    u32 total_addr = is_1d ? input[k].GetImgSize() : input[k].m_tg.stride.c;
+#endif
     if (jumped_value != total_addr) {
       printf(
-          "Error! Input %u jumped value %lu not align to image size %u, start addr "
+          "[%u] Error! Input %u jumped value %lu not align to image size %u, start addr "
           "%lu\n",
-          (u32)k, (long unsigned int)jumped_value, total_addr, (long unsigned int)bm_start_addr);
+          (u32)b, (u32)k, (long unsigned int)jumped_value, total_addr,
+          (long unsigned int)bm_start_addr);
       ret = CVI_FAILURE;
     }
   }
   for (size_t k = 0; k < output.size(); k++) {
-    const u64 bm_des_addr = output[k].GetPAddr();
-    u64 jumped_value = bm_dest_info.addr_vec[k] - bm_des_addr;
     u32 pad_offset =
         shift_pad_offset
             ? ((output[k].m_tg.stride.h * pad_t) + (pad_l * bm_dest_info.fns_vec[k].getSize()))
             : 0;
+#ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
+    const u64 bm_des_addr = output[k].GetPAddr() + output[k].GetImgCOffsets()[b];
+    u64 jumped_value = bm_dest_info.addr_vec[k] - bm_des_addr;
     u32 total_addr =
-        is_1d ? (output[k].m_tg.stride.n + pad_offset) : (output[k].m_tg.stride.c + pad_offset);
+        (is_1d ? output[k].GetImgSize() : output[k].m_tg.stride.h * output[k].m_tg.shape.h) +
+        pad_offset;
+#else
+    const u64 bm_des_addr = output[k].GetPAddr();
+    u64 jumped_value = bm_dest_info.addr_vec[k] - bm_des_addr;
+    u32 total_addr = (is_1d ? output[k].GetImgSize() : output[k].m_tg.stride.c) + pad_offset;
+#endif
     if (jumped_value != total_addr) {
       printf(
-          "Error! Output %u jumped value %lu not align to image size %u, start addr "
+          "[%u] Error! Output %u jumped value %lu not align to image size %u, start addr "
           "%lu\n",
-          (u32)k, (long unsigned int)jumped_value, total_addr, (long unsigned int)bm_des_addr);
+          (u32)b, (u32)k, (long unsigned int)jumped_value, total_addr,
+          (long unsigned int)bm_des_addr);
       ret = CVI_FAILURE;
     }
   }
@@ -1008,6 +1025,17 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   // Main for loop
   for (u32 b = 0; b < batch; b++) {
+    for (size_t k = 0; k < input.size(); k++) {
+      u64 bm_start_addr = input[k].GetPAddr();
+      bm_src_info.addr_vec[k] = bm_start_addr + input[k].GetImgCOffsets()[b];
+    }
+    for (size_t k = 0; k < output->size(); k++) {
+      u64 bm_des_addr = (*output)[k].GetPAddr();
+      FmtnSize fns((*output)[k].m_tg.fmt);
+      u64 new_bm_des_addr = bm_des_addr + ((*output)[k].m_tg.stride.h * m_kernel_info.pad[2]) +
+                            (m_kernel_info.pad[0] * getFmtSize((*output)[k].m_tg.fmt));
+      bm_dest_info.addr_vec[k] = new_bm_des_addr + (*output)[k].GetImgCOffsets()[b];
+    }
     TensorSliceInfo *tsi = &out_info;
     for (u32 i = 0; i < slice_res.h.turn; i++) {
       // Re-assign head address to w.
@@ -1189,6 +1217,9 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         bm_dest_info.addr_vec[k] += 1 * (*output)[k].m_tg.stride.h * jump_val;
       }
     }
+    // Dummy gaurd for buffer overflow
+    ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
+                                 m_kernel_info.pad[2], false, true, b);
   }
   IVE_DEBUG("In slice info:\n");
   IVE_DEBUG("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", in_slice_res.h.slice,
@@ -1201,9 +1232,6 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", out_slice_res.w.slice,
             out_slice_res.w.turn, out_slice_res.w.skip, out_slice_res.w.left);
 
-  // Dummy gaurd for buffer overflow
-  ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
-                               m_kernel_info.pad[2], true, true);
   if (ret == CVI_SUCCESS) {
     submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
@@ -1220,7 +1248,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   if (m_kernel_info.size != 1) {
     return CVI_FAILURE;
   }
-  u32 total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
+  u32 total_size = input[0].GetImgSize() / getFmtSize(input[0].m_tg.fmt);
   if (total_size % 16) {
     std::cerr << "Image size " << total_size << " is not 16 aligned." << std::endl;
     return CVI_FAILURE;

@@ -249,6 +249,13 @@ class CviImg {
   const u32 GetImgHeight() const;
 
   /**
+   * @brief Get the channel offset of the image.
+   *
+   * @return const std::vector<u32> image channel offsets.
+   */
+  const std::vector<u32> GetImgCOffsets() const;
+
+  /**
    * @brief Get the strides of the image.
    *
    * @return const std::vector<u32> image strides.
@@ -345,6 +352,7 @@ class CviImg {
   u32 m_channel = 0;
   u32 m_width = 0;
   u32 m_height = 0;
+  std::vector<u32> m_coffsets;
   std::vector<u32> m_strides;
   std::vector<u32> m_heights;
   fmt_t m_fmt = FMT_U8;
