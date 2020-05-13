@@ -102,9 +102,12 @@ $ninja install
 
 ## BMKernel known issues
 
-1. Currently ``memcpy`` is used to put data into ``IVE_IMAGE_S``.
-2. Currently TPU API does not support TL(BF16) to TG(FP32).
-3. Some required API is missing,
-   1. ~~auto channel expansion~~
-   2. div
-4. ~~Middleware include header ``cvi_type.h`` may miss some ``#define``~~
+1. Currently TPU API does not support TL(BF16) to TG(FP32).
+2. Some required API is missing,
+   1. div
+
+## Workaround table
+
+|Chip  | Flags |
+|------|-------|
+|cv1835|WORKAROUND_SCALAR_4096_ALIGN_BUG|
