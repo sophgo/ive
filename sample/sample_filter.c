@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
                   41, 26, 7, 4, 16, 26, 16, 4,  1,  4, 7, 4,  1};
   IVE_FILTER_CTRL_S iveFltCtrl;
   iveFltCtrl.u8MaskSize = 5;  // Set the length of the mask, can be 3 or 5.
-  memcpy(iveFltCtrl.as8Mask, arr, 25 * sizeof(CVI_S8));
+  memcpy(iveFltCtrl.as8Mask, arr, iveFltCtrl.u8MaskSize * iveFltCtrl.u8MaskSize * sizeof(CVI_S8));
   iveFltCtrl.u32Norm = 273;
   // Since the mask only accepts S8 values, you can turn a float mask into (1/X) * (S8 mask).
   // Then set u32Norm to X.
