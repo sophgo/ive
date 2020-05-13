@@ -324,9 +324,8 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
 
   size_t i_limit = cpp_img->GetImgChannel();
   for (size_t i = 0; i < i_limit; i++) {
-    int img_sz = cpp_img->GetImgStrides()[i] * cpp_img->GetImgHeights()[i] * fmt_size;
-    pstImg->pu8VirAddr[i] = cpp_img->GetVAddr() + i * img_sz;
-    pstImg->u64PhyAddr[i] = cpp_img->GetPAddr() + i * img_sz;
+    pstImg->pu8VirAddr[i] = cpp_img->GetVAddr() + cpp_img->GetImgCOffsets()[i];
+    pstImg->u64PhyAddr[i] = cpp_img->GetPAddr() + cpp_img->GetImgCOffsets()[i];
     pstImg->u16Stride[i] = cpp_img->GetImgStrides()[i];
   }
 
