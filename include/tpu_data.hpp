@@ -145,6 +145,14 @@ inline u32 WidthAlign(const u32 width, const u32 align) {
   return stride;
 }
 
+inline u64 Align64(const u64 length, const u64 align) {
+  u64 stride = (u64)(length / align) * align;
+  if (stride < length) {
+    stride += align;
+  }
+  return stride;
+}
+
 /**
  * @brief A wrapper for TPU device memory defined in runtime.
  *        This is a class originally designed for TPU, so the default setup for image is planar.

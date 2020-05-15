@@ -86,13 +86,13 @@ CviImg::CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides,
   this->m_size = 0;
   this->m_coffsets.push_back(this->m_size);
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
-  this->m_size = WidthAlign(strides[0] * heights[0] * getFmtSize(this->m_fmt), SCALAR_C_ALIGN);
+  this->m_size = Align64(strides[0] * heights[0] * getFmtSize(this->m_fmt), SCALAR_C_ALIGN);
   for (size_t i = 1; i < strides.size(); i++) {
     if (strides[i] != strides[0]) {
       m_is_stride_ceq = false;
     }
     this->m_coffsets.push_back(this->m_size);
-    this->m_size += WidthAlign(strides[i] * heights[i] * getFmtSize(this->m_fmt), SCALAR_C_ALIGN);
+    this->m_size += Align64(strides[i] * heights[i] * getFmtSize(this->m_fmt), SCALAR_C_ALIGN);
   }
 #else
   this->m_size = strides[0] * heights[0] * getFmtSize(this->m_fmt);
@@ -113,11 +113,14 @@ CviImg::CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides,
   AllocateDevice(ctx);
 
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
-  this->m_paddr = WidthAlign(this->m_paddr, SCALAR_C_ALIGN);
+  u64 new_paddr = Align64(this->m_paddr, SCALAR_C_ALIGN);
+  u64 offset = new_paddr - this->m_paddr;
+  this->m_paddr = new_paddr;
+  this->m_vaddr += offset;
   this->m_tg.start_address = this->m_paddr;
   // this->m_tg.stride.c = m_tg.shape.h * this->m_tg.stride.h;
   // this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
-  this->m_tg.stride.c = WidthAlign(m_tg.shape.h * this->m_tg.stride.h, SCALAR_C_ALIGN);
+  this->m_tg.stride.c = Align64(m_tg.shape.h * this->m_tg.stride.h, SCALAR_C_ALIGN);
   this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
 #endif
 }
