@@ -100,7 +100,7 @@ void IveTPUFilter::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping
   bmk1880v2_tiu_depthwise_convolution_qdm(bk_ctx, &m_p_conv);
 }
 
-int IveTPUFilter::freeChildTGMem(bmctx_t *ctx) {
+int IveTPUFilter::postProcess(bmctx_t *ctx) {
   mp_multiplier->Free(ctx);
   delete mp_multiplier;
   mp_multiplier = nullptr;

@@ -108,7 +108,7 @@ void IveTPUErode::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_
   bmk1880v2_tiu_element_wise_xor_int8(bk_ctx, &m_p_xor);
 }
 
-int IveTPUErode::freeChildTGMem(bmctx_t *ctx) {
+int IveTPUErode::postProcess(bmctx_t *ctx) {
   mp_multiplier->Free(ctx);
   delete mp_multiplier;
   mp_multiplier = nullptr;

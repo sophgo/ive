@@ -61,7 +61,7 @@ void IveTPUTbl::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_id
   bmk1880v2_tiu_lookup_table(bk_ctx, &m_p_tbl);
 }
 
-int IveTPUTbl::freeChildTGMem(bmctx_t *ctx) {
+int IveTPUTbl::postProcess(bmctx_t *ctx) {
   if (mp_table != nullptr) {
     mp_table->Free(ctx);
     delete mp_table;

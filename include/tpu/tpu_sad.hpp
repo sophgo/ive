@@ -19,7 +19,7 @@ class IveTPUSAD : public IveCore {
                        std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                        const bool enable_cext) override;
   virtual void operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) override;
-  virtual int freeChildTGMem(bmctx_t *ctx) override;
+  virtual int postProcess(bmctx_t *ctx) override;
 
  private:
   TblMgr *mp_tblmgr = nullptr;

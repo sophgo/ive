@@ -63,7 +63,7 @@ void IveTPUSigmoid::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 pin
                     m_p_sig.table_answer_slope, m_p_sig.ofmap, m_p_sig.scale);
 }
 
-int IveTPUSigmoid::freeChildTGMem(bmctx_t *ctx) {
+int IveTPUSigmoid::postProcess(bmctx_t *ctx) {
   if (table) {
     table->Free(ctx);
     delete table;

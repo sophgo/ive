@@ -161,7 +161,7 @@ void IveTPUSAD::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_id
   }
 }
 
-int IveTPUSAD::freeChildTGMem(bmctx_t *ctx) {
+int IveTPUSAD::postProcess(bmctx_t *ctx) {
   if (mp_table_pos_neg) {
     mp_table_pos_neg->Free(ctx);
     delete mp_table_pos_neg;

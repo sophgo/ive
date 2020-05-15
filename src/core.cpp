@@ -533,7 +533,7 @@ int IveCore::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_o
   return CVI_SUCCESS;
 }
 
-int IveCore::freeChildTGMem(bmctx_t *ctx) { return CVI_SUCCESS; }
+int IveCore::postProcess(bmctx_t *ctx) { return CVI_SUCCESS; }
 
 int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                                  std::vector<CviImg> &input, std::vector<CviImg> *output,
@@ -792,7 +792,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
   freeTLMems(bk_ctx);
-  freeChildTGMem(ctx);
+  postProcess(ctx);
   return ret;
 }
 
@@ -801,7 +801,6 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                                     bool enable_min_max) {
   if (m_slice_info.io_fmt == FMT_INVALID) {
     std::cerr << "Invalid fmt engine type." << std::endl;
-    freeChildTGMem(ctx);
     return CVI_FAILURE;
   }
   // FIXME: Support later
@@ -1237,7 +1236,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   }
 
   freeTLMems(bk_ctx);
-  freeChildTGMem(ctx);
+  postProcess(ctx);
   return CVI_SUCCESS;
 }
 
@@ -1500,6 +1499,6 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   }
 
   freeTLMems(bk_ctx);
-  freeChildTGMem(ctx);
+  postProcess(ctx);
   return CVI_SUCCESS;
 }
