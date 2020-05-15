@@ -27,6 +27,8 @@ class IveCore {
                        std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                        const bool enable_cext) = 0;
   virtual void operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) = 0;
+  virtual void beforeSubmit(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+                            std::vector<CviImg> *output);
   virtual int postProcess(bmctx_t *ctx);
 
   u32 m_nums_of_input = 1;

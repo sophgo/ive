@@ -533,6 +533,9 @@ int IveCore::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_o
   return CVI_SUCCESS;
 }
 
+void IveCore::beforeSubmit(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+                           std::vector<CviImg> *output) {}
+
 int IveCore::postProcess(bmctx_t *ctx) { return CVI_SUCCESS; }
 
 int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
@@ -788,9 +791,13 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   // Dummy gaurd for buffer overflow
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], false, true);
+
+  beforeSubmit(ctx, bk_ctx, input, output);
+
   if (ret == CVI_SUCCESS) {
     submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
+
   freeTLMems(bk_ctx);
   postProcess(ctx);
   return ret;
@@ -1231,6 +1238,8 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", out_slice_res.w.slice,
             out_slice_res.w.turn, out_slice_res.w.skip, out_slice_res.w.left);
 
+  beforeSubmit(ctx, bk_ctx, input, output);
+
   if (ret == CVI_SUCCESS) {
     submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
@@ -1494,6 +1503,9 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   int ret = CVI_SUCCESS;
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], true, false);
+
+  beforeSubmit(ctx, bk_ctx, input, output);
+
   if (ret == CVI_SUCCESS) {
     submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
