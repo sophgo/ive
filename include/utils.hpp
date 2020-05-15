@@ -254,3 +254,48 @@ inline u8 *getPackedMultiplierArray(const u32 c, const u32 &quantized_multiplier
   getPackedMultiplierArrayBuffer(c, quantized_multiplier, right_shift, cal_data);
   return cal_data;
 }
+
+static inline bmmem_device_t get_tensor_l2g(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
+                                            const bmk1880v2_tensor_lmem_t *tl) {
+  bmk1880v2_tensor_tgmem_shape_t s;
+  s.n = tl->shape.n;
+  s.c = tl->shape.h;
+  s.h = tl->shape.w;
+  s.w = tl->shape.c;
+  size_t total_size = s.n * s.c * s.h * s.w * getFmtSize(tl->fmt);
+  bmk1880v2_tensor_tgmem_t tg;
+  bmmem_device_t bm_dev = bmmem_device_alloc_raw(*ctx, total_size);
+  tg.base_reg_index = 0;
+  tg.start_address = bmmem_device_addr(bm_dev);
+  tg.fmt = tl->fmt;
+  tg.shape = s;
+  tg.stride = bmk1880v2_bf16_tensor_tgmem_default_stride(s, tl->fmt);
+  bmk1880v2_tdma_l2tg_tensor_copy_param_t p;
+  p.src = tl;
+  p.dst = &tg;
+  bmk1880v2_tdma_l2g_bf16_tensor_copy(bk_ctx, &p);
+  return bm_dev;
+}
+
+static inline u8 *get_bm_vaddr(bmctx_t *ctx, bmmem_device_t bm_dev) {
+  if (bmmem_device_invld(*ctx, bm_dev) != BM_SUCCESS) {
+    return nullptr;
+  }
+  return bmmem_device_v_addr(bm_dev);
+}
+
+static inline u8 *get_tensor_l2g_submit(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
+                                        const bmk1880v2_tensor_lmem_t *tl) {
+  bmmem_device_t bm_dev = get_tensor_l2g(ctx, bk_ctx, tl);
+  cviruntime_cvikernel_submit(*ctx);
+  if (bmmem_device_invld(*ctx, bm_dev) != BM_SUCCESS) {
+    return nullptr;
+  }
+  u8 *bm_data = bmmem_device_v_addr(bm_dev);
+  size_t total_size = tl->shape.n * tl->shape.c * tl->shape.h * tl->shape.w * getFmtSize(tl->fmt);
+  u8 *data = new u8[total_size];
+  memset(data, 1, total_size);
+  memcpy(data, bm_data, total_size);
+  bmmem_device_free(*ctx, bm_dev);
+  return data;
+}

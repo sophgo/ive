@@ -1,4 +1,5 @@
 #include "ive.h"
+#include "ive_experimental.h"
 
 // for HW CSC/resize
 #include <linux/videodev2.h>
@@ -24,6 +25,7 @@
 #include "tpu/tpu_filter.hpp"
 #include "tpu/tpu_magandang.hpp"
 #include "tpu/tpu_morph.hpp"
+#include "tpu/tpu_mulsum.hpp"
 #include "tpu/tpu_normalize.hpp"
 #include "tpu/tpu_or.hpp"
 #include "tpu/tpu_sad.hpp"
@@ -114,6 +116,7 @@ struct TPU_HANDLE {
   IveTPUFilterBF16 t_filter_bf16;
   IveTPUMagAndAng t_magandang;
   IveTPUMax t_max;
+  IveTPUMulSum t_mulsum;
   IveTPUMin t_min;
   IveTPUNormalize t_norm;
   IveTPUOr t_or;
@@ -1147,6 +1150,21 @@ CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO
   handle_ctx->t_h.t_tbl.setTable(&handle_ctx->ctx, &handle_ctx->t_h.t_tblmgr, pstMap->pu8VirAddr);
   handle_ctx->t_h.t_tbl.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   return handle_ctx->t_h.t_tbl.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+}
+
+CVI_S32 CVI_IVE_MulSum(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, double *sum, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
+  if (!IsValidImageType(pstImg, STRFY(pstImg), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_BF16C1)) {
+    return CVI_FAILURE;
+  }
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstImg->tpu_block);
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs;
+  handle_ctx->t_h.t_mulsum.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
+  int ret = handle_ctx->t_h.t_mulsum.run(&handle_ctx->ctx, handle_ctx->bk_ctx, inputs, &outputs);
+  *sum = handle_ctx->t_h.t_mulsum.getSum();
+  return ret;
 }
 
 CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDstH,
