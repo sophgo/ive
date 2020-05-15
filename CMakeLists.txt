@@ -84,6 +84,12 @@ include(cmake/mlir.cmake)
 # Check if middleware exists.
 include (cmake/middleware.cmake)
 
+#include sysroot/include
+include_directories(${CMAKE_SYSROOT}/include)
+
+# include kernel headers for user space
+include_directories(${KERNEL_HEADERS_ROOT}/include)
+
 set(CMAKE_C_INIT "-fsigned-char -Werror=all -fdiagnostics-color=always ${SSE_FLAGS}")
 set(CMAKE_CXX_INIT "-fsigned-char -fPIC -Werror=all -fdiagnostics-color=always -std=gnu++11 ${SSE_FLAGS}")
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
@@ -108,9 +114,6 @@ elseif("${CMAKE_BUILD_TYPE}" STREQUAL "UBsan")
 else()
     message(FATAL_ERROR "No build type!!!")
 endif()
-
-#include sysroot/include
-include_directories(${CMAKE_SYSROOT}/include)
 
 # Get current commit
 execute_process(COMMAND git show --oneline -s OUTPUT_VARIABLE CURRENT_COMMIT)

@@ -31,6 +31,7 @@ elif [[ "$1" == "soc" ]]; then
     cmake -G Ninja $IVE_ROOT -DCVI_TARGET=soc \
                              -DENABLE_SYSTRACE=OFF \
                              -DCMAKE_BUILD_TYPE=SDKRelease \
+                             -DKERNEL_HEADERS_ROOT=$KERNEL_HEADER_PATH \
                              -DMLIR_SDK_ROOT=$TPU_SDK_INSTALL_PATH \
                              -DMIDDLEWARE_SDK_ROOT=$MW_PATH \
                              -DCMAKE_INSTALL_PREFIX=$IVE_SDK_INSTALL_PATH \
