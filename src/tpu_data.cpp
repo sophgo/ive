@@ -45,6 +45,7 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) 
   this->m_height = new_height;
   this->m_strides = img.m_strides;
   this->m_heights = img.m_heights;
+  this->m_coffsets = img.m_coffsets;
   this->m_img_type = img.m_img_type;
   this->m_is_planar = img.m_is_planar;
   this->m_is_stride_ceq = img.m_is_stride_ceq;
