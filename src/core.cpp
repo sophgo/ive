@@ -826,7 +826,9 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   u32 height = input[0].m_tg.shape.h;
   u32 width = input[0].m_tg.shape.w;
   u32 w_from_stride = input[0].m_tg.stride.h / getFmtSize(input[0].m_tg.fmt);
-  u32 w_from_stride_out = (*output)[0].m_tg.stride.h / getFmtSize((*output)[0].m_tg.fmt);
+  u32 w_from_stride_out = output->empty()
+                              ? w_from_stride
+                              : (*output)[0].m_tg.stride.h / getFmtSize((*output)[0].m_tg.fmt);
   // Insert extra tl
   u32 nums_of_tl = m_slice_info.nums_of_tl;
   u32 fix_lmem_size = m_slice_info.fix_lmem_size;
