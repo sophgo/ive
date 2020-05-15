@@ -831,6 +831,10 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
     return CVI_FAILURE;
   }
+  if (pstSrc->enType != pstDst->enType) {
+    std::cerr << "pstSrc & pstDst must have the same type." << std::endl;
+    return CVI_FAILURE;
+  }
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_filter.init(&handle_ctx->ctx, handle_ctx->bk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
