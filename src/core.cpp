@@ -396,7 +396,7 @@ int IveCore::run(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> 
       has_sub_image |= img.IsSubImg();
     }
     u32 total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
-    if ((has_sub_image || m_kernel_info.size != 1) || (total_size % 16)) {
+    if ((has_sub_image || m_kernel_info.size != 1 || m_force_use_ext) || (total_size % 16)) {
       ret = runSingleSizeExtKernel(ctx, bk_ctx, input, output);
     } else {
       ret = runNoKernel(ctx, bk_ctx, input, output);

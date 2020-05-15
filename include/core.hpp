@@ -38,6 +38,7 @@ class IveCore {
   std::vector<IVETLType> m_tl_type;
   std::vector<bmk1880v2_tensor_lmem_t *> m_tl_vec;
   std::string m_cmdbuf_subfix;
+  bool m_force_use_ext = false;
 
  private:
   int getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32 fixed_lmem_size,
