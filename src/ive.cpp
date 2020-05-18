@@ -245,9 +245,11 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
     } break;
     case IVE_IMAGE_TYPE_YUV422P: {
       img_type = CVI_YUV422;
-      const u32 stride = WidthAlign(u16Width * 2, align);
-      strides.push_back(stride);
-      heights.push_back(u16Height);
+      const u32 stride = WidthAlign(u16Width, align);
+      const u32 stride2 = WidthAlign(u16Width >> 1, align);
+      strides.resize(1, stride);
+      strides.resize(2, stride2);
+      heights.resize(3, u16Height);
     } break;
     case IVE_IMAGE_TYPE_U8C3_PACKAGE: {
       img_type = CVI_RGB_PACKED;
