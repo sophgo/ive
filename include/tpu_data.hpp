@@ -195,11 +195,27 @@ class CviImg {
    * @param img_w Image width.
    * @param strides Image strides, the channel of CviImg will be set to the size of strides.
    * @param heights Image heights.
-   * @param CVIIMGTYPE CviImg type enum.
+   * @param img_type CviImg type enum.
    * @param fmt fmt_t type
    */
   CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> heights,
          CVIIMGTYPE img_type, fmt_t fmt, CviImg *cvi_img = nullptr);
+
+  /**
+   * @brief Construct a new CviImg from VIDEO_FRAME_S
+   *
+   * @param img_h Image height.
+   * @param img_w Image width.
+   * @param strides Image strides, the channel of CviImg will be set to the size of strides.
+   * @param heights Image heights.
+   * @param u32_length Image channel offset.
+   * @param vaddr Virtual addresses.
+   * @param paddr Physical addresses.
+   * @param img_type CviImg type enum.
+   * @param fmt fmt_t type
+   */
+  CviImg(u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> heights,
+         std::vector<u32> u32_lengths, u8 *vaddr, u64 paddr, CVIIMGTYPE img_type, fmt_t fmt);
 
   /**
    * @brief Init CviImg if default constructor is used.
@@ -316,7 +332,11 @@ class CviImg {
    */
   int Flush(bmctx_t *ctx) {
 #ifdef CVI_SOC
-    return bmmem_device_flush(*ctx, m_bmmem) == BM_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
+    if (m_bmmem != NULL) {
+      return bmmem_device_flush(*ctx, m_bmmem) == BM_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
+    } else {
+      return CVI_SUCCESS;
+    }
 #else
     return CVI_SUCCESS;
 #endif
@@ -330,7 +350,11 @@ class CviImg {
    */
   int Invld(bmctx_t *ctx) {
 #ifdef CVI_SOC
-    return bmmem_device_invld(*ctx, m_bmmem) == BM_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
+    if (m_bmmem != NULL) {
+      return bmmem_device_invld(*ctx, m_bmmem) == BM_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
+    } else {
+      return CVI_SUCCESS;
+    }
 #else
     return CVI_SUCCESS;
 #endif

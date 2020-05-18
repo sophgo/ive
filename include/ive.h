@@ -1,6 +1,7 @@
 #ifndef _IVE_H
 #define _IVE_H
 #include "cvi_comm_ive.h"
+#include "cvi_comm_video.h"
 
 #ifndef __cplusplus
 #include <stdbool.h>
@@ -103,6 +104,26 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
  */
 CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                          CVI_U16 u16X1, CVI_U16 u16Y1, CVI_U16 u16X2, CVI_U16 u16Y2);
+
+/**
+ * @brief Convert IVE_IMAGE_S to VIDEO_FRAME_S. Note that do not unmap the virtual address from
+ *        IVE_IMAGE_S.
+ *
+ * @param pstIISrc IVE_IMAGE_S input.
+ * @param pstVFDst VIDEO_FRAME_S output.
+ * @return CVI_S32 Return CVI_SUCCESS if operation succeeded.
+ */
+CVI_S32 CVI_IVE_Image2VideoFrame(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_S *pstVFDst);
+
+/**
+ * @brief Convert VIDEO_FRAME_S to IVE_IMAGE_S. Note that this function does not map or unmap for
+ *        you.
+ *
+ * @param pstVFSrc VIDEO_FRAME_S input.
+ * @param pstIIDst IVE_IMAGE_S output.
+ * @return CVI_S32 Return CVI_SUCCESS if operation succeeded.
+ */
+CVI_S32 CVI_IVE_VideoFrame2Image(VIDEO_FRAME_S *pstVFSrc, IVE_IMAGE_S *pstIIDst);
 
 /**
  * @brief Read an image from file system.

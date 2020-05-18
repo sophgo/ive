@@ -117,12 +117,55 @@ CviImg::CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides,
   u64 offset = new_paddr - this->m_paddr;
   this->m_paddr = new_paddr;
   this->m_vaddr += offset;
-  this->m_tg.start_address = this->m_paddr;
-  // this->m_tg.stride.c = m_tg.shape.h * this->m_tg.stride.h;
-  // this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
-  this->m_tg.stride.c = Align64(m_tg.shape.h * this->m_tg.stride.h, SCALAR_C_ALIGN);
-  this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+  if (m_is_stride_ceq) {
+    this->m_tg.start_address = this->m_paddr;
+    this->m_tg.stride.c = Align64(m_tg.shape.h * this->m_tg.stride.h, SCALAR_C_ALIGN);
+    this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+  }
 #endif
+}
+
+CviImg::CviImg(u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> heights,
+               std::vector<u32> u32_lengths, u8 *vaddr, u64 paddr, CVIIMGTYPE img_type, fmt_t fmt) {
+  if (strides.size() == 0) {
+    std::cerr << "No stride given." << std::endl;
+    return;
+  }
+  if (strides.size() != heights.size()) {
+    std::cerr << "Strides size and heights size must be the same." << std::endl;
+    return;
+  }
+  this->m_fmt = fmt;
+  this->m_channel = strides.size();
+  this->m_width = img_w;
+  this->m_height = img_h;
+  this->m_strides = strides;
+  this->m_heights = heights;
+  this->m_img_type = img_type;
+  this->m_is_planar = IsImgPlanar(this->m_img_type);
+  this->m_coffsets.clear();
+  this->m_size = 0;
+  this->m_coffsets.push_back(this->m_size);
+  this->m_size += u32_lengths[0];
+  for (size_t i = 1; i < strides.size(); i++) {
+    if (strides[i] != strides[0]) {
+      m_is_stride_ceq = false;
+    }
+    this->m_coffsets.push_back(this->m_size);
+    this->m_size += u32_lengths[i];
+  }
+
+  this->m_paddr = paddr;
+  this->m_vaddr = vaddr;
+  if (m_is_stride_ceq) {
+    this->m_tg.start_address = this->m_paddr;
+    this->m_tg.base_reg_index = 0;
+    this->m_tg.fmt = this->m_fmt;
+    this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
+    this->m_tg.stride.h = this->m_strides[0] * getFmtSize(this->m_tg.fmt);
+    this->m_tg.stride.c = u32_lengths[0];
+    this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+  }
 }
 
 void CviImg::SetupImageInfo(u32 img_c, u32 img_h, u32 img_w, fmt_t fmt) {
@@ -165,7 +208,7 @@ int CviImg::Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, CviIm
   return AllocateDevice(ctx);
 }
 
-const bool CviImg::IsInit() { return this->m_bmmem == NULL ? false : true; }
+const bool CviImg::IsInit() { return this->m_vaddr == nullptr ? false : true; }
 
 uint8_t *CviImg::GetVAddr() { return m_vaddr; }
 
@@ -208,7 +251,9 @@ int CviImg::AllocateDevice(bmctx_t *ctx) {
 }
 
 int CviImg::Free(bmctx_t *ctx) {
-  bmmem_device_free(*ctx, this->m_bmmem);
-  this->m_bmmem = NULL;
+  if (this->m_bmmem != NULL) {
+    bmmem_device_free(*ctx, this->m_bmmem);
+    this->m_bmmem = NULL;
+  }
   return CVI_SUCCESS;
 }
