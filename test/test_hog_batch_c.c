@@ -20,6 +20,32 @@
 int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE_DST_IMAGE_S *dstV,
             IVE_DST_IMAGE_S *dstAng);
 
+typedef unsigned char UNIT8;
+UNIT8 g_GammaLUT[256];
+// Buildtable()
+// fPrecompensation=1/gamma
+void BuildTable(float fPrecompensation) {
+  int i;
+  float f;
+  for (i = 0; i < 256; i++) {
+    f = (i + 0.5f) / 256;
+    f = (float)pow(f, fPrecompensation);
+    g_GammaLUT[i] = (UNIT8)(f * 256 - 0.5f);
+  }
+}
+// fGamma = 2.2
+void GammaCorrectiom(UNIT8 src[], int iWidth, int iHeight, UNIT8 Dst[], float fGamma) {
+  int iCols, iRows, ii;
+  BuildTable(1 / fGamma);  // gamma correction LUT
+
+  for (iRows = 0; iRows < iHeight; iRows++) {
+    ii = iRows * iWidth;
+    for (iCols = 0; iCols < iWidth; iCols++) {
+      Dst[ii + iCols] = g_GammaLUT[src[ii + iCols]];
+    }
+  }
+}
+
 int main(int argc, char **argv) {
   if (argc != 4) {
     printf("Usage: %s <fullpath.txt> <number> <out_fea.txt>\n", argv[0]);
@@ -29,20 +55,6 @@ int main(int argc, char **argv) {
   const char *fea_path_file = argv[3];
   size_t total_run = atoi(argv[2]);  // total number of images
 
-#if 0
-  if (argc != 3) {
-    printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
-    return CVI_FAILURE;
-  }
-  const char *filename = argv[1];
-  size_t total_run = atoi(argv[2]);
-//#endif
-  printf("Loop value: %zu\n", total_run);
-  if (total_run > 1000 || total_run == 0) {
-    printf("Incorrect loop value. Usage: %s <file name> <loop in value (1-1000)>\n", argv[0]);
-    return CVI_FAILURE;
-  }
-#endif
   // Create instance
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
   printf("BM Kernel init.\n");
@@ -51,7 +63,7 @@ int main(int argc, char **argv) {
   IVE_DST_IMAGE_S dstMag, dstAng;
   IVE_DST_IMAGE_S dstAng_u8;
   IVE_DST_MEM_INFO_S dstHist;
-  CVI_U32 dstHistSize = 0;
+  CVI_U32 dstHistByteSize = 0;
   IVE_HOG_CTRL_S pstHogCtrl;
   int ret = 1;
 
@@ -66,6 +78,10 @@ int main(int argc, char **argv) {
     printf("[0]: %s\n", image_full_path);
     // Fetch image information
     IVE_IMAGE_S src = CVI_IVE_ReadImage(handle, image_full_path, IVE_IMAGE_TYPE_U8C1);
+    IVE_IMAGE_S src2 = CVI_IVE_ReadImage(handle, image_full_path, IVE_IMAGE_TYPE_U8C1);
+
+    GammaCorrectiom(src.pu8VirAddr[0], src.u16Width, src.u16Height, src2.pu8VirAddr[0], 2.2);
+
     // int nChannels = 1;
     int width = src.u16Width;
     int height = src.u16Height;
@@ -86,10 +102,9 @@ int main(int argc, char **argv) {
       CVI_IVE_CreateImage(handle, &dstAng_u8, IVE_IMAGE_TYPE_U8C1, width, height);
 
       // IVE_DST_MEM_INFO_S dstHist;
-      // CVI_U32 dstHistSize = 0;
       CVI_IVE_GET_HOG_SIZE(dstAng.u16Width, dstAng.u16Height, BIN_NUM, CELL_SIZE, BLOCK_SIZE,
-                           STEP_X, STEP_Y, &dstHistSize);
-      CVI_IVE_CreateMemInfo(handle, &dstHist, dstHistSize);
+                           STEP_X, STEP_Y, &dstHistByteSize);
+      CVI_IVE_CreateMemInfo(handle, &dstHist, dstHistByteSize);
 
       pstHogCtrl.u8BinSize = BIN_NUM;
       pstHogCtrl.u32CellSize = CELL_SIZE;
@@ -98,16 +113,22 @@ int main(int argc, char **argv) {
       pstHogCtrl.u16BlkStepY = STEP_Y;
       binit = true;
     }
-    printf("Run TPU HOG. len: %d\n", dstHistSize);
+    printf("Run TPU HOG. len: %d\n", dstHistByteSize);
     // IVE_HOG_CTRL_S pstHogCtrl;
 
     struct timeval t0, t1;
     gettimeofday(&t0, NULL);
     // for (size_t i = 0; i < total_run; i++)
     {
-      CVI_IVE_HOG(handle, &src, &dstH, &dstV, &dstMag, &dstAng, &dstHist, &pstHogCtrl, 0);
+      CVI_IVE_HOG(handle, &src2, &dstH, &dstV, &dstMag, &dstAng, &dstHist, &pstHogCtrl, 0);
       float *ptr = (float *)dstHist.pu8VirAddr;
-      int reald = dstHistSize / sizeof(u32);
+
+      u32 blkSize = BLOCK_SIZE * BLOCK_SIZE * BIN_NUM;
+      u32 blkNum = dstHistByteSize / sizeof(float) / blkSize;
+      int reald = blkSize * blkNum;
+      if (reald != 3780) {
+        break;
+      }
       for (int j = 0; j < reald; j++) {
         // printf("%d %d\n", j, ptr[j]  );
         fprintf(fpFea, "%f ", ptr[j]);
@@ -126,6 +147,7 @@ int main(int argc, char **argv) {
     CVI_IVE_ImageTypeConvert(handle, &dstAng, &dstAng_u8, &iveItcCtrl, 0);
 
     CVI_IVE_BufRequest(handle, &src);
+    CVI_IVE_BufRequest(handle, &src2);
     CVI_IVE_BufRequest(handle, &dstH);
     CVI_IVE_BufRequest(handle, &dstV);
     CVI_IVE_BufRequest(handle, &dstAng);
@@ -153,6 +175,7 @@ int main(int argc, char **argv) {
     }
 
     CVI_SYS_FreeI(handle, &src);
+    CVI_SYS_FreeI(handle, &src2);
   }
   fclose(fpFea);
   fclose(fpPath);

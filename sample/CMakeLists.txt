@@ -26,6 +26,7 @@ buildninstall_test(sample_or)
 buildninstall_test(sample_ordstat)
 buildninstall_test(sample_sad)
 buildninstall_test(sample_sub)
+buildninstall_test(sample_threshold)
 buildninstall_test(sample_thresh16)
 buildninstall_test(sample_xor)
 

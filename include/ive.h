@@ -479,14 +479,14 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 // for cpu version
 
 /**
- * @brief INTEG make a integral image with one gray image
- *
- * @param pIveHandle Ive instance handler.
- * @param pstSrc Input gray image.
- * @param pstDst Output int image.
- * @param bInstant Dummy variable.
- * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
- */
+ * @brief INTEG make a integral image with one gray image
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc Input gray image.
+ * @param pstDst Output int image.
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
+ */
 
 CVI_S32 CVI_IVE_Integ(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_MEM_INFO_S *pstDst,
                       IVE_INTEG_CTRL_S *ctrl, bool bInstant);
