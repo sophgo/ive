@@ -106,16 +106,6 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
                          CVI_U16 u16X1, CVI_U16 u16Y1, CVI_U16 u16X2, CVI_U16 u16Y2);
 
 /**
- * @brief Convert IVE_IMAGE_S to VIDEO_FRAME_S. Note that do not unmap the virtual address from
- *        IVE_IMAGE_S.
- *
- * @param pstIISrc IVE_IMAGE_S input.
- * @param pstVFDst VIDEO_FRAME_S output.
- * @return CVI_S32 Return CVI_SUCCESS if operation succeeded.
- */
-CVI_S32 CVI_IVE_Image2VideoFrame(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_S *pstVFDst);
-
-/**
  * @brief Convert VIDEO_FRAME_S to IVE_IMAGE_S. Note that this function does not map or unmap for
  *        you.
  *
