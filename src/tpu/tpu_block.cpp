@@ -15,7 +15,7 @@ void IveTPUBlock::setCellSize(const int cell_size, const int channel) {
   m_channel = channel;
 }
 
-int IveTPUBlock::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+int IveTPUBlock::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "block";
   m_slice_info.nums_of_tl = 2;
   // Reserved for rgb multiplier
@@ -37,48 +37,48 @@ int IveTPUBlock::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *
   return CVI_SUCCESS;
 }
 
-int IveTPUBlock::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                          const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
-                          const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
+int IveTPUBlock::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+                          const std::vector<cvk_tg_shape_t> &tg_in_slices,
+                          const std::vector<cvk_tg_shape_t> &tg_out_slices,
                           std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                           const bool enable_cext) {
   if (m_channel != tg_in_slices[0].c) {
     std::cerr << "Channel changed, slicing result may not be suitable." << std::endl;
   }
-  bmk1880v2_tensor_lmem_shape_t tl_shape;
+  cvk_tl_shape_t tl_shape;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;
   tl_shape.h = tg_in_slices[0].h;
   tl_shape.w = tg_in_slices[0].w;
-  auto *tl_input = allocTLMem(bk_ctx, tl_shape, FMT_U8, 1);
-  bmk1880v2_tensor_lmem_shape_t tl_shape2;
+  auto *tl_input = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
+  cvk_tl_shape_t tl_shape2;
   tl_shape2.n = tg_out_slices[0].n;
   tl_shape2.c = tg_out_slices[0].c;
   tl_shape2.h = tg_out_slices[0].h;
   tl_shape2.w = tg_out_slices[0].w;
-  auto *tl_output = allocTLMem(bk_ctx, tl_shape2, FMT_U8, 1);
+  auto *tl_output = allocTLMem(cvk_ctx, tl_shape2, CVK_FMT_U8, 1);
 
-  bmk1880v2_tensor_lmem_shape_t tl_block_shape;
+  cvk_tl_shape_t tl_block_shape;
   tl_block_shape.n = tg_out_slices[0].n;
   tl_block_shape.c = tg_out_slices[0].c;
   tl_block_shape.h = m_kernel_info.size;
   tl_block_shape.w = m_kernel_info.size;
-  auto *block_kernel = allocTLMem(bk_ctx, tl_block_shape, FMT_U8, 1, IVETLType::KERNEL);
-  constantFillTL(ctx, bk_ctx, 1, block_kernel);
+  auto *block_kernel = allocTLMem(cvk_ctx, tl_block_shape, CVK_FMT_U8, 1, IVETLType::KERNEL);
+  constantFillTL(ctx, cvk_ctx, 1, block_kernel);
   float real_multiplier = 1.f / (m_kernel_info.size * m_kernel_info.size * m_bin_num);
-  bmk1880v2_tensor_lmem_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
-  auto *tl_multiplier = allocTLMem(bk_ctx, packed_s, FMT_U8, 1);
+  cvk_tl_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
+  auto *tl_multiplier = allocTLMem(cvk_ctx, packed_s, CVK_FMT_U8, 1);
   {
     u32 quantized_multiplier;
     int right_shift;
     QuantizeMultiplierSmallerThanOne(real_multiplier, &quantized_multiplier, &right_shift);
-    mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, FMT_U8);
+    mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, CVK_FMT_U8);
     getPackedMultiplierArrayBuffer(tl_shape.c, quantized_multiplier, right_shift,
                                    mp_multiplier->GetVAddr());
-    cviImgFlush2TL(ctx, bk_ctx, *mp_multiplier, tl_multiplier);
+    cviImgFlush2TL(ctx, cvk_ctx, *mp_multiplier, tl_multiplier);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
     tl_multiplier->stride =
-        bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_multiplier->shape, FMT_U8, 0);
+        cvk_ctx->ops->tl_default_stride(cvk_ctx, tl_multiplier->shape, CVK_FMT_U8, 0);
   }
 
   m_p_conv.pad_top = m_kernel_info.pad[2];
@@ -106,8 +106,8 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUBlock::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
-  bmk1880v2_tiu_depthwise_convolution_qdm(bk_ctx, &m_p_conv);
+void IveTPUBlock::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+  cvk_ctx->ops->tiu_depthwise_convolution(cvk_ctx, &m_p_conv);
 }
 
 int IveTPUBlock::postProcess(bmctx_t *ctx) {

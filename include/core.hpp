@@ -11,23 +11,22 @@ enum IVETLType { DATA, KERNEL, TABLE };
 class IveCore {
  public:
   IveCore();
-  const unsigned int getNpuNum() const { return m_chip_info.npu_num; }
-  virtual int init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) = 0;
-  int run(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+  const unsigned int getNpuNum(cvk_context_t *cvk_ctx) const { return cvk_ctx->info.npu_num; }
+  virtual int init(bmctx_t *ctx, cvk_context_t *cvk_ctx) = 0;
+  int run(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
           std::vector<CviImg> *output, bool legacy_mode = false);
 
  protected:
-  bmk1880v2_tensor_lmem_t *allocTLMem(bmk1880v2_context_t *bk_ctx,
-                                      bmk1880v2_tensor_lmem_shape_t tl_shape, fmt_t fmt,
-                                      int eu_align, IVETLType type = IVETLType::DATA);
+  cvk_tl_t *allocTLMem(cvk_context_t *cvk_ctx, cvk_tl_shape_t tl_shape, cvk_fmt_t fmt, int eu_align,
+                       IVETLType type = IVETLType::DATA);
   virtual int sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_out_res);
-  virtual int runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                       const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
-                       const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
+  virtual int runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+                       const std::vector<cvk_tg_shape_t> &tg_in_slices,
+                       const std::vector<cvk_tg_shape_t> &tg_out_slices,
                        std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                        const bool enable_cext) = 0;
-  virtual void operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) = 0;
-  virtual void beforeSubmit(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+  virtual void operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) = 0;
+  virtual void beforeSubmit(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
                             std::vector<CviImg> *output);
   virtual int postProcess(bmctx_t *ctx);
 
@@ -36,7 +35,7 @@ class IveCore {
   SliceInfo m_slice_info;
   kernelInfo m_kernel_info;
   std::vector<IVETLType> m_tl_type;
-  std::vector<bmk1880v2_tensor_lmem_t *> m_tl_vec;
+  std::vector<cvk_tl_t *> m_tl_vec;
   std::string m_cmdbuf_subfix;
   bool m_force_use_ext = false;
 
@@ -45,15 +44,15 @@ class IveCore {
                const u32 n, const u32 c, const u32 h, const u32 w, const u32 table_size,
                const kernelInfo kernel_info, const int npu_num, sliceUnit *unit_h,
                sliceUnit *unit_w, const bool enable_cext);
-  int freeTLMems(bmk1880v2_context_t *bk_ctx);
-  int runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+  int freeTLMems(cvk_context_t *cvk_ctx);
+  int runSingleSizeKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
                           std::vector<CviImg> *output, bool enable_min_max = false);
-  int runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+  int runSingleSizeExtKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
                              std::vector<CviImg> *output, bool enable_min_max = false);
-  int runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+  int runNoKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
                   std::vector<CviImg> *output, bool enable_min_max = false);
 
   bool m_write_cmdbuf = false;
-  cvi_chip_info_s m_chip_info;
+  cvk_chip_info_t m_chip_info;
   u32 m_table_per_channel_size = 0;
 };

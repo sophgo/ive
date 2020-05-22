@@ -23,6 +23,7 @@ endif()
 
 set(MLIR_LIBS
     ${MLIR_SDK_ROOT}/lib/libcvikernel.so
+    ${MLIR_SDK_ROOT}/lib/libcvimath.so
     ${MLIR_SDK_ROOT}/lib/libcviruntime.so
     ${CVI_CMODEL}
 )

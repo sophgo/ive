@@ -22,9 +22,9 @@ void IveTPUMagAndAng::magDistMethod(int method) {
 
 void IveTPUMagAndAng::noNegative(bool value) { m_no_negative = value; }
 
-int IveTPUMagAndAng::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+int IveTPUMagAndAng::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "magnang";
-  m_slice_info.io_fmt = FMT_BF16;
+  m_slice_info.io_fmt = CVK_FMT_BF16;
   // 2 input tl
   // 6 tmp buf
   // 1 atan & 1 final sqrt result
@@ -50,116 +50,110 @@ int IveTPUMagAndAng::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                              const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
-                              const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
+int IveTPUMagAndAng::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+                              const std::vector<cvk_tg_shape_t> &tg_in_slices,
+                              const std::vector<cvk_tg_shape_t> &tg_out_slices,
                               std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                               const bool enable_cext) {
-  bmk1880v2_tensor_lmem_shape_t tl_shape;
+  cvk_tl_shape_t tl_shape;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;
   tl_shape.h = tg_in_slices[0].h;
   tl_shape.w = tg_in_slices[0].w;
-  auto *tl_input = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_input2 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+  auto *tl_input = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1);
+  auto *tl_input2 = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1);
   // FIXME: Should reuse.
-  auto *tl_mag = m_export_mag ? allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1) : NULL;
-  auto *tl_angle = m_export_ang ? allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1) : NULL;
+  auto *tl_mag = m_export_mag ? allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1) : NULL;
+  auto *tl_angle = m_export_ang ? allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1) : NULL;
 
   auto *tl_buf =
-      (m_dist_method == 1 || m_export_ang) ? allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1) : NULL;
-  bmk1880v2_tensor_lmem_t *tl_buf2 = NULL, *tl_buf3 = NULL, *tl_buf4 = NULL, *tl_buf5 = NULL,
-                          *tl_buf6 = NULL;
+      (m_dist_method == 1 || m_export_ang) ? allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1) : NULL;
+  cvk_tl_t *tl_buf2 = NULL, *tl_buf3 = NULL, *tl_buf4 = NULL, *tl_buf5 = NULL, *tl_buf6 = NULL;
   if (m_export_ang) {
-    tl_buf2 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-    tl_buf3 = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
+    tl_buf2 = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1);
+    tl_buf3 = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1);
   }
 
-  const bmk1880v2_tensor_lmem_shape_t tl_table_s = mp_tblmgr->getTblTLShape(FMT_BF16);
-  bmk1880v2_tensor_lmem_t *tl_sqrt_table_answer = NULL, *tl_sqrt_table_answer_mantissa = NULL;
+  const cvk_tl_shape_t tl_table_s = mp_tblmgr->getTblTLShape(CVK_FMT_BF16);
+  cvk_tl_t *tl_sqrt_table_answer = NULL, *tl_sqrt_table_answer_mantissa = NULL;
   if (m_export_mag) {
-    tl_sqrt_table_answer = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-    tl_sqrt_table_answer_mantissa = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+    tl_sqrt_table_answer = allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
+    tl_sqrt_table_answer_mantissa =
+        allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
     const CviImg *table_data = mp_tblmgr->sqrt(TBLSQRT::TBLSQRT_DATA);
     const CviImg *table_data_mantissa = mp_tblmgr->sqrt(TBLSQRT::TBLSQRT_MANTISSA);
-    cviImg2TL(ctx, bk_ctx, *table_data, tl_sqrt_table_answer);
-    cviImg2TL(ctx, bk_ctx, *table_data_mantissa, tl_sqrt_table_answer_mantissa);
+    cviImg2TL(ctx, cvk_ctx, *table_data, tl_sqrt_table_answer);
+    cviImg2TL(ctx, cvk_ctx, *table_data_mantissa, tl_sqrt_table_answer_mantissa);
   }
 
-  bmk1880v2_tensor_lmem_t *tl_y0_table = NULL, *tl_invert_table = NULL, *tl_pos_neg_table = NULL,
-                          *tl_reciprocal_table_answer = NULL,
-                          *tl_reciprocal_table_answer_mantissa = NULL, *tl_slope_table = NULL,
-                          *tl_idx_0_table = NULL;
+  cvk_tl_t *tl_y0_table = NULL, *tl_invert_table = NULL, *tl_pos_neg_table = NULL,
+           *tl_reciprocal_table_answer = NULL, *tl_reciprocal_table_answer_mantissa = NULL,
+           *tl_slope_table = NULL, *tl_idx_0_table = NULL;
   if (m_export_ang) {
     // atan buf
     {
-      tl_y0_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-      tl_invert_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-      tl_pos_neg_table = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+      tl_y0_table = allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
+      tl_invert_table = allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
+      tl_pos_neg_table = allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
       const CviImg *table_data_atan_y0 = m_p_atan2.output_degree
                                              ? mp_tblmgr->atan(TBLATAN::TBLATAN_Y0_DEGREE)
                                              : mp_tblmgr->atan(TBLATAN::TBLATAN_Y0);
       const CviImg *table_data_atan_invert = mp_tblmgr->atan(TBLATAN::TBLATAN_INVERT);
       const CviImg *table_data_atan_pos_neg = mp_tblmgr->atan(TBLATAN::TBLATAN_POSNEG);
-      cviImg2TL(ctx, bk_ctx, *table_data_atan_y0, tl_y0_table);
-      cviImg2TL(ctx, bk_ctx, *table_data_atan_invert, tl_invert_table);
-      cviImg2TL(ctx, bk_ctx, *table_data_atan_pos_neg, tl_pos_neg_table);
+      cviImg2TL(ctx, cvk_ctx, *table_data_atan_y0, tl_y0_table);
+      cviImg2TL(ctx, cvk_ctx, *table_data_atan_invert, tl_invert_table);
+      cviImg2TL(ctx, cvk_ctx, *table_data_atan_pos_neg, tl_pos_neg_table);
     }
     {
-      tl_reciprocal_table_answer = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+      tl_reciprocal_table_answer =
+          allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
       tl_reciprocal_table_answer_mantissa =
-          allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+          allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
       const CviImg *table_data = mp_tblmgr->reciprocal(TBLRECIPROCAL::TBLRECIPROCAL_DATA);
       const CviImg *table_data_mantissa =
           mp_tblmgr->reciprocal(TBLRECIPROCAL::TBLRECIPROCAL_MANTISSA);
-      cviImg2TL(ctx, bk_ctx, *table_data, tl_reciprocal_table_answer);
-      cviImg2TL(ctx, bk_ctx, *table_data_mantissa, tl_reciprocal_table_answer_mantissa);
+      cviImg2TL(ctx, cvk_ctx, *table_data, tl_reciprocal_table_answer);
+      cviImg2TL(ctx, cvk_ctx, *table_data_mantissa, tl_reciprocal_table_answer_mantissa);
     }
   }
 
   if (m_dist_method == 0) {
     m_p_mul_a.rshift_bits = 0;
     m_p_mul_a.relu_enable = 1;
-    m_p_mul_a.bf16_enable = 1;
     m_p_mul_a.res_high = NULL;
     m_p_mul_a.res_low = tl_mag;
     m_p_mul_a.a = tl_input;
     m_p_mul_a.b_is_const = 1;
-    m_p_mul_a.b_val = convert_fp32_bf16(-1.f);
+    m_p_mul_a.b_const.val = convert_fp32_bf16(-1.f);
     m_p_max_a.a = tl_input;
     m_p_max_a.b = tl_mag;
     m_p_max_a.max = tl_input;
     m_p_max_a.b_is_const = 0;
-    m_p_max_a.bf16_enable = 1;
 
     m_p_mul_b.rshift_bits = 0;
     m_p_mul_b.relu_enable = 1;
-    m_p_mul_b.bf16_enable = 1;
     m_p_mul_b.res_high = NULL;
     m_p_mul_b.res_low = tl_mag;
     m_p_mul_b.a = tl_input2;
     m_p_mul_b.b_is_const = 1;
-    m_p_mul_b.b_val = convert_fp32_bf16(-1.f);
+    m_p_mul_b.b_const.val = convert_fp32_bf16(-1.f);
     m_p_max_b.a = tl_input2;
     m_p_max_b.b = tl_mag;
     m_p_max_b.max = tl_input2;
     m_p_max_b.b_is_const = 0;
-    m_p_max_b.bf16_enable = 1;
 
     m_p_add.a_low = tl_input;
     m_p_add.a_high = NULL;
-    m_p_add.b_low = tl_input2;
-    m_p_add.b_high = NULL;
+    m_p_add.b.low = tl_input2;
+    m_p_add.b.high = NULL;
     m_p_add.res_low = tl_mag;
     m_p_add.res_high = NULL;
-    m_p_add.bf16_enable = 1;
     m_p_add.relu_enable = 0;
     m_p_add.b_is_const = 0;
     m_p_add.rshift_bits = 0;
   } else if (m_dist_method == 1) {
     m_p_mul_a.rshift_bits = 0;
     m_p_mul_a.relu_enable = 1;
-    m_p_mul_a.bf16_enable = 1;
     m_p_mul_a.res_high = NULL;
     m_p_mul_a.res_low = tl_buf;
     m_p_mul_a.a = tl_input;
@@ -170,7 +164,6 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     m_p_mac.lshift_bits = 0;
     m_p_mac.rshift_bits = 0;
     m_p_mac.relu_enable = 1;
-    m_p_mac.bf16_enable = 1;
     m_p_mac.res_high = NULL;
     m_p_mac.res_low = tl_buf;
     m_p_mac.a = tl_input2;
@@ -202,25 +195,24 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_atan2.sqrt_table_answer = tl_sqrt_table_answer;
   m_p_atan2.sqrt_table_answer_mantissa = tl_sqrt_table_answer_mantissa;
   m_p_atan2.idx_0_table = tl_idx_0_table;
-  m_p_atan2.fmt = FMT_BF16;
+  m_p_atan2.fmt = CVK_FMT_BF16;
 
   if (m_no_negative) {
     m_p_mask.ifmap = tl_angle;
     m_p_mask.ofmap = tl_buf;
     m_p_mask.buf = tl_buf2;
     m_p_mask.pos_neg_table = tl_pos_neg_table;
-    m_p_mask.fmt = FMT_BF16;
+    m_p_mask.fmt = CVK_FMT_BF16;
 
     m_p_mac_mask.res_is_int8 = 0;
     m_p_mac_mask.lshift_bits = 0;
     m_p_mac_mask.rshift_bits = 0;
     m_p_mac_mask.relu_enable = 0;
-    m_p_mac_mask.bf16_enable = 1;
     m_p_mac_mask.res_high = NULL;
     m_p_mac_mask.res_low = tl_angle;
     m_p_mac_mask.a = tl_buf;
     m_p_mac_mask.b_is_const = 1;
-    m_p_mac_mask.b_val = convert_fp32_bf16(360.f);
+    m_p_mac_mask.b_const.val = convert_fp32_bf16(360.f);
   }
 
   tl_in_idx->push_back(0);
@@ -241,62 +233,41 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUMagAndAng::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
+void IveTPUMagAndAng::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
   if (m_export_mag) {
     if (m_dist_method == 0) {
-      bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_a);
-      bmk1880v2_tiu_bf16_element_wise_max(bk_ctx, &m_p_max_a);
-      bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_b);
-      bmk1880v2_tiu_bf16_element_wise_max(bk_ctx, &m_p_max_b);
-      bmk1880v2_tiu_bf16_element_wise_add(bk_ctx, &m_p_add);
+      cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul_a);
+      cvk_ctx->ops->tiu_max(cvk_ctx, &m_p_max_a);
+      cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul_b);
+      cvk_ctx->ops->tiu_max(cvk_ctx, &m_p_max_b);
+      cvk_ctx->ops->tiu_add(cvk_ctx, &m_p_add);
     } else if (m_dist_method == 1) {
-      bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_a);
-      bmk1880v2_tiu_bf16_element_wise_mac(bk_ctx, &m_p_mac);
-      bf16_emit_sqrt(bk_ctx, m_p_sqrt.a, m_p_sqrt.buf, m_p_sqrt.sqrt_table_answer,
-                     m_p_sqrt.sqrt_table_answer_mantissa, m_p_sqrt.res);
+      cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul_a);
+      cvk_ctx->ops->tiu_mac(cvk_ctx, &m_p_mac);
+      cvm_emit_sqrt(cvk_ctx, m_p_sqrt.a, m_p_sqrt.buf, m_p_sqrt.sqrt_table_answer,
+                    m_p_sqrt.sqrt_table_answer_mantissa, m_p_sqrt.res);
     }
   }
   if (m_export_ang) {
     // sqrt goes first cause atan2 changes y value
     if (m_p_atan2.output_degree) {
-      bf16_atan2_fast_degree_emit(bk_ctx, m_p_atan2.b, m_p_atan2.a, m_p_atan2.buf1, m_p_atan2.buf2,
-                                  m_p_atan2.buf3, m_p_atan2.y0, m_p_atan2.invert,
-                                  m_p_atan2.pos_neg_table, m_p_atan2.reciprocal_table_answer,
-                                  m_p_atan2.reciprocal_table_answer_mantissa, m_p_atan2.res,
-                                  m_p_atan2.fmt);
+      cvm_atan2_fast_degree_emit(cvk_ctx, m_p_atan2.b, m_p_atan2.a, m_p_atan2.buf1, m_p_atan2.buf2,
+                                 m_p_atan2.buf3, m_p_atan2.y0, m_p_atan2.invert,
+                                 m_p_atan2.pos_neg_table, m_p_atan2.reciprocal_table_answer,
+                                 m_p_atan2.reciprocal_table_answer_mantissa, m_p_atan2.res,
+                                 m_p_atan2.fmt);
     } else {
-      bf16_atan2_merge_emit(bk_ctx, m_p_atan2.b, m_p_atan2.a, m_p_atan2.buf1, m_p_atan2.buf2,
-                            m_p_atan2.buf3, m_p_atan2.y0, m_p_atan2.invert, m_p_atan2.pos_neg_table,
-                            m_p_atan2.reciprocal_table_answer,
-                            m_p_atan2.reciprocal_table_answer_mantissa, m_p_atan2.res,
-                            m_p_atan2.fmt);
+      cvm_atan2_merge_emit(cvk_ctx, m_p_atan2.b, m_p_atan2.a, m_p_atan2.buf1, m_p_atan2.buf2,
+                           m_p_atan2.buf3, m_p_atan2.y0, m_p_atan2.invert, m_p_atan2.pos_neg_table,
+                           m_p_atan2.reciprocal_table_answer,
+                           m_p_atan2.reciprocal_table_answer_mantissa, m_p_atan2.res,
+                           m_p_atan2.fmt);
     }
-#ifdef MAGnANG_DEBUG
-    u16 *input1 = (u16 *)get_bf16_tensor_l2g(ctx, bk_ctx, m_p_atan2.a, FMT_BF16);
-    u16 *input2 = (u16 *)get_bf16_tensor_l2g(ctx, bk_ctx, m_p_atan2.b, FMT_BF16);
-    u16 *res_ang = (u16 *)get_bf16_tensor_l2g(ctx, bk_ctx, m_p_atan2.res, FMT_BF16);
-    for (size_t i = 0; i < m_p_atan2.a->shape.h * m_p_atan2.a->shape.w; i++) {
-      float b = convert_bf16_fp32(input2[i]);
-      float a = convert_bf16_fp32(input1[i]);
-      float resss = atan2(b, a);
-      float err = (convert_bf16_fp32(res_ang[i]) - resss) / resss;
-      if (err > 0.02) {
-        printf("%lu ERRRRR b %f a %f cpu %f tpu %f\n", counting, b, a, resss,
-               convert_bf16_fp32(res_ang[i]));
-      }
-    }
-    delete[] input1;
-    delete[] input2;
-    delete[] res_ang;
-#endif
 
     if (m_no_negative) {
-      // FIXME: Broken in TPU if no printf is inserted.
-      // bf16_emit_mask_lt0(bk_ctx, m_p_mask.ifmap, m_p_mask.buf, m_p_mask.pos_neg_table,
-      //                    m_p_mask.ofmap, m_p_mask.fmt);
-      bf16_emit_neg_idx(bk_ctx, m_p_mask.ifmap, m_p_mask.buf, m_p_mask.pos_neg_table,
-                        m_p_mask.ofmap, m_p_mask.fmt);
-      bmk1880v2_tiu_bf16_element_wise_mac(bk_ctx, &m_p_mac_mask);
+      cvm_emit_neg_idx(cvk_ctx, m_p_mask.ifmap, m_p_mask.buf, m_p_mask.pos_neg_table,
+                       m_p_mask.ofmap, m_p_mask.fmt);
+      cvk_ctx->ops->tiu_mac(cvk_ctx, &m_p_mac_mask);
     }
   }
 #ifdef MAGnANG_DEBUG

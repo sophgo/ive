@@ -16,7 +16,7 @@ void IveTPUBlockBF16::setCellSize(const int cell_size, const int channel) {
   m_channel = channel;
 }
 
-int IveTPUBlockBF16::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+int IveTPUBlockBF16::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "blockBF16";
   m_slice_info.nums_of_tl = 3 * 2;
   m_kernel_info.nums_of_kernel = 1;
@@ -36,35 +36,35 @@ int IveTPUBlockBF16::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceR
   return CVI_SUCCESS;
 }
 
-int IveTPUBlockBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                              const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
-                              const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
+int IveTPUBlockBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+                              const std::vector<cvk_tg_shape_t> &tg_in_slices,
+                              const std::vector<cvk_tg_shape_t> &tg_out_slices,
                               std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                               const bool enable_cext) {
   if (m_channel != tg_in_slices[0].c) {
     std::cerr << "Channel changed, slicing result may not be suitable." << std::endl;
   }
-  bmk1880v2_tensor_lmem_shape_t tl_shape;
+  cvk_tl_shape_t tl_shape;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;
   tl_shape.h = tg_in_slices[0].h;
   tl_shape.w = tg_in_slices[0].w;
-  auto *tl_input = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  bmk1880v2_tensor_lmem_shape_t tl_shape2;
+  auto *tl_input = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1);
+  cvk_tl_shape_t tl_shape2;
   tl_shape2.n = tg_out_slices[0].n;
   tl_shape2.c = tg_out_slices[0].c;
   tl_shape2.h = tg_out_slices[0].h;
   tl_shape2.w = tg_out_slices[0].w;
-  auto *tl_tmp = allocTLMem(bk_ctx, tl_shape2, FMT_BF16, 1);
-  auto *tl_output = allocTLMem(bk_ctx, tl_shape2, FMT_BF16, 1);
+  auto *tl_tmp = allocTLMem(cvk_ctx, tl_shape2, CVK_FMT_BF16, 1);
+  auto *tl_output = allocTLMem(cvk_ctx, tl_shape2, CVK_FMT_BF16, 1);
 
-  bmk1880v2_tensor_lmem_shape_t tl_block_shape;
+  cvk_tl_shape_t tl_block_shape;
   tl_block_shape.n = tg_out_slices[0].n;
   tl_block_shape.c = tg_out_slices[0].c;
   tl_block_shape.h = m_kernel_info.size;
   tl_block_shape.w = m_kernel_info.size;
-  auto *block_kernel = allocTLMem(bk_ctx, tl_block_shape, FMT_BF16, 1, IVETLType::KERNEL);
-  constantFillTL(ctx, bk_ctx, convert_fp32_bf16(1.f), block_kernel);
+  auto *block_kernel = allocTLMem(cvk_ctx, tl_block_shape, CVK_FMT_BF16, 1, IVETLType::KERNEL);
+  constantFillTL(ctx, cvk_ctx, convert_fp32_bf16(1.f), block_kernel);
   float real_multiplier = 1.f / (m_kernel_info.size * m_kernel_info.size * m_bin_num);
 
   m_p_conv.pad_top = m_kernel_info.pad[2];
@@ -82,7 +82,6 @@ int IveTPUBlockBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_conv.dilation_w = 1;
   m_p_conv.bias = NULL;
   m_p_conv.rshift_bits = 0;
-  m_p_conv.bf16_enable = 1;
   m_p_conv.ifmap = tl_input;
   m_p_conv.ofmap = tl_tmp;
   m_p_conv.weight = block_kernel;
@@ -91,16 +90,15 @@ int IveTPUBlockBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_mul.res_low = tl_output;
   m_p_mul.a = tl_tmp;
   m_p_mul.b_is_const = 1;
-  m_p_mul.b_val = convert_fp32_bf16(real_multiplier);
+  m_p_mul.b_const.val = convert_fp32_bf16(real_multiplier);
   m_p_mul.relu_enable = 0;
-  m_p_mul.bf16_enable = 1;
 
   tl_in_idx->push_back(0);
   tl_out_idx->push_back(2);
   return CVI_SUCCESS;
 }
 
-void IveTPUBlockBF16::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
-  bmk1880v2_tiu_bf16_depthwise_convolution(bk_ctx, &m_p_conv);
-  bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul);
+void IveTPUBlockBF16::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+  cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv);
+  cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul);
 }

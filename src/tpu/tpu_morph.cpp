@@ -11,20 +11,20 @@ void IveTPUErode::setKernel(IveKernel &kernel) {
   m_kernel_info.pad[3] = pad;
 }
 
-int IveTPUErode::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+int IveTPUErode::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "morph";
-  m_slice_info.io_fmt = FMT_U8;
+  m_slice_info.io_fmt = CVK_FMT_U8;
   m_slice_info.nums_of_tl = 3;
   m_kernel_info.nums_of_kernel = 1;
   return CVI_SUCCESS;
 }
 
-int IveTPUErode::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                          const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
-                          const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
+int IveTPUErode::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+                          const std::vector<cvk_tg_shape_t> &tg_in_slices,
+                          const std::vector<cvk_tg_shape_t> &tg_out_slices,
                           std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                           const bool enable_cext) {
-  bmk1880v2_tensor_lmem_shape_t tl_shape, tl_shape_out;
+  cvk_tl_shape_t tl_shape, tl_shape_out;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;
   tl_shape.h = tg_in_slices[0].h;
@@ -33,29 +33,29 @@ int IveTPUErode::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_shape_out.c = tg_out_slices[0].c;
   tl_shape_out.h = tg_out_slices[0].h;
   tl_shape_out.w = tg_out_slices[0].w;
-  auto *tl_input = allocTLMem(bk_ctx, tl_shape, FMT_U8, 1);
-  auto *tl_conv_res = allocTLMem(bk_ctx, tl_shape_out, FMT_U8, 1);
+  auto *tl_input = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
+  auto *tl_conv_res = allocTLMem(cvk_ctx, tl_shape_out, CVK_FMT_U8, 1);
   // Kernel
   if (m_kernel == nullptr) {
     std::cerr << "Error! kernel not set." << std::endl;
   }
-  bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size,
-                                               m_kernel_info.size};
-  bmk1880v2_tensor_lmem_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
-  auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, FMT_U8, 1, IVETLType::KERNEL);
+  cvk_tl_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size, m_kernel_info.size};
+  cvk_tl_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
+  auto *tl_kernel = allocTLMem(cvk_ctx, tl_kernel_s, CVK_FMT_U8, 1, IVETLType::KERNEL);
   int tmp_c = m_kernel->img.m_tg.shape.c;
   m_kernel->img.m_tg.shape.c = tl_shape.c;
-  cviImgFlush2TL(ctx, bk_ctx, m_kernel->img, tl_kernel);
+  cviImgFlush2TL(ctx, cvk_ctx, m_kernel->img, tl_kernel);
   m_kernel->img.m_tg.shape.c = tmp_c;
 
-  auto *tl_multiplier = allocTLMem(bk_ctx, packed_s, FMT_U8, 1);
+  auto *tl_multiplier = allocTLMem(cvk_ctx, packed_s, CVK_FMT_U8, 1);
   {
-    mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, FMT_U8);
+    mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, CVK_FMT_U8);
     getPackedMultiplierArrayBuffer(tl_shape.c, m_kernel->multiplier.base,
                                    m_kernel->multiplier.shift, mp_multiplier->GetVAddr());
-    cviImgFlush2TL(ctx, bk_ctx, *mp_multiplier, tl_multiplier);
+    cviImgFlush2TL(ctx, cvk_ctx, *mp_multiplier, tl_multiplier);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
-    tl_multiplier->stride = bmk1880v2_tensor_lmem_default_stride(bk_ctx, m_tl_vec[3]->shape, 0);
+    tl_multiplier->stride =
+        cvk_ctx->ops->tl_default_stride(cvk_ctx, m_tl_vec[3]->shape, tl_multiplier->fmt, 0);
   }
 
   if (enable_cext) {
@@ -83,8 +83,8 @@ int IveTPUErode::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_conv.weight = tl_kernel;
   m_p_conv.chl_quan_param = tl_multiplier;
 
-  mp_xor_ones = allocTLMem(bk_ctx, tl_shape, FMT_U8, 1);
-  constantFillTL(ctx, bk_ctx, 255, mp_xor_ones);
+  mp_xor_ones = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
+  constantFillTL(ctx, cvk_ctx, 255, mp_xor_ones);
 
   m_p_xor.b = mp_xor_ones;
   m_p_xor.layer_id = 0;
@@ -94,18 +94,18 @@ int IveTPUErode::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUErode::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
+void IveTPUErode::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
   m_p_xor.a = m_tl_vec[0];
   m_p_xor.res = m_tl_vec[0];
   mp_xor_ones->shape = m_tl_vec[0]->shape;
   mp_xor_ones->stride = m_tl_vec[0]->stride;
-  bmk1880v2_tiu_element_wise_xor_int8(bk_ctx, &m_p_xor);
-  bmk1880v2_tiu_depthwise_convolution_qdm(bk_ctx, &m_p_conv);
+  cvk_ctx->ops->tiu_xor_int8(cvk_ctx, &m_p_xor);
+  cvk_ctx->ops->tiu_depthwise_convolution(cvk_ctx, &m_p_conv);
   m_p_xor.a = m_tl_vec[1];
   m_p_xor.res = m_tl_vec[1];
   mp_xor_ones->shape = m_tl_vec[1]->shape;
   mp_xor_ones->stride = m_tl_vec[1]->stride;
-  bmk1880v2_tiu_element_wise_xor_int8(bk_ctx, &m_p_xor);
+  cvk_ctx->ops->tiu_xor_int8(cvk_ctx, &m_p_xor);
 }
 
 int IveTPUErode::postProcess(bmctx_t *ctx) {

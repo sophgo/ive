@@ -2,7 +2,7 @@
 #include "utils.hpp"
 
 static inline IveKernel createGaussianKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u32 k_w) {
-  CviImg cimg(ctx, img_c, k_h, k_w, FMT_I8);
+  CviImg cimg(ctx, img_c, k_h, k_w, CVK_FMT_I8);
   IveKernel kernel;
   kernel.img = cimg;
   uint8_t *v_addr = cimg.GetVAddr();
@@ -74,7 +74,7 @@ static inline IveKernel createKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u32 k_w,
     k_h = 3;
     k_w = 3;
   }
-  CviImg cimg(ctx, img_c, k_h, k_w, FMT_I8);
+  CviImg cimg(ctx, img_c, k_h, k_w, CVK_FMT_I8);
   IveKernel kernel;
   kernel.img = cimg;
   kernel.multiplier.f = multiplir_val;

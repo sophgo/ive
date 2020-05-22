@@ -2,6 +2,7 @@ project(ive)
 
 include_directories(
     ${MLIR_INCLUDES}
+    ${CVIMATH_INCLUDES}
     ${MIDDLEWARE_INCLUDES}
     ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty
     ${CMAKE_CURRENT_SOURCE_DIR}/../include

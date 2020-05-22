@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-int IveTPUSubAbs::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+int IveTPUSubAbs::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "subAbs";
   // 2 - in
   // 1 -tmp
@@ -15,37 +15,35 @@ int IveTPUSubAbs::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUSubAbs::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                           const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
-                           const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
+int IveTPUSubAbs::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+                           const std::vector<cvk_tg_shape_t> &tg_in_slices,
+                           const std::vector<cvk_tg_shape_t> &tg_out_slices,
                            std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                            const bool enable_cext) {
   m_input1.clear();
   m_input2.clear();
   m_min.clear();
-  bmk1880v2_tensor_lmem_shape_t tl_shape;
+  cvk_tl_shape_t tl_shape;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;
   tl_shape.h = tg_in_slices[0].h;
   tl_shape.w = tg_in_slices[0].w;
   for (size_t i = 0; i < m_slice_info.ping_pong_size; i++) {
-    m_input1.emplace_back(allocTLMem(bk_ctx, tl_shape, FMT_U8, 1));
-    m_input2.emplace_back(allocTLMem(bk_ctx, tl_shape, FMT_U8, 1));
-    m_min.emplace_back(allocTLMem(bk_ctx, tl_shape, FMT_U8, 1));
+    m_input1.emplace_back(allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1));
+    m_input2.emplace_back(allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1));
+    m_min.emplace_back(allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1));
   }
-  auto *tl_high_bit = allocTLMem(bk_ctx, tl_shape, FMT_U8, 1);
-  constantFillTL(ctx, bk_ctx, 0, tl_high_bit);
+  auto *tl_high_bit = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
+  constantFillTL(ctx, cvk_ctx, 0, tl_high_bit);
 
   m_p_min.b_is_const = 0;
-  m_p_min.bf16_enable = 0;
 
   m_p_max.b_is_const = 0;
-  m_p_max.bf16_enable = 0;
 
   m_p_mac.res_high = tl_high_bit;
   m_p_mac.b_is_const = 1;
-  m_p_mac.b_val = -1;
-  m_p_mac.b_is_signed = 1;
+  m_p_mac.b_const.val = -1;
+  m_p_mac.b_const.is_signed = 1;
   m_p_mac.lshift_bits = 0;
   m_p_mac.res_is_int8 = 1;
   m_p_mac.rshift_bits = 0;
@@ -59,7 +57,7 @@ int IveTPUSubAbs::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUSubAbs::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
+void IveTPUSubAbs::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
   m_p_min.a = m_input1[ping_idx];
   m_p_min.b = m_input2[ping_idx];
   m_p_min.min = m_min[ping_idx];
@@ -68,7 +66,7 @@ void IveTPUSubAbs::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping
   m_p_max.max = m_input1[ping_idx];
   m_p_mac.res_low = m_input1[ping_idx];
   m_p_mac.a = m_min[ping_idx];
-  bmk1880v2_tiu_element_wise_min(bk_ctx, &m_p_min);
-  bmk1880v2_tiu_element_wise_max(bk_ctx, &m_p_max);
-  bmk1880v2_tiu_element_wise_mac(bk_ctx, &m_p_mac);
+  cvk_ctx->ops->tiu_min(cvk_ctx, &m_p_min);
+  cvk_ctx->ops->tiu_max(cvk_ctx, &m_p_max);
+  cvk_ctx->ops->tiu_mac(cvk_ctx, &m_p_mac);
 }

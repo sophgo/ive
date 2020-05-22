@@ -17,9 +17,9 @@ void IveTPUSobel::setKernel(IveKernel &kernel_x, IveKernel &kernel_y) {
 
 void IveTPUSobel::magDistMethod(int method) { m_dist_method = method; }
 
-int IveTPUSobel::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+int IveTPUSobel::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "sobel";
-  m_slice_info.io_fmt = FMT_BF16;
+  m_slice_info.io_fmt = CVK_FMT_BF16;
   // 1 input tl
   // 2 conv result
   // 0 a^2 + b^2 result (reuse input tl)
@@ -31,12 +31,12 @@ int IveTPUSobel::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                          const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
-                          const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
+int IveTPUSobel::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+                          const std::vector<cvk_tg_shape_t> &tg_in_slices,
+                          const std::vector<cvk_tg_shape_t> &tg_out_slices,
                           std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                           const bool enable_cext) {
-  bmk1880v2_tensor_lmem_shape_t tl_shape, tl_shape_out;
+  cvk_tl_shape_t tl_shape, tl_shape_out;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;
   tl_shape.h = tg_in_slices[0].h;
@@ -45,28 +45,28 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_shape_out.c = tg_out_slices[0].c;
   tl_shape_out.h = tg_out_slices[0].h;
   tl_shape_out.w = tg_out_slices[0].w;
-  auto *tl_input = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_gx = allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
-  auto *tl_gy = allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
-  auto *tl_buf = allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
+  auto *tl_input = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1);
+  auto *tl_gx = allocTLMem(cvk_ctx, tl_shape_out, CVK_FMT_BF16, 1);
+  auto *tl_gy = allocTLMem(cvk_ctx, tl_shape_out, CVK_FMT_BF16, 1);
+  auto *tl_buf = allocTLMem(cvk_ctx, tl_shape_out, CVK_FMT_BF16, 1);
 
-  bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, m_kernel_x->img.m_tg.shape.c, m_kernel_info.size,
-                                               m_kernel_info.size};
-  auto *tl_kernel_gx = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1, IVETLType::KERNEL);
-  auto *tl_kernel_gy = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1, IVETLType::KERNEL);
-  cviImgFlush2TL(ctx, bk_ctx, m_kernel_x->img, tl_kernel_gx);
-  cviImgFlush2TL(ctx, bk_ctx, m_kernel_y->img, tl_kernel_gy);
+  cvk_tl_shape_t tl_kernel_s = {1, m_kernel_x->img.m_tg.shape.c, m_kernel_info.size,
+                                m_kernel_info.size};
+  auto *tl_kernel_gx = allocTLMem(cvk_ctx, tl_kernel_s, CVK_FMT_BF16, 1, IVETLType::KERNEL);
+  auto *tl_kernel_gy = allocTLMem(cvk_ctx, tl_kernel_s, CVK_FMT_BF16, 1, IVETLType::KERNEL);
+  cviImgFlush2TL(ctx, cvk_ctx, m_kernel_x->img, tl_kernel_gx);
+  cviImgFlush2TL(ctx, cvk_ctx, m_kernel_y->img, tl_kernel_gy);
 
-  bmk1880v2_tensor_lmem_t *tl_table_data = nullptr, *tl_table_data_mantissa = nullptr;
+  cvk_tl_t *tl_table_data = nullptr, *tl_table_data_mantissa = nullptr;
   if (m_dist_method == 1) {
-    const bmk1880v2_tensor_lmem_shape_t tl_table_s = mp_tblmgr->getTblTLShape(FMT_BF16);
-    tl_table_data = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
-    tl_table_data_mantissa = allocTLMem(bk_ctx, tl_table_s, FMT_BF16, 1, IVETLType::TABLE);
+    const cvk_tl_shape_t tl_table_s = mp_tblmgr->getTblTLShape(CVK_FMT_BF16);
+    tl_table_data = allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
+    tl_table_data_mantissa = allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
     {
       const CviImg *table_data = mp_tblmgr->sqrt(TBLSQRT::TBLSQRT_DATA);
       const CviImg *table_data_mantissa = mp_tblmgr->sqrt(TBLSQRT::TBLSQRT_MANTISSA);
-      cviImg2TL(ctx, bk_ctx, *table_data, tl_table_data);
-      cviImg2TL(ctx, bk_ctx, *table_data_mantissa, tl_table_data_mantissa);
+      cviImg2TL(ctx, cvk_ctx, *table_data, tl_table_data);
+      cviImg2TL(ctx, cvk_ctx, *table_data_mantissa, tl_table_data_mantissa);
     }
   }
 
@@ -90,7 +90,6 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_conv_x.dilation_w = 1;
   m_p_conv_x.bias = NULL;
   m_p_conv_x.rshift_bits = 0;
-  m_p_conv_x.bf16_enable = 1;
   m_p_conv_x.ifmap = tl_input;
   m_p_conv_x.ofmap = tl_gx;
   m_p_conv_x.weight = tl_kernel_gx;
@@ -101,14 +100,12 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   if (m_dist_method == 0) {
     m_p_mul_a.rshift_bits = 0;
     m_p_mul_a.relu_enable = 0;
-    m_p_mul_a.bf16_enable = 1;
     m_p_mul_a.res_high = NULL;
     m_p_mul_a.res_low = tl_gy;
     m_p_mul_a.a = tl_gx;
     m_p_mul_a.b_is_const = 1;
-    m_p_mul_a.b_val = convert_fp32_bf16(-1.f);
+    m_p_mul_a.b_const.val = convert_fp32_bf16(-1.f);
 
-    m_p_max_a.bf16_enable = 1;
     m_p_max_a.b_is_const = 0;
     m_p_max_a.a = tl_gx;
     m_p_max_a.b = tl_gy;
@@ -116,33 +113,29 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
     m_p_mul_b.rshift_bits = 0;
     m_p_mul_b.relu_enable = 0;
-    m_p_mul_b.bf16_enable = 1;
     m_p_mul_b.res_high = NULL;
     m_p_mul_b.res_low = tl_buf;
     m_p_mul_b.a = tl_gy;
     m_p_mul_b.b_is_const = 1;
-    m_p_mul_b.b_val = convert_fp32_bf16(-1.f);
+    m_p_mul_b.b_const.val = convert_fp32_bf16(-1.f);
 
-    m_p_max_b.bf16_enable = 1;
     m_p_max_b.b_is_const = 0;
     m_p_max_b.a = tl_gy;
     m_p_max_b.b = tl_buf;
     m_p_max_b.max = tl_gy;
 
-    m_p_add.bf16_enable = 1;
     m_p_add.relu_enable = 0;
     m_p_add.b_is_const = 0;
     m_p_add.rshift_bits = 0;
     m_p_add.a_low = tl_gx;
     m_p_add.a_high = NULL;
-    m_p_add.b_low = tl_gy;
-    m_p_add.b_high = NULL;
+    m_p_add.b.low = tl_gy;
+    m_p_add.b.high = NULL;
     m_p_add.res_low = tl_gx;
     m_p_add.res_high = NULL;
   } else if (m_dist_method == 1) {
     m_p_mul_a.rshift_bits = 0;
     m_p_mul_a.relu_enable = 1;
-    m_p_mul_a.bf16_enable = 1;
     m_p_mul_a.res_high = NULL;
     m_p_mul_a.res_low = tl_buf;
     m_p_mul_a.a = tl_gx;
@@ -153,7 +146,6 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     m_p_mac.lshift_bits = 0;
     m_p_mac.rshift_bits = 0;
     m_p_mac.relu_enable = 1;
-    m_p_mac.bf16_enable = 1;
     m_p_mac.res_high = NULL;
     m_p_mac.res_low = tl_buf;
     m_p_mac.a = tl_gy;
@@ -172,21 +164,21 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUSobel::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
+void IveTPUSobel::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
   if (m_dist_method == 0) {
-    bmk1880v2_tiu_bf16_depthwise_convolution(bk_ctx, &m_p_conv_x);
-    bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_a);
-    bmk1880v2_tiu_bf16_element_wise_max(bk_ctx, &m_p_max_a);
-    bmk1880v2_tiu_bf16_depthwise_convolution(bk_ctx, &m_p_conv_y);
-    bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_b);
-    bmk1880v2_tiu_bf16_element_wise_max(bk_ctx, &m_p_max_b);
-    bmk1880v2_tiu_bf16_element_wise_add(bk_ctx, &m_p_add);
+    cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv_x);
+    cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul_a);
+    cvk_ctx->ops->tiu_max(cvk_ctx, &m_p_max_a);
+    cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv_y);
+    cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul_b);
+    cvk_ctx->ops->tiu_max(cvk_ctx, &m_p_max_b);
+    cvk_ctx->ops->tiu_add(cvk_ctx, &m_p_add);
   } else if (m_dist_method == 1) {
-    bmk1880v2_tiu_bf16_depthwise_convolution(bk_ctx, &m_p_conv_x);
-    bmk1880v2_tiu_bf16_depthwise_convolution(bk_ctx, &m_p_conv_y);
-    bmk1880v2_tiu_bf16_element_wise_mul(bk_ctx, &m_p_mul_a);
-    bmk1880v2_tiu_bf16_element_wise_mac(bk_ctx, &m_p_mac);
-    bf16_emit_sqrt(bk_ctx, m_p_sqrt.a, m_p_sqrt.buf, m_p_sqrt.sqrt_table_answer,
-                   m_p_sqrt.sqrt_table_answer_mantissa, m_p_sqrt.res);
+    cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv_x);
+    cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv_y);
+    cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul_a);
+    cvk_ctx->ops->tiu_mac(cvk_ctx, &m_p_mac);
+    cvm_emit_sqrt(cvk_ctx, m_p_sqrt.a, m_p_sqrt.buf, m_p_sqrt.sqrt_table_answer,
+                  m_p_sqrt.sqrt_table_answer_mantissa, m_p_sqrt.res);
   }
 }

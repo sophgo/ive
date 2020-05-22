@@ -1,10 +1,8 @@
 #pragma once
-#include "bmkernel_non_atomic.h"
 #include "debug.hpp"
 #include "tpu_data.hpp"
 
 #include <bmkernel/bm1880v2/1880v2_fp_convert.h>
-#include <bmkernel/bm1880v2/bmkernel_1880v2.h>
 #include <bmruntime.h>
 
 #include <assert.h>
@@ -16,43 +14,46 @@
 
 #define MULTIPLIER_ONLY_PACKED_DATA_SIZE 5
 
-inline int createHandle(bmctx_t *ctx, bmk1880v2_context_t **bmk) {
-  int ret = bm_init(0, ctx);
+inline int createHandle(bmctx_t *ctx, cvk_context_t **cvk_ctx) {
+  int ret = bm_init_chip(0, ctx, "cv1880v2");
   if (ret != BM_SUCCESS) {
     fprintf(stderr, "cvi_init failed, err %d\n", ret);
     return CVI_FAILURE;
   }
-
-  cviruntime_cvikernel_create(*ctx, (void **)bmk);
+  cvk_reg_info_t req_info;
+  strncpy(req_info.chip_ver_str, "cv1880v2", sizeof(req_info.chip_ver_str) - 1);
+  req_info.cmdbuf_size = 0x10000000;
+  req_info.cmdbuf = static_cast<uint8_t *>(malloc(req_info.cmdbuf_size));
+  // req_info.cmdbuf = bmk_info_.cmdbuf;
+  *cvk_ctx = cvikernel_register(&req_info);
   return CVI_SUCCESS;
 }
 
-inline void destroyHandle(bmctx_t *ctx) {
-  cviruntime_cvikernel_destroy(*ctx);
+inline void destroyHandle(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+  if (cvk_ctx) {
+    cvk_ctx->ops->cleanup(cvk_ctx);
+  }
   bm_exit(*ctx);
 }
 
-inline void submitCmdbuf(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                         const std::string &cmdbuf_subfix, bool write_cmdbuf = false) {
+inline void submitCmdbuf(bmctx_t *ctx, cvk_context_t *cvk_ctx, const std::string &cmdbuf_subfix,
+                         bool write_cmdbuf = false) {
+  uint32_t len;
+  uint8_t *buf = cvk_ctx->ops->acquire_cmdbuf(cvk_ctx, &len);
   if (write_cmdbuf) {
-    u32 len;
-    u8 *buf = bmk1880v2_acquire_cmdbuf(bk_ctx, &len);
     printf("Cmdbuf length %u\n", len);
     FILE *pFile;
     std::string name = cmdbuf_subfix == "" ? "cmdbuf.bin" : "cmdbuf_" + cmdbuf_subfix + ".bin";
     pFile = fopen(name.c_str(), "wb");
     fwrite(buf, sizeof(char), len, pFile);
     fclose(pFile);
-    uint16_t seq_no;
-    bm_send_cmdbuf(*ctx, buf, (size_t)len, &seq_no);
-    bmk1880v2_reset(bk_ctx);
-  } else {
-    cviruntime_cvikernel_submit(*ctx);
   }
+  uint16_t seq_no;
+  bm_send_cmdbuf(*ctx, buf, (size_t)len, &seq_no);
+  cvk_ctx->ops->reset(cvk_ctx);
 }
 
-inline void genTableU8(const bmk1880v2_tensor_lmem_shape_t &table_shape, const u8 *table_data,
-                       u8 *tg_table) {
+inline void genTableU8(const cvk_tl_shape_t &table_shape, const u8 *table_data, u8 *tg_table) {
   int table_hw = table_shape.h * table_shape.w;
 
   // duplicate channel #0 to #31
@@ -62,7 +63,7 @@ inline void genTableU8(const bmk1880v2_tensor_lmem_shape_t &table_shape, const u
   }
 }
 
-inline void genTableBF16(const bmk1880v2_tensor_lmem_shape_t &table_shape, const float min_value,
+inline void genTableBF16(const cvk_tl_shape_t &table_shape, const float min_value,
                          const float max_value, u16 *table_pos_neg) {
   u32 half = table_shape.h * table_shape.w / 2;
   int table_hw = table_shape.h * table_shape.w;
@@ -84,8 +85,7 @@ inline void genTableBF16(const bmk1880v2_tensor_lmem_shape_t &table_shape, const
   }
 }
 
-inline bool tgTLShapeCompare(bmk1880v2_tensor_lmem_shape_t &tl_shape,
-                             bmk1880v2_tensor_tgmem_shape_t &tg_shape) {
+inline bool tgTLShapeCompare(cvk_tl_shape_t &tl_shape, cvk_tg_shape_t &tg_shape) {
   if (tg_shape.n == tl_shape.n && tg_shape.c == tl_shape.c && tg_shape.h == tl_shape.h &&
       tg_shape.w == tl_shape.w) {
     return true;
@@ -93,53 +93,49 @@ inline bool tgTLShapeCompare(bmk1880v2_tensor_lmem_shape_t &tl_shape,
   return false;
 }
 
-inline void cviImgFlush2TL(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, CviImg &img,
-                           bmk1880v2_tensor_lmem_t *lmem) {
+inline void cviImgFlush2TL(bmctx_t *ctx, cvk_context_t *cvk_ctx, CviImg &img, cvk_tl_t *lmem) {
   img.Flush(ctx);
-  bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
+  cvk_tdma_g2l_tensor_copy_param_t p;
   p.src = &img.m_tg;
   p.dst = lmem;
-  bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
+  cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p);
 }
 
-inline void cviImg2TL(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, const CviImg &img,
-                      bmk1880v2_tensor_lmem_t *lmem) {
-  bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
+inline void cviImg2TL(bmctx_t *ctx, cvk_context_t *cvk_ctx, const CviImg &img, cvk_tl_t *lmem) {
+  cvk_tdma_g2l_tensor_copy_param_t p;
   p.src = &img.m_tg;
   p.dst = lmem;
-  bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p);
+  cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p);
 }
 
-inline void constantFillTL(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, const u16 value,
-                           bmk1880v2_tensor_lmem_t *lmem) {
-  bmk1880v2_tdma_tg2l_tensor_fill_constant_param_t p_fill;
+inline void constantFillTL(bmctx_t *ctx, cvk_context_t *cvk_ctx, const u16 value, cvk_tl_t *lmem) {
+  cvk_tdma_g2l_tensor_fill_constant_param_t p_fill;
   p_fill.constant = value;
   p_fill.dst = lmem;
 
-  bmk1880v2_tdma_tg2l_bf16_tensor_fill_constant(bk_ctx, &p_fill);
+  cvk_ctx->ops->tdma_g2l_bf16_tensor_fill_constant(cvk_ctx, &p_fill);
 }
 
 // FIXME: O0 may crash. Reason unknown.
-inline void bf16LookupTable(bmk1880v2_context_t *bk_ctx,
-                            const bmk1880v2_tiu_non_atomic_mask_param_t *mask) {
-  bmk1880v2_tdma_l2l_tensor_copy_param_t p10;
-  bmk1880v2_tensor_lmem_t lmem = *mask->ofmap;
-  lmem.fmt = FMT_I8;
+inline void bf16LookupTable(cvk_context_t *cvk_ctx, const cvm_tiu_mask_param_t *mask) {
+  cvk_tdma_l2l_tensor_copy_param_t p10;
+  cvk_tl_t lmem = *mask->ofmap;
+  lmem.fmt = CVK_FMT_I8;
   lmem.shape.h *= lmem.shape.w;
   lmem.shape.w = 1;
-  lmem.stride = bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem.shape, FMT_I8, 1);
+  lmem.stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem.shape, CVK_FMT_I8, 1);
   lmem.stride.h *= 2;
   p10.dst = &lmem;
   p10.src = mask->ifmap;
   p10.mv_lut_idx = true;
-  bmk1880v2_tdma_l2l_bf16_tensor_copy(bk_ctx, &p10);
+  cvk_ctx->ops->tdma_l2l_bf16_tensor_copy(cvk_ctx, &p10);
   p10.mv_lut_idx = false;
 
-  bmk1880v2_tiu_lookup_table_param_t p12;
+  cvk_tiu_lookup_table_param_t p12;
   p12.ofmap = mask->ofmap;
   p12.ifmap = mask->ifmap;
   p12.table = mask->pos_neg_table;
-  bmk1880v2_tiu_lookup_table(bk_ctx, &p12);
+  cvk_ctx->ops->tiu_lookup_table(cvk_ctx, &p12);
 }
 
 inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, u32 *quantized_multiplier,
@@ -255,25 +251,25 @@ inline u8 *getPackedMultiplierArray(const u32 c, const u32 &quantized_multiplier
   return cal_data;
 }
 
-static inline bmmem_device_t get_tensor_l2g(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                                            const bmk1880v2_tensor_lmem_t *tl) {
-  bmk1880v2_tensor_tgmem_shape_t s;
+static inline bmmem_device_t get_tensor_l2g(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+                                            const cvk_tl_t *tl) {
+  cvk_tg_shape_t s;
   s.n = tl->shape.n;
   s.c = tl->shape.h;
   s.h = tl->shape.w;
   s.w = tl->shape.c;
   size_t total_size = s.n * s.c * s.h * s.w * getFmtSize(tl->fmt);
-  bmk1880v2_tensor_tgmem_t tg;
+  cvk_tg_t tg;
   bmmem_device_t bm_dev = bmmem_device_alloc_raw(*ctx, total_size);
   tg.base_reg_index = 0;
   tg.start_address = bmmem_device_addr(bm_dev);
   tg.fmt = tl->fmt;
   tg.shape = s;
-  tg.stride = bmk1880v2_bf16_tensor_tgmem_default_stride(s, tl->fmt);
-  bmk1880v2_tdma_l2tg_tensor_copy_param_t p;
+  tg.stride = cvk_ctx->ops->tg_default_stride(cvk_ctx, s, tl->fmt);
+  cvk_tdma_l2g_tensor_copy_param_t p;
   p.src = tl;
   p.dst = &tg;
-  bmk1880v2_tdma_l2g_bf16_tensor_copy(bk_ctx, &p);
+  cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p);
   return bm_dev;
 }
 
@@ -284,18 +280,15 @@ static inline u8 *get_bm_vaddr(bmctx_t *ctx, bmmem_device_t bm_dev) {
   return bmmem_device_v_addr(bm_dev);
 }
 
-static inline u8 *get_tensor_l2g_submit(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                                        const bmk1880v2_tensor_lmem_t *tl) {
-  bmmem_device_t bm_dev = get_tensor_l2g(ctx, bk_ctx, tl);
-  cviruntime_cvikernel_submit(*ctx);
-  if (bmmem_device_invld(*ctx, bm_dev) != BM_SUCCESS) {
-    return nullptr;
-  }
-  u8 *bm_data = bmmem_device_v_addr(bm_dev);
-  size_t total_size = tl->shape.n * tl->shape.c * tl->shape.h * tl->shape.w * getFmtSize(tl->fmt);
-  u8 *data = new u8[total_size];
-  memset(data, 1, total_size);
-  memcpy(data, bm_data, total_size);
-  bmmem_device_free(*ctx, bm_dev);
-  return data;
-}
+// static inline u8 *get_tensor_l2g_submit(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+//                                         const cvk_tl_t *tl) {
+//   bmmem_device_t bm_dev = get_tensor_l2g(ctx, cvk_ctx, tl);
+//   cviruntime_cvikernel_submit(*ctx);
+//   if (bmmem_device_invld(*ctx, bm_dev) != BM_SUCCESS) {
+//     return nullptr;
+//   }
+//   u8 *bm_data = bmmem_device_v_addr(bm_dev);
+//   size_t total_size = tl->shape.n * tl->shape.c * tl->shape.h * tl->shape.w *
+//   getFmtSize(tl->fmt); u8 *data = new u8[total_size]; memset(data, 1, total_size); memcpy(data,
+//   bm_data, total_size); bmmem_device_free(*ctx, bm_dev); return data;
+// }

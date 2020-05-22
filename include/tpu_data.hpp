@@ -1,42 +1,34 @@
 #pragma once
 #include "cvi_type.h"
 
-#include <bmkernel/bm1880v2/bmkernel_1880v2.h>
 #include <bmruntime.h>
+#include <cvikernel/cvikernel.h>
+#include <cvimath/cvimath.h>
 #include <string.h>
 #include <iostream>
 #include <vector>
 
-typedef struct cvi_chip_info {
-  u32 version;
-  u32 npu_num;
-  u32 eu_num;
-  u32 lmem_size;
-  u32 lmem_banks;
-  u32 lmem_bank_size;
-} cvi_chip_info_s;
-
 /**
- * @brief Convert fmt_t to actual data type size.
+ * @brief Convert cvk_fmt_t to actual data type size.
  *
- * @param fmt fmt_t defined in kernel
+ * @param fmt cvk_fmt_t defined in kernel
  * @return int Actual data type size
  */
-static int getFmtSize(fmt_t fmt) {
+static int getFmtSize(cvk_fmt_t fmt) {
   int fmt_size = 0;
   switch (fmt) {
-    case FMT_I8:
-    case FMT_U8:
+    case CVK_FMT_I8:
+    case CVK_FMT_U8:
       fmt_size = 1;
       break;
-    case FMT_U16:
-    case FMT_I16:
-    case FMT_BF16:
+    case CVK_FMT_U16:
+    case CVK_FMT_I16:
+    case CVK_FMT_BF16:
       fmt_size = 2;
       break;
-    case FMT_U32:
-    case FMT_I32:
-    case FMT_F32:
+    case CVK_FMT_U32:
+    case CVK_FMT_I32:
+    case CVK_FMT_F32:
       fmt_size = 4;
       break;
     default:
@@ -62,7 +54,7 @@ struct sliceUnit {
  *
  */
 struct SliceInfo {
-  fmt_t io_fmt = FMT_INVALID;
+  cvk_fmt_t io_fmt = CVK_FMT_INVALID;
   u32 ping_pong_size = 1;
   u32 ping_pong_share_tl = 0;
   u32 nums_of_tl = 2;
@@ -76,12 +68,12 @@ struct SliceRes {
 };
 
 struct TLMemInfo {
-  bmk1880v2_tensor_lmem_shape_t shape;
-  bmk1880v2_tensor_lmem_stride_t stride;
+  cvk_tl_shape_t shape;
+  cvk_tl_stride_t stride;
 };
 struct TGMemInfo {
-  bmk1880v2_tensor_tgmem_shape_t shape;
-  bmk1880v2_tensor_tgmem_stride_t stride;
+  cvk_tg_shape_t shape;
+  cvk_tg_stride_t stride;
 };
 struct TensorSliceInfo {
   TLMemInfo tl_load;
@@ -175,9 +167,9 @@ class CviImg {
    * @param img_c Image channel
    * @param img_h Image height
    * @param img_w Image width
-   * @param fmt fmt_t type
+   * @param fmt cvk_fmt_t type
    */
-  CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, CviImg *cvi_img = nullptr);
+  CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt, CviImg *cvi_img = nullptr);
 
   /**
    * @brief Construct a new CviImg object from an existing CviImg with given region.
@@ -196,10 +188,10 @@ class CviImg {
    * @param strides Image strides, the channel of CviImg will be set to the size of strides.
    * @param heights Image heights.
    * @param img_type CviImg type enum.
-   * @param fmt fmt_t type
+   * @param fmt cvk_fmt_t type
    */
   CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> heights,
-         CVIIMGTYPE img_type, fmt_t fmt, CviImg *cvi_img = nullptr);
+         CVIIMGTYPE img_type, cvk_fmt_t fmt, CviImg *cvi_img = nullptr);
 
   /**
    * @brief Construct a new CviImg from VIDEO_FRAME_S
@@ -212,10 +204,10 @@ class CviImg {
    * @param vaddr Virtual addresses.
    * @param paddr Physical addresses.
    * @param img_type CviImg type enum.
-   * @param fmt fmt_t type
+   * @param fmt cvk_fmt_t type
    */
   CviImg(u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> heights,
-         std::vector<u32> u32_lengths, u8 *vaddr, u64 paddr, CVIIMGTYPE img_type, fmt_t fmt);
+         std::vector<u32> u32_lengths, u8 *vaddr, u64 paddr, CVIIMGTYPE img_type, cvk_fmt_t fmt);
 
   /**
    * @brief Init CviImg if default constructor is used.
@@ -224,10 +216,10 @@ class CviImg {
    * @param img_c Image channel
    * @param img_h Image height
    * @param img_w Image width
-   * @param fmt fmt_t type
+   * @param fmt cvk_fmt_t type
    * @return int Return 0 if success
    */
-  int Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, CviImg *img_ptr);
+  int Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt, CviImg *img_ptr);
 
   /**
    * @brief Check if device memory is allocated.
@@ -360,7 +352,7 @@ class CviImg {
 #endif
   }
 
-  bmk1880v2_tensor_tgmem_t m_tg;
+  cvk_tg_t m_tg;
 
  private:
   /**
@@ -371,7 +363,7 @@ class CviImg {
    * @param img_w Input image width.
    * @param fmt fmt type.
    */
-  inline void SetupImageInfo(u32 img_c, u32 img_h, u32 img_w, fmt_t fmt);
+  inline void SetupImageInfo(u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt);
 
   /**
    * @brief Allocate device memory.
@@ -387,7 +379,7 @@ class CviImg {
   std::vector<u32> m_coffsets;
   std::vector<u32> m_strides;
   std::vector<u32> m_heights;
-  fmt_t m_fmt = FMT_U8;
+  cvk_fmt_t m_fmt = CVK_FMT_U8;
   u64 m_size = 0;  // Total size of memory
 
   bmmem_device_t m_bmmem = NULL;  // Set to NULL if not initialized
@@ -418,17 +410,17 @@ struct IveKernel {
 class FmtnSize {
  public:
   FmtnSize() {}
-  FmtnSize(fmt_t fmt) { setFmt(fmt); }
-  void setFmt(fmt_t fmt) {
+  FmtnSize(cvk_fmt_t fmt) { setFmt(fmt); }
+  void setFmt(cvk_fmt_t fmt) {
     m_fmt = fmt;
     m_fmt_size = getFmtSize(m_fmt);
   }
 
-  const fmt_t getFmt() const { return m_fmt; }
+  const cvk_fmt_t getFmt() const { return m_fmt; }
   const u32 getSize() const { return m_fmt_size; }
 
  private:
-  fmt_t m_fmt = FMT_U8;
+  cvk_fmt_t m_fmt = CVK_FMT_U8;
   u32 m_fmt_size = 1;
 };
 
@@ -438,6 +430,6 @@ struct BMAddrInfo {
 };
 
 struct TLInfo {
-  std::vector<bmk1880v2_tensor_lmem_t *> lmem_vec;
+  std::vector<cvk_tl_t *> lmem_vec;
   std::vector<FmtnSize> fns_vec;
 };

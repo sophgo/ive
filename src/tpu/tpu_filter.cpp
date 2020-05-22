@@ -11,19 +11,19 @@ void IveTPUFilter::setKernel(IveKernel &kernel) {
   m_kernel_info.pad[3] = pad;
 }
 
-int IveTPUFilter::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
-  m_slice_info.io_fmt = FMT_U8;
+int IveTPUFilter::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+  m_slice_info.io_fmt = CVK_FMT_U8;
   m_slice_info.nums_of_tl = 2;
   m_kernel_info.nums_of_kernel = 1;
   return CVI_SUCCESS;
 }
 
-int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                           const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
-                           const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
+int IveTPUFilter::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+                           const std::vector<cvk_tg_shape_t> &tg_in_slices,
+                           const std::vector<cvk_tg_shape_t> &tg_out_slices,
                            std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                            const bool enable_cext) {
-  bmk1880v2_tensor_lmem_shape_t tl_shape, tl_shape_out;
+  cvk_tl_shape_t tl_shape, tl_shape_out;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;
   tl_shape.h = tg_in_slices[0].h;
@@ -32,38 +32,38 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_shape_out.c = tg_out_slices[0].c;
   tl_shape_out.h = tg_out_slices[0].h;
   tl_shape_out.w = tg_out_slices[0].w;
-  auto *tl_input = allocTLMem(bk_ctx, tl_shape, FMT_U8, 1);
-  auto *tl_output = allocTLMem(bk_ctx, tl_shape_out, FMT_U8, 1);
+  auto *tl_input = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
+  auto *tl_output = allocTLMem(cvk_ctx, tl_shape_out, CVK_FMT_U8, 1);
 
   // Kernel
   if (m_kernel == nullptr) {
     std::cerr << "Error! kernel not set." << std::endl;
   }
-  bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size,
-                                               m_kernel_info.size};
-  bmk1880v2_tensor_lmem_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
-  if (m_kernel->img.m_tg.fmt != FMT_U8 && m_kernel->img.m_tg.fmt != FMT_I8) {
+  cvk_tl_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size, m_kernel_info.size};
+  cvk_tl_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
+  if (m_kernel->img.m_tg.fmt != CVK_FMT_U8 && m_kernel->img.m_tg.fmt != CVK_FMT_I8) {
     std::cerr << "Kernel fmt type must be U8 or I8." << std::endl;
     return CVI_FAILURE;
   }
-  auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, m_kernel->img.m_tg.fmt, 1, IVETLType::KERNEL);
+  auto *tl_kernel = allocTLMem(cvk_ctx, tl_kernel_s, m_kernel->img.m_tg.fmt, 1, IVETLType::KERNEL);
   if (m_kernel->img.m_tg.shape.c < tl_shape.c) {
     std::cerr << "kernel size must larger than tl_shape.c" << std::endl;
     return CVI_FAILURE;
   }
   int tmp_c = m_kernel->img.m_tg.shape.c;
   m_kernel->img.m_tg.shape.c = tl_shape.c;
-  cviImgFlush2TL(ctx, bk_ctx, m_kernel->img, tl_kernel);
+  cviImgFlush2TL(ctx, cvk_ctx, m_kernel->img, tl_kernel);
   m_kernel->img.m_tg.shape.c = tmp_c;
 
-  auto *tl_multiplier = allocTLMem(bk_ctx, packed_s, FMT_U8, 1);
+  auto *tl_multiplier = allocTLMem(cvk_ctx, packed_s, CVK_FMT_U8, 1);
   {
-    mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, FMT_U8);
+    mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, CVK_FMT_U8);
     getPackedMultiplierArrayBuffer(tl_shape.c, m_kernel->multiplier.base,
                                    m_kernel->multiplier.shift, mp_multiplier->GetVAddr());
-    cviImgFlush2TL(ctx, bk_ctx, *mp_multiplier, tl_multiplier);
+    cviImgFlush2TL(ctx, cvk_ctx, *mp_multiplier, tl_multiplier);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
-    tl_multiplier->stride = bmk1880v2_tensor_lmem_default_stride(bk_ctx, tl_multiplier->shape, 0);
+    tl_multiplier->stride =
+        cvk_ctx->ops->tl_default_stride(cvk_ctx, tl_multiplier->shape, tl_multiplier->fmt, 0);
   }
 
   if (enable_cext) {
@@ -96,8 +96,8 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUFilter::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
-  bmk1880v2_tiu_depthwise_convolution_qdm(bk_ctx, &m_p_conv);
+void IveTPUFilter::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+  cvk_ctx->ops->tiu_depthwise_convolution(cvk_ctx, &m_p_conv);
 }
 
 int IveTPUFilter::postProcess(bmctx_t *ctx) {
@@ -117,19 +117,19 @@ void IveTPUFilterBF16::setKernel(const IveKernel &kernel) {
   m_kernel_info.pad[3] = pad;
 }
 
-int IveTPUFilterBF16::init(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx) {
+int IveTPUFilterBF16::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "filter";
   m_slice_info.nums_of_tl = 2 * 2;
   m_kernel_info.nums_of_kernel = 1;
   return CVI_SUCCESS;
 }
 
-int IveTPUFilterBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                               const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_in_slices,
-                               const std::vector<bmk1880v2_tensor_tgmem_shape_t> &tg_out_slices,
+int IveTPUFilterBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+                               const std::vector<cvk_tg_shape_t> &tg_in_slices,
+                               const std::vector<cvk_tg_shape_t> &tg_out_slices,
                                std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
                                const bool enable_cext) {
-  bmk1880v2_tensor_lmem_shape_t tl_shape, tl_shape_out;
+  cvk_tl_shape_t tl_shape, tl_shape_out;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;
   tl_shape.h = tg_in_slices[0].h;
@@ -138,21 +138,21 @@ int IveTPUFilterBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   tl_shape_out.c = tg_out_slices[0].c;
   tl_shape_out.h = tg_out_slices[0].h;
   tl_shape_out.w = tg_out_slices[0].w;
-  auto *tl_input = allocTLMem(bk_ctx, tl_shape, FMT_BF16, 1);
-  auto *tl_output = allocTLMem(bk_ctx, tl_shape_out, FMT_BF16, 1);
+  auto *tl_input = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1);
+  auto *tl_output = allocTLMem(cvk_ctx, tl_shape_out, CVK_FMT_BF16, 1);
 
   // Kernel
   if (m_kernel == nullptr) {
     std::cerr << "Error! kernel not set." << std::endl;
   }
-  bmk1880v2_tensor_lmem_shape_t tl_kernel_s = {1, m_kernel->img.m_tg.shape.c, m_kernel_info.size,
-                                               m_kernel_info.size};
-  auto *tl_kernel = allocTLMem(bk_ctx, tl_kernel_s, FMT_BF16, 1, IVETLType::KERNEL);
+  cvk_tl_shape_t tl_kernel_s = {1, m_kernel->img.m_tg.shape.c, m_kernel_info.size,
+                                m_kernel_info.size};
+  auto *tl_kernel = allocTLMem(cvk_ctx, tl_kernel_s, CVK_FMT_BF16, 1, IVETLType::KERNEL);
   {
-    bmk1880v2_tdma_tg2l_tensor_copy_param_t p;
+    cvk_tdma_g2l_tensor_copy_param_t p;
     p.src = &m_kernel->img.m_tg;
     p.dst = tl_kernel;
-    bmk1880v2_tdma_g2l_tensor_copy(bk_ctx, &p);
+    cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p);
   }
 
   if (enable_cext) {
@@ -175,7 +175,6 @@ int IveTPUFilterBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   m_p_conv.dilation_w = 1;
   m_p_conv.bias = NULL;
   m_p_conv.rshift_bits = 0;
-  m_p_conv.bf16_enable = 1;
 
   m_p_conv.ifmap = tl_input;
   m_p_conv.ofmap = tl_output;
@@ -186,6 +185,6 @@ int IveTPUFilterBF16::runSetup(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUFilterBF16::operation(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, u32 ping_idx) {
-  bmk1880v2_tiu_depthwise_convolution(bk_ctx, &m_p_conv);
+void IveTPUFilterBF16::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+  cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv);
 }

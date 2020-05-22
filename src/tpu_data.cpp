@@ -5,7 +5,7 @@
 #endif
 
 CviImg::CviImg() {}
-CviImg::CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, CviImg *cvi_img) {
+CviImg::CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt, CviImg *cvi_img) {
   Init(ctx, img_c, img_h, img_w, fmt, cvi_img);
 }
 
@@ -65,7 +65,7 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) 
 }
 
 CviImg::CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides,
-               std::vector<u32> heights, CVIIMGTYPE img_type, fmt_t fmt, CviImg *cvi_img) {
+               std::vector<u32> heights, CVIIMGTYPE img_type, cvk_fmt_t fmt, CviImg *cvi_img) {
   if (strides.size() == 0) {
     std::cerr << "No stride given." << std::endl;
     return;
@@ -126,7 +126,8 @@ CviImg::CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides,
 }
 
 CviImg::CviImg(u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> heights,
-               std::vector<u32> u32_lengths, u8 *vaddr, u64 paddr, CVIIMGTYPE img_type, fmt_t fmt) {
+               std::vector<u32> u32_lengths, u8 *vaddr, u64 paddr, CVIIMGTYPE img_type,
+               cvk_fmt_t fmt) {
   if (strides.size() == 0) {
     std::cerr << "No stride given." << std::endl;
     return;
@@ -168,7 +169,7 @@ CviImg::CviImg(u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> 
   }
 }
 
-void CviImg::SetupImageInfo(u32 img_c, u32 img_h, u32 img_w, fmt_t fmt) {
+void CviImg::SetupImageInfo(u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt) {
   this->m_fmt = fmt;
   this->m_channel = img_c;
   this->m_width = img_w;
@@ -182,7 +183,7 @@ void CviImg::SetupImageInfo(u32 img_c, u32 img_h, u32 img_w, fmt_t fmt) {
     this->m_coffsets.push_back(this->m_size);
     this->m_size += this->m_strides[i] * this->m_heights[i] * getFmtSize(this->m_fmt);
   }
-  if (this->m_fmt == FMT_U8) {
+  if (this->m_fmt == CVK_FMT_U8) {
     if (this->m_channel == 1) {
       this->m_img_type = CVI_GRAY;
     } else if (this->m_channel == 3) {
@@ -198,7 +199,7 @@ void CviImg::SetupImageInfo(u32 img_c, u32 img_h, u32 img_w, fmt_t fmt) {
   this->m_is_planar = true;
 }
 
-int CviImg::Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, fmt_t fmt, CviImg *cvi_img) {
+int CviImg::Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt, CviImg *cvi_img) {
   SetupImageInfo(img_c, img_h, img_w, fmt);
   if (cvi_img != nullptr) {
     if (this->m_size < cvi_img->m_size) {

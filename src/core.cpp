@@ -30,12 +30,11 @@ inline void GetSliceUnitProperty(const u32 length, const u32 slice, const int ke
   }
 }
 
-inline void categoryIOTLShape(
-    const std::vector<bmk1880v2_tensor_lmem_t *> &tl_vec,
-    std::vector<bmk1880v2_tensor_tgmem_shape_t> &s_in_vec,
-    std::vector<bmk1880v2_tensor_tgmem_shape_t> &s_out_vec,
-    std::vector<std::pair<int, bmk1880v2_tensor_lmem_t *>> *tl_in_shape_lmem_vec,
-    std::vector<std::pair<int, bmk1880v2_tensor_lmem_t *>> *tl_out_shape_lmem_vec) {
+inline void categoryIOTLShape(const std::vector<cvk_tl_t *> &tl_vec,
+                              std::vector<cvk_tg_shape_t> &s_in_vec,
+                              std::vector<cvk_tg_shape_t> &s_out_vec,
+                              std::vector<std::pair<int, cvk_tl_t *>> *tl_in_shape_lmem_vec,
+                              std::vector<std::pair<int, cvk_tl_t *>> *tl_out_shape_lmem_vec) {
   tl_in_shape_lmem_vec->clear();
   tl_out_shape_lmem_vec->clear();
   for (size_t i = 0; i < tl_vec.size(); i++) {
@@ -60,9 +59,8 @@ inline void categoryIOTLShape(
   }
 }
 
-inline void getTLInfo(const std::vector<bmk1880v2_tensor_lmem_t *> &tl_vec,
-                      const std::vector<u32> &tl_in_idx, const std::vector<u32> &tl_out_idx,
-                      TLInfo *tl_in_info, TLInfo *tl_out_info) {
+inline void getTLInfo(const std::vector<cvk_tl_t *> &tl_vec, const std::vector<u32> &tl_in_idx,
+                      const std::vector<u32> &tl_out_idx, TLInfo *tl_in_info, TLInfo *tl_out_info) {
   for (size_t i = 0; i < tl_in_idx.size(); i++) {
     auto *lmem = tl_vec[tl_in_idx[i]];
     tl_in_info->lmem_vec.emplace_back(lmem);
@@ -151,48 +149,48 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
 #endif
 }
 
-inline void updateTSIInfo(bmk1880v2_context_t *bk_ctx, const u32 load_n, const u32 load_c,
+inline void updateTSIInfo(cvk_context_t *cvk_ctx, const u32 load_n, const u32 load_c,
                           const u32 load_h, const u32 load_w, const u32 store_n, const u32 store_c,
-                          const u32 store_h, const u32 store_w, const fmt_t io_fmt,
-                          const fmt_t tgin_fmt_type, const fmt_t tgout_fmt_type,
+                          const u32 store_h, const u32 store_w, const cvk_fmt_t io_fmt,
+                          const cvk_fmt_t tgin_fmt_type, const cvk_fmt_t tgout_fmt_type,
                           TensorSliceInfo *tl_info) {
   tl_info->tl_load.shape = {load_n, load_c, load_h, load_w};
   tl_info->tl_load.stride =
-      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_info->tl_load.shape, io_fmt, 1);
+      cvk_ctx->ops->tl_default_stride(cvk_ctx, tl_info->tl_load.shape, io_fmt, 1);
   tl_info->tg_load.shape = {load_n, load_c, load_h, load_w};
   tl_info->tg_load.stride =
-      bmk1880v2_bf16_tensor_tgmem_default_stride(tl_info->tg_load.shape, tgin_fmt_type);
+      cvk_ctx->ops->tg_default_stride(cvk_ctx, tl_info->tg_load.shape, tgin_fmt_type);
   tl_info->tl_store.shape = {store_n, store_c, store_h, store_w};
   tl_info->tl_store.stride =
-      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tl_info->tl_store.shape, io_fmt, 1);
+      cvk_ctx->ops->tl_default_stride(cvk_ctx, tl_info->tl_store.shape, io_fmt, 1);
   tl_info->tg_store.shape = {store_n, store_c, store_h, store_w};
   tl_info->tg_store.stride =
-      bmk1880v2_bf16_tensor_tgmem_default_stride(tl_info->tg_store.shape, tgout_fmt_type);
+      cvk_ctx->ops->tg_default_stride(cvk_ctx, tl_info->tg_store.shape, tgout_fmt_type);
 }
 
 // For channel Ext mode
-inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, const u32 out_img_w,
+inline int channelExtension(cvk_context_t *cvk_ctx, const u32 in_img_w, const u32 out_img_w,
                             const int ic, const int ih, const int iw, const int h_cext_multiplier,
                             const int pad_left, const int pad_right, const int pad_top,
                             const int pad_bottom, const int kh, const int kw, const int k_stride_h,
-                            const int k_stride_w, const fmt_t tgin_fmt_type,
-                            const fmt_t tgout_fmt_type, const fmt_t tl_fmt_type,
+                            const int k_stride_w, const cvk_fmt_t tgin_fmt_type,
+                            const cvk_fmt_t tgout_fmt_type, const cvk_fmt_t tl_fmt_type,
                             TensorSliceInfo *tsi) {
-  // FIXME: Temporarily hack for bm1880v2_reshape_channel_same not support "h_slice % c_multiplier
+  // FIXME: Temporarily hack for cvm_reshape_channel_same not support "h_slice % c_multiplier
   // != 0" cases.
   if (h_cext_multiplier == 1) {
     const u32 in_ih = ih + pad_top + pad_bottom;
-    updateTSIInfo(bk_ctx, 1, ic, in_ih, iw, 1, ic, ih, iw, tl_fmt_type, tgin_fmt_type,
+    updateTSIInfo(cvk_ctx, 1, ic, in_ih, iw, 1, ic, ih, iw, tl_fmt_type, tgin_fmt_type,
                   tgout_fmt_type, tsi);
     return CVI_SUCCESS;
   }
-  bmk1880v2_tensor_lmem_shape_t tl_weight_shape;
-  bmk1880v2_tensor_lmem_shape_t tl_bias_shape;
+  cvk_tl_shape_t tl_weight_shape;
+  cvk_tl_shape_t tl_bias_shape;
 
-  if (bm1880v2_reshape_channel_same(bk_ctx, ic, ih, iw, kh, kw, pad_right, pad_left, k_stride_h,
-                                    k_stride_w, &tsi->tl_load.shape, &tsi->tl_load.stride,
-                                    &tsi->tg_load.shape, &tsi->tg_load.stride, &tl_weight_shape,
-                                    &tl_bias_shape, &tsi->tl_store.shape, tl_fmt_type, 1) == -1) {
+  if (cvm_reshape_channel_same(cvk_ctx, ic, ih, iw, kh, kw, pad_right, pad_left, k_stride_h,
+                               k_stride_w, &tsi->tl_load.shape, &tsi->tl_load.stride,
+                               &tsi->tg_load.shape, &tsi->tg_load.stride, &tl_weight_shape,
+                               &tl_bias_shape, &tsi->tl_store.shape, tl_fmt_type, 1) == -1) {
     std::cerr << "Extend failed." << std::endl;
     return CVI_FAILURE;
   }
@@ -208,9 +206,9 @@ inline int channelExtension(bmk1880v2_context_t *bk_ctx, const u32 in_img_w, con
   tsi->tg_store.shape.h = tsi->tl_store.shape.h;
   tsi->tg_store.shape.w = tsi->tl_store.shape.w;
   tsi->tg_store.stride =
-      bmk1880v2_bf16_tensor_tgmem_default_stride(tsi->tg_store.shape, tgout_fmt_type);
+      cvk_ctx->ops->tg_default_stride(cvk_ctx, tsi->tg_store.shape, tgout_fmt_type);
   tsi->tl_store.stride =
-      bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, tsi->tl_store.shape, tl_fmt_type, 1);
+      cvk_ctx->ops->tl_default_stride(cvk_ctx, tsi->tl_store.shape, tl_fmt_type, 1);
   // FIXME: Temporarily hack.
   if (tsi->tg_load.shape.w != in_img_w) {
     int l_n = tsi->tg_load.stride.n / tsi->tg_load.stride.c;
@@ -319,12 +317,11 @@ inline bool calculateOutExtHSlice(const int &npu_num, const int &img_c, const u3
   return (*left_pixels > 0) ? true : false;
 }
 
-inline void updateLMemSize(
-    bmk1880v2_context_t *bk_ctx, const int &npu_num, const fmt_t &io_fmt,
-    const TensorSliceInfo &tsi, const std::vector<IVETLType> &tl_type,
-    std::vector<std::pair<int, bmk1880v2_tensor_lmem_t *>> *tl_in_shape_lmem_vec,
-    std::vector<std::pair<int, bmk1880v2_tensor_lmem_t *>> *tl_out_shape_lmem_vec,
-    std::vector<bmk1880v2_tensor_lmem_t *> *tl_vec) {
+inline void updateLMemSize(cvk_context_t *cvk_ctx, const int &npu_num, const cvk_fmt_t &io_fmt,
+                           const TensorSliceInfo &tsi, const std::vector<IVETLType> &tl_type,
+                           std::vector<std::pair<int, cvk_tl_t *>> *tl_in_shape_lmem_vec,
+                           std::vector<std::pair<int, cvk_tl_t *>> *tl_out_shape_lmem_vec,
+                           std::vector<cvk_tl_t *> *tl_vec) {
   for (size_t k = 0; k < tl_in_shape_lmem_vec->size(); k++) {
     // int &index = (*tl_in_shape_lmem_vec)[k].first;
     auto *lmem = (*tl_in_shape_lmem_vec)[k].second;
@@ -332,7 +329,7 @@ inline void updateLMemSize(
     if (io_fmt == lmem->fmt) {
       lmem->stride = tsi.tl_load.stride;
     } else {
-      lmem->stride = bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
+      lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
     }
   }
   for (size_t k = 0; k < tl_out_shape_lmem_vec->size(); k++) {
@@ -342,7 +339,7 @@ inline void updateLMemSize(
     if (io_fmt == lmem->fmt) {
       lmem->stride = tsi.tl_store.stride;
     } else {
-      lmem->stride = bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
+      lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
     }
   }
   for (size_t k = 0; k < tl_vec->size(); k++) {
@@ -351,25 +348,17 @@ inline void updateLMemSize(
     int is_align = (lmem->stride.n != align_up_res) ? 1 : 0;
     if (lmem->shape.c != tsi.tl_load.shape.c && tl_type[k] != IVETLType::TABLE) {
       lmem->shape.c = tsi.tl_load.shape.c;
-      lmem->stride =
-          bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, is_align);
+      lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, is_align);
     }
   }
 }
 // Ext end
 
-IveCore::IveCore() {
-  auto chip_info = bmk1880v2_chip_info();
-  m_chip_info.eu_num = chip_info.eu_num;
-  m_chip_info.lmem_bank_size = chip_info.lmem_bank_size;
-  m_chip_info.lmem_banks = chip_info.lmem_banks;
-  m_chip_info.lmem_size = chip_info.lmem_size;
-  m_chip_info.npu_num = chip_info.npu_num;
-  m_chip_info.version = chip_info.version;
-}
+IveCore::IveCore() {}
 
-int IveCore::run(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+int IveCore::run(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
                  std::vector<CviImg> *output, bool legacy_mode) {
+  m_chip_info = cvk_ctx->info;
   for (const auto &img : input) {
     if (!img.IsStideCEQ()) {
       std::cout << "Input image ( " << img.GetImgWidth() << ", " << img.GetImgHeight() << ") "
@@ -386,7 +375,7 @@ int IveCore::run(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> 
   }
   int ret = CVI_SUCCESS;
   if (legacy_mode) {
-    ret = runSingleSizeKernel(ctx, bk_ctx, input, output);
+    ret = runSingleSizeKernel(ctx, cvk_ctx, input, output);
   } else {
     bool has_sub_image = false;
     for (const auto &img : input) {
@@ -397,9 +386,9 @@ int IveCore::run(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> 
     }
     u32 total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
     if ((has_sub_image || m_kernel_info.size != 1 || m_force_use_ext) || (total_size % 16)) {
-      ret = runSingleSizeExtKernel(ctx, bk_ctx, input, output);
+      ret = runSingleSizeExtKernel(ctx, cvk_ctx, input, output);
     } else {
-      ret = runNoKernel(ctx, bk_ctx, input, output);
+      ret = runNoKernel(ctx, cvk_ctx, input, output);
     }
   }
   return ret;
@@ -500,10 +489,9 @@ int IveCore::getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32
   return CVI_SUCCESS;
 }
 
-bmk1880v2_tensor_lmem_t *IveCore::allocTLMem(bmk1880v2_context_t *bk_ctx,
-                                             bmk1880v2_tensor_lmem_shape_t tl_shape, fmt_t fmt,
-                                             int eu_align, IVETLType tl_type) {
-  bmk1880v2_tensor_lmem_t *lmem = bmk1880v2_lmem_alloc_bf16_tensor(bk_ctx, tl_shape, fmt, eu_align);
+cvk_tl_t *IveCore::allocTLMem(cvk_context_t *cvk_ctx, cvk_tl_shape_t tl_shape, cvk_fmt_t fmt,
+                              int eu_align, IVETLType tl_type) {
+  cvk_tl_t *lmem = cvk_ctx->ops->lmem_alloc_tensor(cvk_ctx, tl_shape, fmt, eu_align);
   if (lmem == NULL) {
     std::cerr << "Tensor allocate failed. Shape: " << tl_shape.n << ", " << tl_shape.c << ", "
               << tl_shape.h << ", " << tl_shape.w << std::endl;
@@ -512,15 +500,15 @@ bmk1880v2_tensor_lmem_t *IveCore::allocTLMem(bmk1880v2_context_t *bk_ctx,
 
   m_tl_type.push_back(tl_type);
   // A safer way to pass pointer to vector of pointers.
-  auto ptr = std::unique_ptr<bmk1880v2_tensor_lmem_t>(lmem);
+  auto ptr = std::unique_ptr<cvk_tl_t>(lmem);
   m_tl_vec.emplace_back(ptr.get());
   ptr.release();
   return lmem;
 }
 
-int IveCore::freeTLMems(bmk1880v2_context_t *bk_ctx) {
+int IveCore::freeTLMems(cvk_context_t *cvk_ctx) {
   for (int i = m_tl_vec.size() - 1; i >= 0; i--) {
-    bmk1880v2_lmem_free_tensor(bk_ctx, m_tl_vec[i]);
+    cvk_ctx->ops->lmem_free_tensor(cvk_ctx, m_tl_vec[i]);
   }
   m_tl_type.clear();
   m_tl_vec.clear();
@@ -533,14 +521,13 @@ int IveCore::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_o
   return CVI_SUCCESS;
 }
 
-void IveCore::beforeSubmit(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+void IveCore::beforeSubmit(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
                            std::vector<CviImg> *output) {}
 
 int IveCore::postProcess(bmctx_t *ctx) { return CVI_SUCCESS; }
 
-int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
-                                 std::vector<CviImg> &input, std::vector<CviImg> *output,
-                                 bool enable_min_max) {
+int IveCore::runSingleSizeKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
+                                 std::vector<CviImg> *output, bool enable_min_max) {
   // FIXME: Support later
   if (m_slice_info.ping_pong_size != 1) {
     std::cerr << "Currently runSingleSizeKernel does not support ping pong." << std::endl;
@@ -568,8 +555,8 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   }
 #endif
   // FIXME: Move to constructor if possible.
-  bmk1880v2_tensor_lmem_shape_t tl_table_s;
-  u64 result = bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_U8);
+  cvk_tl_shape_t tl_table_s;
+  u64 result = cvm_lut_tbl_bytesize(cvk_ctx, &tl_table_s, CVK_FMT_U8);
   m_table_per_channel_size = result / m_chip_info.npu_num;  // 32 * 8 for bm1880v2
   SliceRes slice_res;
   int ret = getSlice(nums_of_tl, m_slice_info.nums_of_table, fix_lmem_size, batch, channel, height,
@@ -591,14 +578,14 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   }
 
   // Setup slice input/ output shapes and left shapes
-  std::vector<bmk1880v2_tensor_tgmem_shape_t> s_in_vec, s_out_vec;
+  std::vector<cvk_tg_shape_t> s_in_vec, s_out_vec;
   for (size_t k = 0; k < input.size(); k++) {
     s_in_vec.push_back({1, channel, in_slice_res.h.slice, in_slice_res.w.slice});
   }
   for (size_t k = 0; k < output->size(); k++) {
     s_out_vec.push_back({1, channel, out_slice_res.h.slice, out_slice_res.w.slice});
   }
-  std::vector<bmk1880v2_tensor_tgmem_shape_t> s_in_left_vec, s_out_left_vec;
+  std::vector<cvk_tg_shape_t> s_in_left_vec, s_out_left_vec;
   for (size_t k = 0; k < input.size(); k++) {
     s_in_left_vec.push_back({1, channel, in_slice_res.h.left, in_slice_res.w.left});
   }
@@ -608,7 +595,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   // allocate tl shape and get input/ output indices.
   std::vector<u32> tl_in_idx, tl_out_idx;
-  runSetup(ctx, bk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
+  runSetup(ctx, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
 
   // Dummy check, can be turned off in official release
   if (tl_in_idx.size() != input.size()) {
@@ -621,8 +608,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   }
   // Dummy check end
   // Category tl shapes
-  std::vector<std::pair<int, bmk1880v2_tensor_lmem_t *>> tl_in_shape_lmem_vec,
-      tl_out_shape_lmem_vec;
+  std::vector<std::pair<int, cvk_tl_t *>> tl_in_shape_lmem_vec, tl_out_shape_lmem_vec;
   categoryIOTLShape(m_tl_vec, s_in_vec, s_out_vec, &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec);
 
   // Find and create input/ output fmt size pair.
@@ -635,9 +621,9 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                 &bm_dest_info);
 
   // Create tg block
-  bmk1880v2_tensor_tgmem_t tg_in;
+  cvk_tg_t tg_in;
   tg_in.base_reg_index = 0;
-  bmk1880v2_tensor_tgmem_t tg_out;
+  cvk_tg_t tg_out;
   tg_out.base_reg_index = 0;
 
   // Main for loop
@@ -652,12 +638,10 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
       if (s_in_left_vec[index].h != 0) {
         if (i == 0) {
           lmem->shape.h = s_in_vec[index].h;
-          lmem->stride =
-              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
+          lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
         } else if (i == in_slice_res.h.turn - 1) {
           lmem->shape.h = s_in_left_vec[index].h;
-          lmem->stride =
-              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
+          lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
         }
       }
     }
@@ -667,12 +651,10 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
       if (s_out_left_vec[index].h != 0) {
         if (i == 0) {
           lmem->shape.h = s_out_vec[index].h;
-          lmem->stride =
-              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
+          lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
         } else if (i == out_slice_res.h.turn - 1) {
           lmem->shape.h = s_out_left_vec[index].h;
-          lmem->stride =
-              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
+          lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
         }
       }
     }
@@ -685,12 +667,10 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         if (s_in_left_vec[index].w != 0) {
           if (j == 0) {
             lmem->shape.w = s_in_vec[index].w;
-            lmem->stride =
-                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
+            lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
           } else if (j == in_slice_res.w.turn - 1) {
             lmem->shape.w = s_in_left_vec[index].w;
-            lmem->stride =
-                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
+            lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
           }
         }
       }
@@ -700,12 +680,10 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         if (s_out_left_vec[index].w != 0) {
           if (j == 0) {
             lmem->shape.w = s_out_vec[index].w;
-            lmem->stride =
-                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
+            lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
           } else if (j == out_slice_res.w.turn - 1) {
             lmem->shape.w = s_out_left_vec[index].w;
-            lmem->stride =
-                bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
+            lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
           }
         }
       }
@@ -719,16 +697,16 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         tg_in.shape.w = tl_in_info.lmem_vec[k]->shape.w;
         tg_in.fmt = bm_src_info.fns_vec[k].getFmt();
         tg_in.stride = input[k].m_tg.stride;
-        bmk1880v2_tdma_tg2l_tensor_copy_param_t p_copy_in;
+        cvk_tdma_g2l_tensor_copy_param_t p_copy_in;
         p_copy_in.src = &tg_in;
         p_copy_in.dst = tl_in_info.lmem_vec[k];
-        bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p_copy_in);
+        cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
 
         // Change src head addr
         bm_src_addr_w[k] += 1 * in_slice_res.w.skip * bm_src_info.fns_vec[k].getSize();
       }
 
-      operation(ctx, bk_ctx, 0);
+      operation(ctx, cvk_ctx, 0);
 
       // tl2tg
       for (size_t k = 0; k < tl_out_info.lmem_vec.size(); k++) {
@@ -741,7 +719,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         tg_out.shape.w =
             tl_out_info.lmem_vec[k]->shape.w - (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
         tg_out.stride = (*output)[k].m_tg.stride;
-        bmk1880v2_tensor_lmem_t out_shape;
+        cvk_tl_t out_shape;
         auto &tl_out = tl_out_info.lmem_vec;
         // printf("st addr%d, tg st addr %lu\n", tl_out[k]->start_address, bm_dest_addr_w[k]);
         out_shape.start_address = tl_out[k]->start_address +
@@ -753,10 +731,10 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         out_shape.shape.h = tg_out.shape.h;
         out_shape.shape.w = tg_out.shape.w;
         out_shape.stride = tl_out[k]->stride;
-        bmk1880v2_tdma_l2tg_tensor_copy_param_t p_copy_out;
+        cvk_tdma_l2g_tensor_copy_param_t p_copy_out;
         p_copy_out.src = &out_shape;
         p_copy_out.dst = &tg_out;
-        bmk1880v2_tdma_l2g_bf16_tensor_copy(bk_ctx, &p_copy_out);
+        cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
 
         // Change dest head addr
         bm_dest_addr_w[k] += 1 * out_slice_res.w.skip * bm_dest_info.fns_vec[k].getSize();
@@ -792,21 +770,21 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], false, true);
 
-  beforeSubmit(ctx, bk_ctx, input, output);
+  beforeSubmit(ctx, cvk_ctx, input, output);
 
   if (ret == CVI_SUCCESS) {
-    submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
+    submitCmdbuf(ctx, cvk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
 
-  freeTLMems(bk_ctx);
+  freeTLMems(cvk_ctx);
   postProcess(ctx);
   return ret;
 }
 
-int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
+int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                                     std::vector<CviImg> &input, std::vector<CviImg> *output,
                                     bool enable_min_max) {
-  if (m_slice_info.io_fmt == FMT_INVALID) {
+  if (m_slice_info.io_fmt == CVK_FMT_INVALID) {
     std::cerr << "Invalid fmt engine type." << std::endl;
     return CVI_FAILURE;
   }
@@ -834,8 +812,8 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   u32 fix_lmem_size = m_slice_info.fix_lmem_size;
 
   // FIXME: Move to constructor if possible.
-  bmk1880v2_tensor_lmem_shape_t tl_table_s;
-  u64 result = bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_U8);
+  cvk_tl_shape_t tl_table_s;
+  u64 result = cvm_lut_tbl_bytesize(cvk_ctx, &tl_table_s, CVK_FMT_U8);
   m_table_per_channel_size = result / m_chip_info.npu_num;  // 32 * 8 for bm1880v2
   SliceRes slice_res;
   // FIXME: batch is currently fixed to 1 due to HW limitation.
@@ -860,12 +838,12 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   // channel ext supports w, so no need to change out_slice_res.w
   // out_slice_res.w.slice -= (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
   // out_slice_res.w.left -= (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
-  // Input/ output types may varies, so we calculate all the stride using FMT_U8 then multiply the
-  // stride manually.
-  fmt_t tgin_fmt_type = FMT_U8;
-  fmt_t tgout_fmt_type = FMT_U8;
+  // Input/ output types may varies, so we calculate all the stride using CVK_FMT_U8 then multiply
+  // the stride manually.
+  cvk_fmt_t tgin_fmt_type = CVK_FMT_U8;
+  cvk_fmt_t tgout_fmt_type = CVK_FMT_U8;
   TensorSliceInfo out_info, out_w_info, out_h_info, out_wh_info;
-  channelExtension(bk_ctx, w_from_stride, w_from_stride_out, channel, out_slice_res.h.slice,
+  channelExtension(cvk_ctx, w_from_stride, w_from_stride_out, channel, out_slice_res.h.slice,
                    out_slice_res.w.slice, out_slice_res.h.c_multiplier, m_kernel_info.pad[0],
                    m_kernel_info.pad[1], m_kernel_info.pad[2], m_kernel_info.pad[3],
                    m_kernel_info.size, m_kernel_info.size, m_kernel_info.default_stride_y,
@@ -876,7 +854,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   u32 out_slice_res_w_left_pixels = 0;
   u32 in_slice_res_w_left_pixels = 0;
   if (slice_res.w.left != 0) {
-    channelExtension(bk_ctx, w_from_stride, w_from_stride_out, channel, out_slice_res.h.slice,
+    channelExtension(cvk_ctx, w_from_stride, w_from_stride_out, channel, out_slice_res.h.slice,
                      out_slice_res.w.left, out_slice_res.h.c_multiplier, m_kernel_info.pad[0],
                      m_kernel_info.pad[1], m_kernel_info.pad[2], m_kernel_info.pad[3],
                      m_kernel_info.size, m_kernel_info.size, m_kernel_info.default_stride_y,
@@ -902,7 +880,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         in_slice_res_h_left_pixels = in_h_left_pixels;
       }
     }
-    channelExtension(bk_ctx, w_from_stride, w_from_stride_out, channel, out_slice_res.h.left,
+    channelExtension(cvk_ctx, w_from_stride, w_from_stride_out, channel, out_slice_res.h.left,
                      out_slice_res.w.slice, c_multiplier, m_kernel_info.pad[0],
                      m_kernel_info.pad[1], m_kernel_info.pad[2], m_kernel_info.pad[3],
                      m_kernel_info.size, m_kernel_info.size, m_kernel_info.default_stride_y,
@@ -916,7 +894,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     while (out_slice_res.h.left % c_multiplier != 0) {
       c_multiplier--;
     }
-    channelExtension(bk_ctx, w_from_stride, w_from_stride_out, channel, out_slice_res.h.left,
+    channelExtension(cvk_ctx, w_from_stride, w_from_stride_out, channel, out_slice_res.h.left,
                      out_slice_res.w.left, c_multiplier, m_kernel_info.pad[0], m_kernel_info.pad[1],
                      m_kernel_info.pad[2], m_kernel_info.pad[3], m_kernel_info.size,
                      m_kernel_info.size, m_kernel_info.default_stride_y,
@@ -936,12 +914,12 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   TensorSliceInfo out_hlp_w_info, out_hlp_w_left_info, out_wlp_h_info, out_wlp_h_left_info,
       out_wlp_hlp_info;
   if (out_slice_res_h_left_pixels != 0) {
-    updateTSIInfo(bk_ctx, 1, channel, in_slice_res_h_left_pixels, in_slice_res.w.slice, 1, channel,
+    updateTSIInfo(cvk_ctx, 1, channel, in_slice_res_h_left_pixels, in_slice_res.w.slice, 1, channel,
                   out_slice_res_h_left_pixels, out_slice_res.w.slice, m_slice_info.io_fmt,
                   tgin_fmt_type, tgout_fmt_type, &out_hlp_w_info);
     if (out_slice_res.w.left != 0) {
-      updateTSIInfo(bk_ctx, 1, channel, in_slice_res_h_left_pixels, in_slice_res.w.left, 1, channel,
-                    out_slice_res_h_left_pixels, out_slice_res.w.left, m_slice_info.io_fmt,
+      updateTSIInfo(cvk_ctx, 1, channel, in_slice_res_h_left_pixels, in_slice_res.w.left, 1,
+                    channel, out_slice_res_h_left_pixels, out_slice_res.w.left, m_slice_info.io_fmt,
                     tgin_fmt_type, tgout_fmt_type, &out_hlp_w_left_info);
     } else {
       out_hlp_w_left_info = out_hlp_w_info;
@@ -955,12 +933,12 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     }
   }
   if (out_slice_res_w_left_pixels != 0) {
-    updateTSIInfo(bk_ctx, 1, channel, in_slice_res.h.slice, in_slice_res_w_left_pixels, 1, channel,
+    updateTSIInfo(cvk_ctx, 1, channel, in_slice_res.h.slice, in_slice_res_w_left_pixels, 1, channel,
                   out_slice_res.h.slice, out_slice_res_w_left_pixels, m_slice_info.io_fmt,
                   tgin_fmt_type, tgout_fmt_type, &out_wlp_h_info);
     if (out_slice_res.h.left != 0) {
-      updateTSIInfo(bk_ctx, 1, channel, in_slice_res.h.left, in_slice_res_w_left_pixels, 1, channel,
-                    out_slice_res.h.left, out_slice_res_w_left_pixels, m_slice_info.io_fmt,
+      updateTSIInfo(cvk_ctx, 1, channel, in_slice_res.h.left, in_slice_res_w_left_pixels, 1,
+                    channel, out_slice_res.h.left, out_slice_res_w_left_pixels, m_slice_info.io_fmt,
                     tgin_fmt_type, tgout_fmt_type, &out_wlp_h_left_info);
     } else {
       out_wlp_h_left_info = out_wlp_h_info;
@@ -974,7 +952,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
     }
   }
   if (out_slice_res_h_left_pixels != 0 && out_slice_res_w_left_pixels != 0) {
-    updateTSIInfo(bk_ctx, 1, channel, in_slice_res_h_left_pixels, in_slice_res_w_left_pixels, 1,
+    updateTSIInfo(cvk_ctx, 1, channel, in_slice_res_h_left_pixels, in_slice_res_w_left_pixels, 1,
                   channel, out_slice_res_h_left_pixels, out_slice_res_w_left_pixels,
                   m_slice_info.io_fmt, tgin_fmt_type, tgout_fmt_type, &out_wlp_hlp_info);
   } else if (out_slice_res_h_left_pixels != 0 && out_slice_res_w_left_pixels == 0) {
@@ -986,7 +964,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   }
 
   // Setup slice input/ output shapes and left shapes
-  std::vector<bmk1880v2_tensor_tgmem_shape_t> s_in_vec, s_out_vec;
+  std::vector<cvk_tg_shape_t> s_in_vec, s_out_vec;
   for (size_t k = 0; k < input.size(); k++) {
     s_in_vec.push_back(
         {1, out_info.tl_load.shape.c, out_info.tl_load.shape.h, out_info.tl_load.shape.w});
@@ -998,7 +976,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
 
   // allocate tl shape and get input/ output indices.
   std::vector<u32> tl_in_idx, tl_out_idx;
-  runSetup(ctx, bk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, true);
+  runSetup(ctx, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, true);
 
   // Dummy check, can be turned off in official release
   if (tl_in_idx.size() != input.size()) {
@@ -1012,8 +990,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   // Dummy check end
 
   // Category tl shapes
-  std::vector<std::pair<int, bmk1880v2_tensor_lmem_t *>> tl_in_shape_lmem_vec,
-      tl_out_shape_lmem_vec;
+  std::vector<std::pair<int, cvk_tl_t *>> tl_in_shape_lmem_vec, tl_out_shape_lmem_vec;
   categoryIOTLShape(m_tl_vec, s_in_vec, s_out_vec, &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec);
 
   // Find and create input/ output fmt size pair.
@@ -1026,9 +1003,9 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                 &bm_dest_info);
 
   // Create tg block
-  bmk1880v2_tensor_tgmem_t tg_in;
+  cvk_tg_t tg_in;
   tg_in.base_reg_index = 0;
-  bmk1880v2_tensor_tgmem_t tg_out;
+  cvk_tg_t tg_out;
   tg_out.base_reg_index = 0;
 
   // Main for loop
@@ -1057,47 +1034,47 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
         if (i == in_slice_res.h.turn - 1 && out_slice_res_h_left_pixels != 0) {
           if (j == 0) {
             tsi = &out_hlp_w_info;
-            updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
+            updateLMemSize(cvk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                            &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
           } else if (j == in_slice_res.w.turn - 1 && out_slice_res_w_left_pixels != 0) {
             tsi = &out_wlp_hlp_info;
-            updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
+            updateLMemSize(cvk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                            &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
           } else if ((j == in_slice_res.w.turn - 1 && out_slice_res_w_left_pixels == 0) ||
                      (j == in_slice_res.w.turn - 2 && out_slice_res_w_left_pixels != 0)) {
             tsi = &out_wlp_h_left_info;
-            updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
+            updateLMemSize(cvk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                            &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
           }
         } else if ((i == in_slice_res.h.turn - 1 && out_slice_res_h_left_pixels == 0) ||
                    (i == in_slice_res.h.turn - 2 && out_slice_res_h_left_pixels != 0)) {
           if (j == 0) {
             tsi = &out_h_info;
-            updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
+            updateLMemSize(cvk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                            &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
           } else if (j == in_slice_res.w.turn - 1 && out_slice_res_w_left_pixels != 0) {
             tsi = &out_wlp_h_left_info;
-            updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
+            updateLMemSize(cvk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                            &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
           } else if ((j == in_slice_res.w.turn - 1 && out_slice_res_w_left_pixels == 0) ||
                      (j == in_slice_res.w.turn - 2 && out_slice_res_w_left_pixels != 0)) {
             tsi = &out_wh_info;
-            updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
+            updateLMemSize(cvk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                            &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
           }
         } else {
           if (j == 0) {
             tsi = &out_info;
-            updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
+            updateLMemSize(cvk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                            &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
           } else if (j == in_slice_res.w.turn - 1 && out_slice_res_w_left_pixels != 0) {
             tsi = &out_wlp_h_info;
-            updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
+            updateLMemSize(cvk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                            &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
           } else if ((j == in_slice_res.w.turn - 1 && out_slice_res_w_left_pixels == 0) ||
                      (j == in_slice_res.w.turn - 2 && out_slice_res_w_left_pixels != 0)) {
             tsi = &out_w_info;
-            updateLMemSize(bk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
+            updateLMemSize(cvk_ctx, m_chip_info.npu_num, m_slice_info.io_fmt, *tsi, m_tl_type,
                            &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec, &m_tl_vec);
           }
         }
@@ -1127,16 +1104,16 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                     tl_in[k]->stride.n, tl_in[k]->stride.c, tl_in[k]->stride.h, tl_in[k]->stride.w);
           // clang-format on
 
-          bmk1880v2_tdma_tg2l_tensor_copy_param_t p_copy_in;
+          cvk_tdma_g2l_tensor_copy_param_t p_copy_in;
           p_copy_in.src = &tg_in;
           p_copy_in.dst = tl_in[k];
-          bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p_copy_in);
+          cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
 
           // Change src head addr
           bm_src_addr_w[k] += 1 * in_slice_res.w.skip * bm_src_info.fns_vec[k].getSize();
         }
 
-        operation(ctx, bk_ctx, 0);
+        operation(ctx, cvk_ctx, 0);
 
         // tl2tg
         for (size_t k = 0; k < tl_out_info.lmem_vec.size(); k++) {
@@ -1150,7 +1127,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
           tg_out.stride.c = tsi->tg_store.stride.c * bm_dest_info.fns_vec[k].getSize();
           tg_out.stride.h = tsi->tg_store.stride.h * bm_dest_info.fns_vec[k].getSize();
           auto &tl_out = tl_out_info.lmem_vec;
-          bmk1880v2_tensor_lmem_t out_shape;
+          cvk_tl_t out_shape;
           // printf("st addr%d, tg st addr %lu\n", tl_out[k]->start_address, bm_dest_addr_w[k]);
           out_shape.start_address =
               tl_out[k]->start_address + (m_kernel_info.pad[0] * tl_out_info.fns_vec[k].getSize());
@@ -1175,10 +1152,10 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
                     tl_out[k]->stride.n, tl_out[k]->stride.c, tl_out[k]->stride.h, tl_out[k]->stride.w);
           // clang-format on
 
-          bmk1880v2_tdma_l2tg_tensor_copy_param_t p_copy_out;
+          cvk_tdma_l2g_tensor_copy_param_t p_copy_out;
           p_copy_out.src = &out_shape;
           p_copy_out.dst = &tg_out;
-          bmk1880v2_tdma_l2g_bf16_tensor_copy(bk_ctx, &p_copy_out);
+          cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
 
           // Change dest head addr
           bm_dest_addr_w[k] += 1 * out_slice_res.w.skip * bm_dest_info.fns_vec[k].getSize();
@@ -1240,18 +1217,18 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx,
   IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", out_slice_res.w.slice,
             out_slice_res.w.turn, out_slice_res.w.skip, out_slice_res.w.left);
 
-  beforeSubmit(ctx, bk_ctx, input, output);
+  beforeSubmit(ctx, cvk_ctx, input, output);
 
   if (ret == CVI_SUCCESS) {
-    submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
+    submitCmdbuf(ctx, cvk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
 
-  freeTLMems(bk_ctx);
+  freeTLMems(cvk_ctx);
   postProcess(ctx);
   return CVI_SUCCESS;
 }
 
-int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<CviImg> &input,
+int IveCore::runNoKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
                          std::vector<CviImg> *output, bool enable_min_max) {
   // Only supports kernel size = 1. NoKernel means kernel size = 1. You still can use depthwise
   // conv + qdm as u8 div.
@@ -1263,8 +1240,8 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
     std::cerr << "Image size " << total_size << " is not 16 aligned." << std::endl;
     return CVI_FAILURE;
   }
-  bmk1880v2_tensor_lmem_shape_t tl_table_s;
-  u64 table_sz = bf16_lut_tbl_bytesize(bk_ctx, &tl_table_s, FMT_U8);
+  cvk_tl_shape_t tl_table_s;
+  u64 table_sz = cvm_lut_tbl_bytesize(cvk_ctx, &tl_table_s, CVK_FMT_U8);
   m_table_per_channel_size = table_sz / m_chip_info.npu_num;  // 32 * 8 for bm1880v2
   // Calculating slice
   // Calculate fixed kernel size
@@ -1289,7 +1266,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   u32 div_16 = div / 16;
   div = div_16 * 16;
   // FIXME: We assumed that h never exceeds 1024.
-  bmk1880v2_tensor_tgmem_shape_t shape = {1, 32, div_16, 16};
+  cvk_tg_shape_t shape = {1, 32, div_16, 16};
   size_t loop_turn = (div == 0) ? 0 : (total_size / (32 * div)) / m_slice_info.ping_pong_size;
   // Check if any pixel left.
   size_t left_pixels = total_size - ((loop_turn * (32 * div)) * m_slice_info.ping_pong_size);
@@ -1317,7 +1294,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   IVE_DEBUG("turn %lu left %lu\n", loop_turn, left_pixels);
   IVE_DEBUG("%u %u %u %u\n", shape.n, shape.c, shape.h, shape.w);
 
-  std::vector<bmk1880v2_tensor_tgmem_shape_t> s_in_vec, s_out_vec;
+  std::vector<cvk_tg_shape_t> s_in_vec, s_out_vec;
   for (size_t k = 0; k < input.size(); k++) {
     s_in_vec.push_back({shape.n, shape.c, shape.h, shape.w});
   }
@@ -1326,7 +1303,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   }
   // allocate tl shape and get input/ output indices.
   std::vector<u32> tl_in_idx, tl_out_idx;
-  runSetup(ctx, bk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
+  runSetup(ctx, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
 
   // Find and create input/ output fmt size pair.
   TLInfo tl_in_info, tl_out_info;
@@ -1337,20 +1314,19 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   getBMAddrInfo(input, *output, m_kernel_info.pad[0], m_kernel_info.pad[2], &bm_src_info,
                 &bm_dest_info);
   // Get reshaped stride
-  std::vector<bmk1880v2_tensor_tgmem_stride_t> input_stride_vec, output_stride_vec;
+  std::vector<cvk_tg_stride_t> input_stride_vec, output_stride_vec;
   for (size_t i = 0; i < bm_src_info.addr_vec.size(); i++) {
-    input_stride_vec.push_back(
-        bmk1880v2_bf16_tensor_tgmem_default_stride(shape, input[i].m_tg.fmt));
+    input_stride_vec.push_back(cvk_ctx->ops->tg_default_stride(cvk_ctx, shape, input[i].m_tg.fmt));
   }
   for (size_t i = 0; i < bm_dest_info.addr_vec.size(); i++) {
     output_stride_vec.push_back(
-        bmk1880v2_bf16_tensor_tgmem_default_stride(shape, (*output)[i].m_tg.fmt));
+        cvk_ctx->ops->tg_default_stride(cvk_ctx, shape, (*output)[i].m_tg.fmt));
   }
 
   // Create tg block
-  bmk1880v2_tensor_tgmem_t tg_in;
+  cvk_tg_t tg_in;
   tg_in.base_reg_index = 0;
-  bmk1880v2_tensor_tgmem_t tg_out;
+  cvk_tg_t tg_out;
   tg_out.base_reg_index = 0;
 
   size_t jump_src = shape.n * shape.c * shape.h * shape.w;
@@ -1367,17 +1343,17 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
         tg_in.shape.w = tl_in_info.lmem_vec[k + pp_skip]->shape.w;
         tg_in.fmt = bm_src_info.fns_vec[k].getFmt();
         tg_in.stride = input_stride_vec[k];
-        bmk1880v2_tdma_tg2l_tensor_copy_param_t p_copy_in;
+        cvk_tdma_g2l_tensor_copy_param_t p_copy_in;
         p_copy_in.src = &tg_in;
         p_copy_in.dst = tl_in_info.lmem_vec[k + pp_skip];
-        bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p_copy_in);
+        cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
         // Change src head addr
         bm_src_info.addr_vec[k] += 1 * jump_src * bm_src_info.fns_vec[k].getSize();
       }
     }
 
     for (size_t pp = 0; pp < m_slice_info.ping_pong_size; pp++) {
-      operation(ctx, bk_ctx, pp);
+      operation(ctx, cvk_ctx, pp);
     }
 
     // tl2tg
@@ -1392,10 +1368,10 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
         tg_out.shape.w = tl_out_info.lmem_vec[k + pp_skip]->shape.w;
         tg_out.fmt = bm_dest_info.fns_vec[k].getFmt();
         tg_out.stride = output_stride_vec[k];
-        bmk1880v2_tdma_l2tg_tensor_copy_param_t p_copy_out;
+        cvk_tdma_l2g_tensor_copy_param_t p_copy_out;
         p_copy_out.src = tl_out_info.lmem_vec[k + pp_skip];
         p_copy_out.dst = &tg_out;
-        bmk1880v2_tdma_l2g_bf16_tensor_copy(bk_ctx, &p_copy_out);
+        cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
 
         // Change dest head addr
         bm_dest_info.addr_vec[k] += 1 * jump_dst * bm_dest_info.fns_vec[k].getSize();
@@ -1403,7 +1379,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
     }
   }
   if (left_pixels != 0) {
-    bmk1880v2_tensor_tgmem_shape_t left_shape = {0, 0, 0, 0};
+    cvk_tg_shape_t left_shape = {0, 0, 0, 0};
     u32 div = 32;
     while (left_pixels % div != 0) {
       u32 val = std::ceil(float(left_pixels) / div);
@@ -1423,12 +1399,11 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
     IVE_DEBUG("%u %u %u %u\n", left_shape.n, left_shape.c, left_shape.h, left_shape.w);
 
     for (size_t i = 0; i < input_stride_vec.size(); i++) {
-      input_stride_vec[i] =
-          bmk1880v2_bf16_tensor_tgmem_default_stride(left_shape, input[0].m_tg.fmt);
+      input_stride_vec[i] = cvk_ctx->ops->tg_default_stride(cvk_ctx, left_shape, input[0].m_tg.fmt);
     }
     for (size_t i = 0; i < output_stride_vec.size(); i++) {
       output_stride_vec[i] =
-          bmk1880v2_bf16_tensor_tgmem_default_stride(left_shape, (*output)[0].m_tg.fmt);
+          cvk_ctx->ops->tg_default_stride(cvk_ctx, left_shape, (*output)[0].m_tg.fmt);
     }
     // Category tl shapes
     for (size_t i = 0; i < m_tl_vec.size(); i++) {
@@ -1440,8 +1415,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
           lmem->shape.c = left_shape.c;
           lmem->shape.h = left_shape.h;
           lmem->shape.w = left_shape.w;
-          lmem->stride =
-              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
+          lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
           skip = true;
           break;
         }
@@ -1455,8 +1429,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
           lmem->shape.c = left_shape.c;
           lmem->shape.h = left_shape.h;
           lmem->shape.w = left_shape.w;
-          lmem->stride =
-              bmk1880v2_bf16_tensor_lmem_default_stride(bk_ctx, lmem->shape, lmem->fmt, 1);
+          lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
           break;
         }
       }
@@ -1472,16 +1445,16 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
       tg_in.shape.w = tl_in_info.lmem_vec[k]->shape.w;
       tg_in.fmt = bm_src_info.fns_vec[k].getFmt();
       tg_in.stride = input_stride_vec[k];
-      bmk1880v2_tdma_tg2l_tensor_copy_param_t p_copy_in;
+      cvk_tdma_g2l_tensor_copy_param_t p_copy_in;
       p_copy_in.src = &tg_in;
       p_copy_in.dst = tl_in_info.lmem_vec[k];
-      bmk1880v2_tdma_g2l_bf16_tensor_copy(bk_ctx, &p_copy_in);
+      cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
 
       // Change src head addr
       bm_src_info.addr_vec[k] += 1 * jump_src * bm_src_info.fns_vec[k].getSize();
     }
 
-    operation(ctx, bk_ctx, 0);
+    operation(ctx, cvk_ctx, 0);
 
     // tl2tg
     tl_idx = tl_out_info.lmem_vec.size() / m_slice_info.ping_pong_size;
@@ -1493,10 +1466,10 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
       tg_out.shape.h = tl_out_info.lmem_vec[k]->shape.h;
       tg_out.shape.w = tl_out_info.lmem_vec[k]->shape.w;
       tg_out.stride = output_stride_vec[k];
-      bmk1880v2_tdma_l2tg_tensor_copy_param_t p_copy_out;
+      cvk_tdma_l2g_tensor_copy_param_t p_copy_out;
       p_copy_out.src = tl_out_info.lmem_vec[k];
       p_copy_out.dst = &tg_out;
-      bmk1880v2_tdma_l2g_bf16_tensor_copy(bk_ctx, &p_copy_out);
+      cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
 
       // Change dest head addr
       bm_dest_info.addr_vec[k] += 1 * jump_dst * bm_dest_info.fns_vec[k].getSize();
@@ -1506,13 +1479,13 @@ int IveCore::runNoKernel(bmctx_t *ctx, bmk1880v2_context_t *bk_ctx, std::vector<
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], true, false);
 
-  beforeSubmit(ctx, bk_ctx, input, output);
+  beforeSubmit(ctx, cvk_ctx, input, output);
 
   if (ret == CVI_SUCCESS) {
-    submitCmdbuf(ctx, bk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
+    submitCmdbuf(ctx, cvk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
   }
 
-  freeTLMems(bk_ctx);
+  freeTLMems(cvk_ctx);
   postProcess(ctx);
   return CVI_SUCCESS;
 }
