@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
   CVI_IVE_BufFlush(handle, &src);
 
   IVE_DST_MEM_INFO_S dstHist;
-  CVI_U32 dstHistSize = 256 * sizeof(u32);
+  CVI_U32 dstHistSize = 256 * sizeof(uint32_t);
   CVI_IVE_CreateMemInfo(handle, &dstHist, dstHistSize);
   dstHistSize = 256;
 
@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
     printf("CPU time %lu\n", elapsed_cpu);
     printf("Output Histogram feature.\n");
     for (size_t i = 0; i < dstHistSize; i++) {
-      printf("%3d ", ((u32 *)dstHist.pu8VirAddr)[i]);
+      printf("%3d ", ((uint32_t *)dstHist.pu8VirAddr)[i]);
     }
     printf("\n");
   }

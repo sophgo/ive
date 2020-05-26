@@ -23,15 +23,15 @@ class IveCore {
   virtual int runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                        const std::vector<cvk_tg_shape_t> &tg_in_slices,
                        const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                       std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                       std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                        const bool enable_cext) = 0;
-  virtual void operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) = 0;
+  virtual void operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) = 0;
   virtual void beforeSubmit(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
                             std::vector<CviImg> *output);
   virtual int postProcess(bmctx_t *ctx);
 
-  u32 m_nums_of_input = 1;
-  u32 m_nums_of_output = 1;
+  uint32_t m_nums_of_input = 1;
+  uint32_t m_nums_of_output = 1;
   SliceInfo m_slice_info;
   kernelInfo m_kernel_info;
   std::vector<IVETLType> m_tl_type;
@@ -40,10 +40,10 @@ class IveCore {
   bool m_force_use_ext = false;
 
  private:
-  int getSlice(const u32 nums_of_lmem, const u32 nums_of_table, const u32 fixed_lmem_size,
-               const u32 n, const u32 c, const u32 h, const u32 w, const u32 table_size,
-               const kernelInfo kernel_info, const int npu_num, sliceUnit *unit_h,
-               sliceUnit *unit_w, const bool enable_cext);
+  int getSlice(const uint32_t nums_of_lmem, const uint32_t nums_of_table,
+               const uint32_t fixed_lmem_size, const uint32_t n, const uint32_t c, const uint32_t h,
+               const uint32_t w, const uint32_t table_size, const kernelInfo kernel_info,
+               const int npu_num, sliceUnit *unit_h, sliceUnit *unit_w, const bool enable_cext);
   int freeTLMems(cvk_context_t *cvk_ctx);
   int runSingleSizeKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
                           std::vector<CviImg> *output, bool enable_min_max = false);
@@ -54,5 +54,5 @@ class IveCore {
 
   bool m_write_cmdbuf = false;
   cvk_chip_info_t m_chip_info;
-  u32 m_table_per_channel_size = 0;
+  uint32_t m_table_per_channel_size = 0;
 };

@@ -63,12 +63,13 @@ _NEON2SSE_INLINE float32_t vaddvq_f32(float32x4_t a) {
 }
 #endif
 
-inline void neonU16FindMinMax(u16 *src_ptr, const u64 src_size, u16 *min, u16 *max) {
-  u64 neon_turn = src_size / 8;
+inline void neonU16FindMinMax(uint16_t *src_ptr, const uint64_t src_size, uint16_t *min,
+                              uint16_t *max) {
+  uint64_t neon_turn = src_size / 8;
   uint16x8_t v_u16min = vdupq_n_u16(*min);
   uint16x8_t v_u16max = vdupq_n_u16(*max);
-  u16 *src_ptr1 = src_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  uint16_t *src_ptr1 = src_ptr;
+  for (uint64_t i = 0; i < neon_turn; i++) {
     uint16x8_t v16 = vld1q_u16(src_ptr1);
     v_u16min = vminq_u16(v_u16min, v16);
     v_u16max = vmaxq_u16(v_u16max, v16);
@@ -94,8 +95,8 @@ inline void neonU16FindMinMax(u16 *src_ptr, const u64 src_size, u16 *min, u16 *m
       *max = max_arr[i];
     }
   }
-  for (u64 i = neon_turn * 8; i < src_size; i++) {
-    u16 tmp = src_ptr[i];
+  for (uint64_t i = neon_turn * 8; i < src_size; i++) {
+    uint16_t tmp = src_ptr[i];
     if (tmp < *min) {
       *min = tmp;
     }
@@ -105,13 +106,13 @@ inline void neonU16FindMinMax(u16 *src_ptr, const u64 src_size, u16 *min, u16 *m
   }
 }
 
-inline void neonBF16FindMinMax(u16 *src_ptr, const u64 src_size, float *min, float *max) {
-  u64 neon_turn = src_size / 8;
+inline void neonBF16FindMinMax(uint16_t *src_ptr, const uint64_t src_size, float *min, float *max) {
+  uint64_t neon_turn = src_size / 8;
   float32x4_t v_fmin = vdupq_n_f32(*min);
   float32x4_t v_fmax = vdupq_n_f32(*max);
   uint16x8_t zeros = vdupq_n_u16(0);
-  u16 *src_ptr1 = src_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  uint16_t *src_ptr1 = src_ptr;
+  for (uint64_t i = 0; i < neon_turn; i++) {
     uint16x8_t v16 = vld1q_u16(src_ptr1);
     neonfloatshort n_float_short;
     n_float_short.v_u16 = vzipq_u16(zeros, v16);
@@ -133,7 +134,7 @@ inline void neonBF16FindMinMax(u16 *src_ptr, const u64 src_size, float *min, flo
   vst1_f32(max_arr, v_fmax_low);
   *min = min_arr[0] > min_arr[1] ? min_arr[1] : min_arr[0];
   *max = max_arr[0] > max_arr[1] ? max_arr[0] : max_arr[1];
-  for (u64 i = neon_turn * 8; i < src_size; i++) {
+  for (uint64_t i = neon_turn * 8; i < src_size; i++) {
     float tmp = convert_bf16_fp32(src_ptr[i]);
     if (tmp < *min) {
       *min = tmp;
@@ -144,15 +145,15 @@ inline void neonBF16FindMinMax(u16 *src_ptr, const u64 src_size, float *min, flo
   }
 }
 
-inline void neonU162U8Normalize(u16 *src_ptr, u8 *dst_ptr, const u64 arr_size, const u16 min,
-                                const u16 max) {
-  u64 neon_turn = arr_size / 8;
+inline void neonU162U8Normalize(uint16_t *src_ptr, uint8_t *dst_ptr, const uint64_t arr_size,
+                                const uint16_t min, const uint16_t max) {
+  uint64_t neon_turn = arr_size / 8;
   float multiplier = 255.f / (max - min);
   uint16x8_t v_u16min = vdupq_n_u16(min);
   float32x4_t v_fmultiplier = vdupq_n_f32(multiplier);
-  u16 *src_ptr1 = src_ptr;
-  u8 *dst_ptr1 = dst_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  uint16_t *src_ptr1 = src_ptr;
+  uint8_t *dst_ptr1 = dst_ptr;
+  for (uint64_t i = 0; i < neon_turn; i++) {
     uint16x8_t v16 = vld1q_u16(src_ptr1);
     uint16x8_t u16sub = vsubq_u16(v16, v_u16min);
     uint32x4_t u32sub_low = vmovl_u16(vget_low_u16(u16sub));
@@ -168,21 +169,21 @@ inline void neonU162U8Normalize(u16 *src_ptr, u8 *dst_ptr, const u64 arr_size, c
     src_ptr1 += 8;
     dst_ptr1 += 8;
   }
-  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+  for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
     dst_ptr[i] = std::round((float)(multiplier * (src_ptr[i] - min)));
   }
 }
 
-inline void neonU162S8Normalize(u16 *src_ptr, s8 *dst_ptr, const u64 arr_size, const u16 min,
-                                const u16 max) {
-  u64 neon_turn = arr_size / 8;
+inline void neonU162S8Normalize(uint16_t *src_ptr, int8_t *dst_ptr, const uint64_t arr_size,
+                                const uint16_t min, const uint16_t max) {
+  uint64_t neon_turn = arr_size / 8;
   float multiplier = 255.f / (max - min);
   uint16x8_t v_u16min = vdupq_n_u16(min);
   float32x4_t v_fmultiplier = vdupq_n_f32(multiplier);
   float32x4_t v_foffset = vdupq_n_f32(-128.f);
-  u16 *src_ptr1 = src_ptr;
-  s8 *dst_ptr1 = dst_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  uint16_t *src_ptr1 = src_ptr;
+  int8_t *dst_ptr1 = dst_ptr;
+  for (uint64_t i = 0; i < neon_turn; i++) {
     uint16x8_t v16 = vld1q_u16(src_ptr1);
     uint16x8_t u16sub = vsubq_u16(v16, v_u16min);
     uint32x4_t u32sub_low = vmovl_u16(vget_low_u16(u16sub));
@@ -198,21 +199,21 @@ inline void neonU162S8Normalize(u16 *src_ptr, s8 *dst_ptr, const u64 arr_size, c
     src_ptr1 += 8;
     dst_ptr1 += 8;
   }
-  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+  for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
     dst_ptr[i] = std::round((float)(multiplier * (src_ptr[i] - min)) - 128);
   }
 }
 
-inline void neonBF162U8Normalize(u16 *src_ptr, u8 *dst_ptr, const u64 arr_size, const float min,
-                                 const float max) {
-  u64 neon_turn = arr_size / 8;
+inline void neonBF162U8Normalize(uint16_t *src_ptr, uint8_t *dst_ptr, const uint64_t arr_size,
+                                 const float min, const float max) {
+  uint64_t neon_turn = arr_size / 8;
   float multiplier = 255.f / (max - min);
   float32x4_t v_fmin = vdupq_n_f32(min);
   float32x4_t v_fmultiplier = vdupq_n_f32(multiplier);
   uint16x8_t zeros = vdupq_n_u16(0);
-  u16 *src_ptr1 = src_ptr;
-  u8 *dst_ptr1 = dst_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  uint16_t *src_ptr1 = src_ptr;
+  uint8_t *dst_ptr1 = dst_ptr;
+  for (uint64_t i = 0; i < neon_turn; i++) {
     uint16x8_t v16 = vld1q_u16(src_ptr1);
     neonfloatshort n_float_short;
     n_float_short.v_u16 = vzipq_u16(zeros, v16);
@@ -227,23 +228,23 @@ inline void neonBF162U8Normalize(u16 *src_ptr, u8 *dst_ptr, const u64 arr_size, 
     src_ptr1 += 8;
     dst_ptr1 += 8;
   }
-  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+  for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
     float tmp = convert_bf16_fp32(src_ptr[i]);
     dst_ptr[i] = std::round((float)(multiplier * (tmp - min)));
   }
 }
 
-inline void neonBF162I8Normalize(u16 *src_ptr, s8 *dst_ptr, const u64 arr_size, const float min,
-                                 const float max) {
-  u64 neon_turn = arr_size / 8;
+inline void neonBF162I8Normalize(uint16_t *src_ptr, int8_t *dst_ptr, const uint64_t arr_size,
+                                 const float min, const float max) {
+  uint64_t neon_turn = arr_size / 8;
   float multiplier = 255.f / (max - min);
   float32x4_t v_fmin = vdupq_n_f32(min);
   float32x4_t v_fmultiplier = vdupq_n_f32(multiplier);
   float32x4_t v_foffset = vdupq_n_f32(-128.f);
   uint16x8_t zeros = vdupq_n_u16(0);
-  u16 *src_ptr1 = src_ptr;
-  s8 *dst_ptr1 = dst_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  uint16_t *src_ptr1 = src_ptr;
+  int8_t *dst_ptr1 = dst_ptr;
+  for (uint64_t i = 0; i < neon_turn; i++) {
     uint16x8_t v16 = vld1q_u16(src_ptr1);
     neonfloatshort n_float_short;
     n_float_short.v_u16 = vzipq_u16(zeros, v16);
@@ -258,22 +259,22 @@ inline void neonBF162I8Normalize(u16 *src_ptr, s8 *dst_ptr, const u64 arr_size, 
     src_ptr1 += 8;
     dst_ptr1 += 8;
   }
-  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+  for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
     float tmp = convert_bf16_fp32(src_ptr[i]);
     dst_ptr[i] = std::round((float)(multiplier * (tmp - min)) - 128);
   }
 }
 
-inline void neonBF162U16Normalize(u16 *src_ptr, u16 *dst_ptr, const u64 arr_size, const float min,
-                                  const float max) {
-  u64 neon_turn = arr_size / 8;
+inline void neonBF162U16Normalize(uint16_t *src_ptr, uint16_t *dst_ptr, const uint64_t arr_size,
+                                  const float min, const float max) {
+  uint64_t neon_turn = arr_size / 8;
   float multiplier = 65535.f / (max - min);
   float32x4_t v_fmin = vdupq_n_f32(min);
   float32x4_t v_fmultiplier = vdupq_n_f32(multiplier);
   uint16x8_t zeros = vdupq_n_u16(0);
-  u16 *src_ptr1 = src_ptr;
-  u16 *dst_ptr1 = dst_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  uint16_t *src_ptr1 = src_ptr;
+  uint16_t *dst_ptr1 = dst_ptr;
+  for (uint64_t i = 0; i < neon_turn; i++) {
     uint16x8_t v16 = vld1q_u16(src_ptr1);
     neonfloatshort n_float_short;
     n_float_short.v_u16 = vzipq_u16(zeros, v16);
@@ -288,23 +289,23 @@ inline void neonBF162U16Normalize(u16 *src_ptr, u16 *dst_ptr, const u64 arr_size
     src_ptr1 += 8;
     dst_ptr1 += 8;
   }
-  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+  for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
     float tmp = convert_bf16_fp32(src_ptr[i]);
     dst_ptr[i] = std::round((float)(multiplier * (tmp - min)));
   }
 }
 
-inline void neonBF162S16Normalize(u16 *src_ptr, s16 *dst_ptr, const u64 arr_size, const float min,
-                                  const float max) {
-  u64 neon_turn = arr_size / 8;
+inline void neonBF162S16Normalize(uint16_t *src_ptr, int16_t *dst_ptr, const uint64_t arr_size,
+                                  const float min, const float max) {
+  uint64_t neon_turn = arr_size / 8;
   float multiplier = 65535.f / (max - min);
   float32x4_t v_fmin = vdupq_n_f32(min);
   float32x4_t v_fmultiplier = vdupq_n_f32(multiplier);
   float32x4_t v_foffset = vdupq_n_f32(-32768.f);
   uint16x8_t zeros = vdupq_n_u16(0);
-  u16 *src_ptr1 = src_ptr;
-  s16 *dst_ptr1 = dst_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  uint16_t *src_ptr1 = src_ptr;
+  int16_t *dst_ptr1 = dst_ptr;
+  for (uint64_t i = 0; i < neon_turn; i++) {
     uint16x8_t v16 = vld1q_u16(src_ptr1);
     neonfloatshort n_float_short;
     n_float_short.v_u16 = vzipq_u16(zeros, v16);
@@ -319,18 +320,18 @@ inline void neonBF162S16Normalize(u16 *src_ptr, s16 *dst_ptr, const u64 arr_size
     src_ptr1 += 8;
     dst_ptr1 += 8;
   }
-  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+  for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
     float tmp = convert_bf16_fp32(src_ptr[i]);
     dst_ptr[i] = std::round((float)(multiplier * (tmp - min))) - 32768;
   }
 }
 
-inline void neonBF162U16(u16 *src_ptr, u16 *dst_ptr, const u64 arr_size) {
-  u64 neon_turn = arr_size / 8;
+inline void neonBF162U16(uint16_t *src_ptr, uint16_t *dst_ptr, const uint64_t arr_size) {
+  uint64_t neon_turn = arr_size / 8;
   uint16x8_t zeros = vdupq_n_u16(0);
-  u16 *src_ptr1 = src_ptr;
-  u16 *dst_ptr1 = dst_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  uint16_t *src_ptr1 = src_ptr;
+  uint16_t *dst_ptr1 = dst_ptr;
+  for (uint64_t i = 0; i < neon_turn; i++) {
     uint16x8_t v16 = vld1q_u16(src_ptr1);
     neonfloatshort n_float_short;
     n_float_short.v_u16 = vzipq_u16(zeros, v16);
@@ -341,7 +342,7 @@ inline void neonBF162U16(u16 *src_ptr, u16 *dst_ptr, const u64 arr_size) {
     src_ptr1 += 8;
     dst_ptr1 += 8;
   }
-  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+  for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
     int val = std::round(convert_bf16_fp32(src_ptr[i]));
     if (val > 65535) val = 65535;
     if (val < 0) val = 0;
@@ -349,12 +350,12 @@ inline void neonBF162U16(u16 *src_ptr, u16 *dst_ptr, const u64 arr_size) {
   }
 }
 
-inline void neonBF162S16(u16 *src_ptr, s16 *dst_ptr, const u64 arr_size) {
-  u64 neon_turn = arr_size / 8;
+inline void neonBF162S16(uint16_t *src_ptr, int16_t *dst_ptr, const uint64_t arr_size) {
+  uint64_t neon_turn = arr_size / 8;
   uint16x8_t zeros = vdupq_n_u16(0);
-  u16 *src_ptr1 = src_ptr;
-  s16 *dst_ptr1 = dst_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  uint16_t *src_ptr1 = src_ptr;
+  int16_t *dst_ptr1 = dst_ptr;
+  for (uint64_t i = 0; i < neon_turn; i++) {
     uint16x8_t v16 = vld1q_u16(src_ptr1);
     neonfloatshort n_float_short;
     n_float_short.v_u16 = vzipq_u16(zeros, v16);
@@ -365,7 +366,7 @@ inline void neonBF162S16(u16 *src_ptr, s16 *dst_ptr, const u64 arr_size) {
     src_ptr1 += 8;
     dst_ptr1 += 8;
   }
-  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+  for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
     int val = std::round(convert_bf16_fp32(src_ptr[i]));
     if (val > 32767) val = 32767;
     if (val < -32768) val = -32768;
@@ -373,12 +374,12 @@ inline void neonBF162S16(u16 *src_ptr, s16 *dst_ptr, const u64 arr_size) {
   }
 }
 
-inline void neonBF162F32(u16 *src_ptr, float *dst_ptr, const u64 arr_size) {
-  u64 neon_turn = arr_size / 8;
+inline void neonBF162F32(uint16_t *src_ptr, float *dst_ptr, const uint64_t arr_size) {
+  uint64_t neon_turn = arr_size / 8;
   uint16x8_t zeros = vdupq_n_u16(0);
-  u16 *src_ptr1 = src_ptr;
+  uint16_t *src_ptr1 = src_ptr;
   float *dst_ptr1 = dst_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  for (uint64_t i = 0; i < neon_turn; i++) {
     uint16x8_t v16 = vld1q_u16(src_ptr1);
     neonfloatshort n_float_short;
     n_float_short.v_u16 = vzipq_u16(zeros, v16);
@@ -388,20 +389,20 @@ inline void neonBF162F32(u16 *src_ptr, float *dst_ptr, const u64 arr_size) {
     dst_ptr1 += 4;
     src_ptr1 += 8;
   }
-  for (u64 i = neon_turn * 8; i < arr_size; i++) {
+  for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
     dst_ptr[i] = convert_bf16_fp32(src_ptr[i]);
   }
 }
 
-inline void neonU162U8Threshold(u16 *src_ptr, u8 *dst_ptr, const u64 arr_size, const u16 threshold,
-                                const u8 min, const u8 max) {
-  u64 neon_turn = arr_size / 8;
+inline void neonU162U8Threshold(uint16_t *src_ptr, uint8_t *dst_ptr, const uint64_t arr_size,
+                                const uint16_t threshold, const uint8_t min, const uint8_t max) {
+  uint64_t neon_turn = arr_size / 8;
   uint16x8_t vu16thresh = vdupq_n_u16(threshold);
   uint16x8_t v_u16min = vdupq_n_u16(min);
   uint16x8_t v_u16max = vdupq_n_u16(max);
-  u16 *src_ptr1 = src_ptr;
-  u8 *dst_ptr1 = dst_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  uint16_t *src_ptr1 = src_ptr;
+  uint8_t *dst_ptr1 = dst_ptr;
+  for (uint64_t i = 0; i < neon_turn; i++) {
     uint16x8_t v16 = vld1q_u16(src_ptr1);
     uint16x8_t mask = vcltq_u16(v16, vu16thresh);
     v16 = vbslq_u16(mask, v_u16min, v_u16max);
@@ -409,22 +410,22 @@ inline void neonU162U8Threshold(u16 *src_ptr, u8 *dst_ptr, const u64 arr_size, c
     src_ptr1 += 8;
     dst_ptr1 += 8;
   }
-  for (u64 i = neon_turn * 8; i < arr_size; i++) {
-    u16 val = src_ptr[i] >= threshold ? max : min;
+  for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
+    uint16_t val = src_ptr[i] >= threshold ? max : min;
     if (val > 255) val = 255;
     dst_ptr[i] = val;
   }
 }
 
-inline void neonS162S8Threshold(s16 *src_ptr, s8 *dst_ptr, const u64 arr_size, const s16 threshold,
-                                const s8 min, const s8 max) {
-  u64 neon_turn = arr_size / 8;
+inline void neonS162S8Threshold(int16_t *src_ptr, int8_t *dst_ptr, const uint64_t arr_size,
+                                const int16_t threshold, const int8_t min, const int8_t max) {
+  uint64_t neon_turn = arr_size / 8;
   int16x8_t vs16thresh = vdupq_n_s16(threshold);
   int16x8_t v_s16min = vdupq_n_s16(min);
   int16x8_t v_s16max = vdupq_n_s16(max);
-  s16 *src_ptr1 = src_ptr;
-  s8 *dst_ptr1 = dst_ptr;
-  for (u64 i = 0; i < neon_turn; i++) {
+  int16_t *src_ptr1 = src_ptr;
+  int8_t *dst_ptr1 = dst_ptr;
+  for (uint64_t i = 0; i < neon_turn; i++) {
     int16x8_t v16 = vld1q_s16(src_ptr1);
     uint16x8_t mask = vcltq_s16(v16, vs16thresh);
     v16 = vbslq_s16(mask, v_s16min, v_s16max);
@@ -432,27 +433,28 @@ inline void neonS162S8Threshold(s16 *src_ptr, s8 *dst_ptr, const u64 arr_size, c
     src_ptr1 += 8;
     dst_ptr1 += 8;
   }
-  for (u64 i = neon_turn * 8; i < arr_size; i++) {
-    s16 val = src_ptr[i] >= threshold ? max : min;
+  for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
+    int16_t val = src_ptr[i] >= threshold ? max : min;
     if (val > 127) val = 127;
     if (val < -128) val = -128;
     dst_ptr[i] = val;
   }
 }
 
-inline void neonU162U8ThresholdLH(u16 *src_ptr, u8 *dst_ptr, const u64 arr_size,
-                                  const u16 threshold_low, const u16 threshold_high, const u8 min,
-                                  const u8 mid, const u8 max, bool is_mmm = false) {
-  u64 neon_turn = arr_size / 8;
+inline void neonU162U8ThresholdLH(uint16_t *src_ptr, uint8_t *dst_ptr, const uint64_t arr_size,
+                                  const uint16_t threshold_low, const uint16_t threshold_high,
+                                  const uint8_t min, const uint8_t mid, const uint8_t max,
+                                  bool is_mmm = false) {
+  uint64_t neon_turn = arr_size / 8;
   uint16x8_t vu16threshLow = vdupq_n_u16(threshold_low);
   uint16x8_t vu16threshHigh = vdupq_n_u16(threshold_high);
   uint16x8_t v_u16min = vdupq_n_u16(min);
   uint16x8_t v_u16mid = vdupq_n_u16(mid);
   uint16x8_t v_u16max = vdupq_n_u16(max);
-  u16 *src_ptr1 = src_ptr;
-  u8 *dst_ptr1 = dst_ptr;
+  uint16_t *src_ptr1 = src_ptr;
+  uint8_t *dst_ptr1 = dst_ptr;
   if (is_mmm) {
-    for (u64 i = 0; i < neon_turn; i++) {
+    for (uint64_t i = 0; i < neon_turn; i++) {
       uint16x8_t v16 = vld1q_u16(src_ptr1);
       uint16x8_t mask_low = vcltq_u16(v16, vu16threshLow);
       uint16x8_t mask_high = vcgeq_u16(v16, vu16threshHigh);
@@ -462,13 +464,13 @@ inline void neonU162U8ThresholdLH(u16 *src_ptr, u8 *dst_ptr, const u64 arr_size,
       src_ptr1 += 8;
       dst_ptr1 += 8;
     }
-    for (u64 i = neon_turn * 8; i < arr_size; i++) {
-      u16 val = src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : mid);
+    for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
+      uint16_t val = src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : mid);
       if (val > 255) val = 255;
       dst_ptr[i] = val;
     }
   } else {
-    for (u64 i = 0; i < neon_turn; i++) {
+    for (uint64_t i = 0; i < neon_turn; i++) {
       uint16x8_t v16 = vld1q_u16(src_ptr1);
       uint16x8_t mask_low = vcltq_u16(v16, vu16threshLow);
       uint16x8_t mask_high = vcgeq_u16(v16, vu16threshHigh);
@@ -478,8 +480,8 @@ inline void neonU162U8ThresholdLH(u16 *src_ptr, u8 *dst_ptr, const u64 arr_size,
       src_ptr1 += 8;
       dst_ptr1 += 8;
     }
-    for (u64 i = neon_turn * 8; i < arr_size; i++) {
-      u16 val =
+    for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
+      uint16_t val =
           src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : src_ptr[i]);
       if (val > 255) val = 255;
       dst_ptr[i] = val;
@@ -487,19 +489,20 @@ inline void neonU162U8ThresholdLH(u16 *src_ptr, u8 *dst_ptr, const u64 arr_size,
   }
 }
 
-inline void neonS162S8ThresholdLH(s16 *src_ptr, s8 *dst_ptr, const u64 arr_size,
-                                  const s16 threshold_low, const s16 threshold_high, const s8 min,
-                                  const s8 mid, const s8 max, bool is_mmm = false) {
-  u64 neon_turn = arr_size / 8;
+inline void neonS162S8ThresholdLH(int16_t *src_ptr, int8_t *dst_ptr, const uint64_t arr_size,
+                                  const int16_t threshold_low, const int16_t threshold_high,
+                                  const int8_t min, const int8_t mid, const int8_t max,
+                                  bool is_mmm = false) {
+  uint64_t neon_turn = arr_size / 8;
   int16x8_t vs16threshLow = vdupq_n_s16(threshold_low);
   int16x8_t vs16threshHigh = vdupq_n_s16(threshold_high);
   int16x8_t v_s16min = vdupq_n_s16(min);
   int16x8_t v_s16mid = vdupq_n_s16(mid);
   int16x8_t v_s16max = vdupq_n_s16(max);
-  s16 *src_ptr1 = src_ptr;
-  s8 *dst_ptr1 = dst_ptr;
+  int16_t *src_ptr1 = src_ptr;
+  int8_t *dst_ptr1 = dst_ptr;
   if (is_mmm) {
-    for (u64 i = 0; i < neon_turn; i++) {
+    for (uint64_t i = 0; i < neon_turn; i++) {
       int16x8_t v16 = vld1q_s16(src_ptr1);
       uint16x8_t mask_low = vcltq_s16(v16, vs16threshLow);
       uint16x8_t mask_high = vcgeq_s16(v16, vs16threshHigh);
@@ -509,14 +512,14 @@ inline void neonS162S8ThresholdLH(s16 *src_ptr, s8 *dst_ptr, const u64 arr_size,
       src_ptr1 += 8;
       dst_ptr1 += 8;
     }
-    for (u64 i = neon_turn * 8; i < arr_size; i++) {
-      s16 val = src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : mid);
+    for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
+      int16_t val = src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : mid);
       if (val > 127) val = 127;
       if (val < -128) val = -128;
       dst_ptr[i] = val;
     }
   } else {
-    for (u64 i = 0; i < neon_turn; i++) {
+    for (uint64_t i = 0; i < neon_turn; i++) {
       int16x8_t v16 = vld1q_s16(src_ptr1);
       uint16x8_t mask_low = vcltq_s16(v16, vs16threshLow);
       uint16x8_t mask_high = vcgeq_s16(v16, vs16threshHigh);
@@ -526,8 +529,8 @@ inline void neonS162S8ThresholdLH(s16 *src_ptr, s8 *dst_ptr, const u64 arr_size,
       src_ptr1 += 8;
       dst_ptr1 += 8;
     }
-    for (u64 i = neon_turn * 8; i < arr_size; i++) {
-      s16 val =
+    for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
+      int16_t val =
           src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : src_ptr[i]);
       if (val > 127) val = 127;
       if (val < -128) val = -128;
@@ -536,19 +539,20 @@ inline void neonS162S8ThresholdLH(s16 *src_ptr, s8 *dst_ptr, const u64 arr_size,
   }
 }
 
-inline void neonS162U8ThresholdLH(s16 *src_ptr, u8 *dst_ptr, const u64 arr_size,
-                                  const s16 threshold_low, const s16 threshold_high, const u8 min,
-                                  const u8 mid, const u8 max, bool is_mmm = false) {
-  u64 neon_turn = arr_size / 8;
+inline void neonS162U8ThresholdLH(int16_t *src_ptr, uint8_t *dst_ptr, const uint64_t arr_size,
+                                  const int16_t threshold_low, const int16_t threshold_high,
+                                  const uint8_t min, const uint8_t mid, const uint8_t max,
+                                  bool is_mmm = false) {
+  uint64_t neon_turn = arr_size / 8;
   int16x8_t vs16threshLow = vdupq_n_s16(threshold_low);
   int16x8_t vs16threshHigh = vdupq_n_s16(threshold_high);
   int16x8_t v_s16min = vdupq_n_s16(min);
   int16x8_t v_s16mid = vdupq_n_s16(mid);
   int16x8_t v_s16max = vdupq_n_s16(max);
-  s16 *src_ptr1 = src_ptr;
-  u8 *dst_ptr1 = dst_ptr;
+  int16_t *src_ptr1 = src_ptr;
+  uint8_t *dst_ptr1 = dst_ptr;
   if (is_mmm) {
-    for (u64 i = 0; i < neon_turn; i++) {
+    for (uint64_t i = 0; i < neon_turn; i++) {
       int16x8_t v16 = vld1q_s16(src_ptr1);
       uint16x8_t mask_low = vcltq_s16(v16, vs16threshLow);
       uint16x8_t mask_high = vcgeq_s16(v16, vs16threshHigh);
@@ -558,14 +562,14 @@ inline void neonS162U8ThresholdLH(s16 *src_ptr, u8 *dst_ptr, const u64 arr_size,
       src_ptr1 += 8;
       dst_ptr1 += 8;
     }
-    for (u64 i = neon_turn * 8; i < arr_size; i++) {
-      s16 val = src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : mid);
+    for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
+      int16_t val = src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : mid);
       if (val > 255) val = 255;
       if (val < 0) val = 0;
       dst_ptr[i] = val;
     }
   } else {
-    for (u64 i = 0; i < neon_turn; i++) {
+    for (uint64_t i = 0; i < neon_turn; i++) {
       int16x8_t v16 = vld1q_s16(src_ptr1);
       uint16x8_t mask_low = vcltq_s16(v16, vs16threshLow);
       uint16x8_t mask_high = vcgeq_s16(v16, vs16threshHigh);
@@ -575,8 +579,8 @@ inline void neonS162U8ThresholdLH(s16 *src_ptr, u8 *dst_ptr, const u64 arr_size,
       src_ptr1 += 8;
       dst_ptr1 += 8;
     }
-    for (u64 i = neon_turn * 8; i < arr_size; i++) {
-      s16 val =
+    for (uint64_t i = neon_turn * 8; i < arr_size; i++) {
+      int16_t val =
           src_ptr[i] >= threshold_high ? max : (src_ptr[i] < threshold_low ? min : src_ptr[i]);
       if (val > 255) val = 255;
       if (val < 0) val = 0;

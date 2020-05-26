@@ -1,15 +1,16 @@
 #include "kernel_generator.hpp"
 #include "utils.hpp"
 
-static inline IveKernel createGaussianKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u32 k_w) {
+static inline IveKernel createGaussianKernel(bmctx_t *ctx, uint32_t img_c, uint32_t k_h,
+                                             uint32_t k_w) {
   CviImg cimg(ctx, img_c, k_h, k_w, CVK_FMT_I8);
   IveKernel kernel;
   kernel.img = cimg;
   uint8_t *v_addr = cimg.GetVAddr();
   if (k_h == 3 && k_w == 3) {
-    for (u32 i = 0; i < img_c; i++) {
-      for (u32 j = 0; j < k_h; j++) {
-        for (u32 k = 0; k < k_w; k++) {
+    for (uint32_t i = 0; i < img_c; i++) {
+      for (uint32_t j = 0; j < k_h; j++) {
+        for (uint32_t k = 0; k < k_w; k++) {
           int val = 1;
           if (j == 1 && k == 1) {
             val = 4;
@@ -30,43 +31,43 @@ static inline IveKernel createGaussianKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u
 }
 
 // clang-format off
-static s8 sobel_y_kernel_1x1[] = { 0, -1, 0, 0, 0, 0, 0, 1, 0 };
-static s8 sobel_x_kernel_1x1[] = { 0, 0, 0, -1, 0, 1, 0, 0, 0 };
-static s8 sobel_y_kernel_3x3[] = { -1, -2, -1, 0, 0, 0, 1, 2, 1 };
-static s8 sobel_x_kernel_3x3[] = { -1, 0, 1, -2, 0, 2, -1, 0, 1 };
-static s8 sobel_y_kernel_5x5[] = { 1,  4,  6,   4,  1, \
+static int8_t sobel_y_kernel_1x1[] = { 0, -1, 0, 0, 0, 0, 0, 1, 0 };
+static int8_t sobel_x_kernel_1x1[] = { 0, 0, 0, -1, 0, 1, 0, 0, 0 };
+static int8_t sobel_y_kernel_3x3[] = { -1, -2, -1, 0, 0, 0, 1, 2, 1 };
+static int8_t sobel_x_kernel_3x3[] = { -1, 0, 1, -2, 0, 2, -1, 0, 1 };
+static int8_t sobel_y_kernel_5x5[] = { 1,  4,  6,   4,  1, \
                                    2,  8, 12,   8,  2, \
                                    0,  0,  0,   0,  0, \
                                   -2, -8,-12,  -8, -2, \
                                    1, -4, -6,  -4, -1};
-static s8 sobel_x_kernel_5x5[] = { 1,  2,  0,  -2, -1, \
+static int8_t sobel_x_kernel_5x5[] = { 1,  2,  0,  -2, -1, \
                                    4,  8,  0,  -8, -4, \
                                    6, 12,  0, -12, -6, \
                                    4,  8,  0,  -8, -4, \
                                    1,  2,  0,  -2, -1};
-static s8 scharr_y_kernel_3x3[] = { -3, -10, -3, 0, 0, 0, 3, 10, 3 };
-static s8 scharr_x_kernel_3x3[] = { -3, 0, 3, -10, 0, 10, -3, 0, 3 };
-static s8 morph_rect_kernel_3x3[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1};
-static s8 morph_cross_kernel_3x3[] = { 0, 1, 0, 1, 1, 1, 0, 1, 0};
-static s8 morph_ellipse_kernel_3x3[] = { 0, 1, 0, 1, 1, 1, 0, 1, 0};
-static s8 morph_rect_kernel_5x5[] = { 1, 1, 1, 1, 1, \
+static int8_t scharr_y_kernel_3x3[] = { -3, -10, -3, 0, 0, 0, 3, 10, 3 };
+static int8_t scharr_x_kernel_3x3[] = { -3, 0, 3, -10, 0, 10, -3, 0, 3 };
+static int8_t morph_rect_kernel_3x3[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1};
+static int8_t morph_cross_kernel_3x3[] = { 0, 1, 0, 1, 1, 1, 0, 1, 0};
+static int8_t morph_ellipse_kernel_3x3[] = { 0, 1, 0, 1, 1, 1, 0, 1, 0};
+static int8_t morph_rect_kernel_5x5[] = { 1, 1, 1, 1, 1, \
                                       1, 1, 1, 1, 1, \
                                       1, 1, 1, 1, 1, \
                                       1, 1, 1, 1, 1, \
                                       1, 1, 1, 1, 1};
-static s8 morph_cross_kernel_5x5[] = { 0, 0, 1, 0, 0, \
+static int8_t morph_cross_kernel_5x5[] = { 0, 0, 1, 0, 0, \
                                        0, 0, 1, 0, 0, \
                                        1, 1, 1, 1, 1, \
                                        0, 0, 1, 0, 0, \
                                        0, 0, 1, 0, 0};
-static s8 morph_ellipse_kernel_5x5[] = { 0, 1, 1, 1, 0, \
+static int8_t morph_ellipse_kernel_5x5[] = { 0, 1, 1, 1, 0, \
                                          1, 1, 1, 1, 1, \
                                          1, 1, 1, 1, 1, \
                                          1, 1, 1, 1, 1, \
                                          0, 1, 1, 1, 0};
 // clang-format on
 
-static inline IveKernel createKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u32 k_w,
+static inline IveKernel createKernel(bmctx_t *ctx, uint32_t img_c, uint32_t k_h, uint32_t k_w,
                                      IVE_KERNEL kernel_type, float multiplir_val = 1.f) {
   bool is_1x1 = false;
   if (k_h == 1 && k_w == 1) {
@@ -78,7 +79,7 @@ static inline IveKernel createKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u32 k_w,
   IveKernel kernel;
   kernel.img = cimg;
   kernel.multiplier.f = multiplir_val;
-  s8 *filter = nullptr;
+  int8_t *filter = nullptr;
   if (is_1x1) {
     switch (kernel_type) {
       case IVE_KERNEL::SOBEL_Y:
@@ -144,10 +145,10 @@ static inline IveKernel createKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u32 k_w,
   }
 
   uint8_t *v_addr = cimg.GetVAddr();
-  for (u32 i = 0; i < img_c; i++) {
-    for (u32 j = 0; j < k_h; j++) {
-      for (u32 k = 0; k < k_w; k++) {
-        v_addr[i * k_h * k_w + j * k_w + k] = (u8)filter[j * k_w + k];
+  for (uint32_t i = 0; i < img_c; i++) {
+    for (uint32_t j = 0; j < k_h; j++) {
+      for (uint32_t k = 0; k < k_w; k++) {
+        v_addr[i * k_h * k_w + j * k_w + k] = (uint8_t)filter[j * k_w + k];
       }
     }
   }
@@ -156,7 +157,7 @@ static inline IveKernel createKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u32 k_w,
   return kernel;
 }
 
-IveKernel createKernel(bmctx_t *ctx, u32 img_c, u32 k_h, u32 k_w, IVE_KERNEL type) {
+IveKernel createKernel(bmctx_t *ctx, uint32_t img_c, uint32_t k_h, uint32_t k_w, IVE_KERNEL type) {
   IveKernel kernel;
   switch (type) {
     case IVE_KERNEL::GAUSSIAN:

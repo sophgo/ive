@@ -7,7 +7,7 @@ class IveTPUSAD : public IveCore {
   void setTblMgr(TblMgr *tblmgr);
   void outputThresholdOnly(bool value);
   void doThreshold(bool value);
-  void setThreshold(const u16 threshold, const u8 min_val, const u8 max_val);
+  void setThreshold(const uint16_t threshold, const uint8_t min_val, const uint8_t max_val);
   void setWindowSize(const int window_size);
   virtual int init(bmctx_t *ctx, cvk_context_t *cvk_ctx) override;
 
@@ -15,9 +15,9 @@ class IveTPUSAD : public IveCore {
   virtual int runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                        const std::vector<cvk_tg_shape_t> &tg_in_slices,
                        const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                       std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                       std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                        const bool enable_cext) override;
-  virtual void operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) override;
+  virtual void operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) override;
   virtual int postProcess(bmctx_t *ctx) override;
 
  private:
@@ -25,9 +25,9 @@ class IveTPUSAD : public IveCore {
   CviImg *mp_table_pos_neg = nullptr;
   bool m_output_thresh_only = false;
   bool m_do_threshold = false;
-  u16 m_threshold = 0;
-  u8 m_min_value = 0;
-  u8 m_max_value = 255;
+  uint16_t m_threshold = 0;
+  uint8_t m_min_value = 0;
+  uint8_t m_max_value = 255;
   cvk_tiu_max_param_t m_p_max;
   cvk_tiu_min_param_t m_p_min;
   cvk_tiu_sub_param_t m_p_sub;

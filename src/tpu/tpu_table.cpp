@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-void IveTPUTbl::setTable(bmctx_t *ctx, TblMgr *tblmgr, const u8 *tbl_data) {
+void IveTPUTbl::setTable(bmctx_t *ctx, TblMgr *tblmgr, const uint8_t *tbl_data) {
   mp_tblmgr = tblmgr;
   auto &tl_shape_s = mp_tblmgr->getTblTLShape(CVK_FMT_U8);
   if (mp_table == nullptr) {
@@ -27,7 +27,7 @@ int IveTPUTbl::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
 int IveTPUTbl::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                         const std::vector<cvk_tg_shape_t> &tg_in_slices,
                         const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                        std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                        std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                         const bool enable_cext) {
   if (mp_table == nullptr) {
     std::cerr << "mp_table not set." << std::endl;
@@ -55,7 +55,7 @@ int IveTPUTbl::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUTbl::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUTbl::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_tbl.ifmap = m_input[ping_idx];
   m_p_tbl.ofmap = m_input[ping_idx];
   cvk_ctx->ops->tiu_lookup_table(cvk_ctx, &m_p_tbl);

@@ -18,7 +18,7 @@ int IveTPUAddBF16::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
 int IveTPUAddBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                             const std::vector<cvk_tg_shape_t> &tg_in_slices,
                             const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                            std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                            std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                             const bool enable_cext) {
   m_input1.clear();
   m_input2.clear();
@@ -49,7 +49,7 @@ int IveTPUAddBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUAddBF16::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUAddBF16::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_mul.a = m_input2[ping_idx];
   m_p_mul.res_low = m_input2[ping_idx];
   m_p_mac.a = m_input2[ping_idx];

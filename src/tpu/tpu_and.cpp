@@ -12,7 +12,7 @@ int IveTPUAnd::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
 int IveTPUAnd::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                         const std::vector<cvk_tg_shape_t> &tg_in_slices,
                         const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                        std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                        std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                         const bool enable_cext) {
   m_input1.clear();
   m_input2.clear();
@@ -36,7 +36,7 @@ int IveTPUAnd::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUAnd::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUAnd::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_and.a = m_input1[ping_idx];
   m_p_and.b = m_input2[ping_idx];
   m_p_and.res = m_input1[ping_idx];

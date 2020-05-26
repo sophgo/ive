@@ -87,8 +87,8 @@ int main(int argc, char **argv) {
   // To get the feature from HOG, you must cast the dstHist.pu8VirAddr to (float *) to get the
   // correct value.
   printf("Output HOG feature.\n");
-  u32 blkUnitLength = blkSizeInCell * blkSizeInCell * binNum;
-  u32 numOfBlk = (dstHistByteSize / sizeof(float)) / blkUnitLength;
+  uint32_t blkUnitLength = blkSizeInCell * blkSizeInCell * binNum;
+  uint32_t numOfBlk = (dstHistByteSize / sizeof(float)) / blkUnitLength;
   for (size_t i = 0; i < numOfBlk; i++) {
     printf("\n");
     for (size_t j = 0; j < blkUnitLength; j++) {

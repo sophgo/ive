@@ -101,8 +101,8 @@ int main(int argc, char **argv) {
     CVI_IVE_WriteImage(handle, "test_sobelH_c.png", &dstH_u8);
     CVI_IVE_WriteImage(handle, "test_ang_c.png", &dstAng_u8);
     printf("Output HOG feature.\n");
-    u32 blkSize = BLOCK_SIZE * BLOCK_SIZE * BIN_NUM;
-    u32 blkNum = dstHistByteSize / sizeof(float) / blkSize;
+    uint32_t blkSize = BLOCK_SIZE * BLOCK_SIZE * BIN_NUM;
+    uint32_t blkNum = dstHistByteSize / sizeof(float) / blkSize;
     for (size_t i = 0; i < blkNum; i++) {
       printf("\n");
       for (size_t j = 0; j < blkSize; j++) {
@@ -132,11 +132,11 @@ int main(int argc, char **argv) {
 int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE_DST_IMAGE_S *dstV,
             IVE_DST_IMAGE_S *dstMag, IVE_DST_IMAGE_S *dstAng) {
   int ret = CVI_SUCCESS;
-  u8 *src_ptr = src->pu8VirAddr[0];
-  u16 *dstH_ptr = (u16 *)dstH->pu8VirAddr[0];
-  u16 *dstV_ptr = (u16 *)dstV->pu8VirAddr[0];
-  u16 *dstMag_ptr = (u16 *)dstMag->pu8VirAddr[0];
-  u16 *dstAng_ptr = (u16 *)dstAng->pu8VirAddr[0];
+  uint8_t *src_ptr = src->pu8VirAddr[0];
+  uint16_t *dstH_ptr = (uint16_t *)dstH->pu8VirAddr[0];
+  uint16_t *dstV_ptr = (uint16_t *)dstV->pu8VirAddr[0];
+  uint16_t *dstMag_ptr = (uint16_t *)dstMag->pu8VirAddr[0];
+  uint16_t *dstAng_ptr = (uint16_t *)dstAng->pu8VirAddr[0];
   float mul_val = 180.f / M_PI;
   float sqrt_epsilon = 1;
   float ang_abs_limit = 1;

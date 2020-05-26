@@ -21,7 +21,7 @@ int IveTPUFilter::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
 int IveTPUFilter::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                            const std::vector<cvk_tg_shape_t> &tg_in_slices,
                            const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                           std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                           std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                            const bool enable_cext) {
   cvk_tl_shape_t tl_shape, tl_shape_out;
   tl_shape.n = tg_in_slices[0].n;
@@ -96,7 +96,7 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUFilter::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUFilter::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   cvk_ctx->ops->tiu_depthwise_convolution(cvk_ctx, &m_p_conv);
 }
 
@@ -127,7 +127,7 @@ int IveTPUFilterBF16::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
 int IveTPUFilterBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                                const std::vector<cvk_tg_shape_t> &tg_in_slices,
                                const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                               std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                               std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                                const bool enable_cext) {
   cvk_tl_shape_t tl_shape, tl_shape_out;
   tl_shape.n = tg_in_slices[0].n;
@@ -185,6 +185,6 @@ int IveTPUFilterBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUFilterBF16::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUFilterBF16::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv);
 }

@@ -24,7 +24,7 @@ int IveTPUSobel::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   // 2 conv result
   // 0 a^2 + b^2 result (reuse input tl)
   // 1 buf & 1 final sqrt result
-  u32 total_tables = m_dist_method == 0 ? 0 : 2;
+  uint32_t total_tables = m_dist_method == 0 ? 0 : 2;
   m_slice_info.nums_of_tl = 4 * 2;                // in bf16
   m_slice_info.nums_of_table = total_tables * 2;  // sqrt 2 table 256 * 2 in bf16
   m_kernel_info.nums_of_kernel = 4;               // 2 BF16 kernels
@@ -34,7 +34,7 @@ int IveTPUSobel::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
 int IveTPUSobel::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                           const std::vector<cvk_tg_shape_t> &tg_in_slices,
                           const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                          std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                          std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                           const bool enable_cext) {
   cvk_tl_shape_t tl_shape, tl_shape_out;
   tl_shape.n = tg_in_slices[0].n;
@@ -164,7 +164,7 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUSobel::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUSobel::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   if (m_dist_method == 0) {
     cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv_x);
     cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul_a);

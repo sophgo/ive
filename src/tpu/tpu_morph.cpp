@@ -22,7 +22,7 @@ int IveTPUErode::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
 int IveTPUErode::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                           const std::vector<cvk_tg_shape_t> &tg_in_slices,
                           const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                          std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                          std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                           const bool enable_cext) {
   cvk_tl_shape_t tl_shape, tl_shape_out;
   tl_shape.n = tg_in_slices[0].n;
@@ -94,7 +94,7 @@ int IveTPUErode::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUErode::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUErode::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_xor.a = m_tl_vec[0];
   m_p_xor.res = m_tl_vec[0];
   mp_xor_ones->shape = m_tl_vec[0]->shape;

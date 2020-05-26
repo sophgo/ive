@@ -40,7 +40,7 @@ int IveTPUBlock::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *
 int IveTPUBlock::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                           const std::vector<cvk_tg_shape_t> &tg_in_slices,
                           const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                          std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                          std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                           const bool enable_cext) {
   if (m_channel != tg_in_slices[0].c) {
     std::cerr << "Channel changed, slicing result may not be suitable." << std::endl;
@@ -69,7 +69,7 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   cvk_tl_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
   auto *tl_multiplier = allocTLMem(cvk_ctx, packed_s, CVK_FMT_U8, 1);
   {
-    u32 quantized_multiplier;
+    uint32_t quantized_multiplier;
     int right_shift;
     QuantizeMultiplierSmallerThanOne(real_multiplier, &quantized_multiplier, &right_shift);
     mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, CVK_FMT_U8);
@@ -106,7 +106,7 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUBlock::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUBlock::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   cvk_ctx->ops->tiu_depthwise_convolution(cvk_ctx, &m_p_conv);
 }
 

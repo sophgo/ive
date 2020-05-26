@@ -53,35 +53,36 @@ inline void submitCmdbuf(bmctx_t *ctx, cvk_context_t *cvk_ctx, const std::string
   cvk_ctx->ops->reset(cvk_ctx);
 }
 
-inline void genTableU8(const cvk_tl_shape_t &table_shape, const u8 *table_data, u8 *tg_table) {
+inline void genTableU8(const cvk_tl_shape_t &table_shape, const uint8_t *table_data,
+                       uint8_t *tg_table) {
   int table_hw = table_shape.h * table_shape.w;
 
   // duplicate channel #0 to #31
   // TODO: tensor copy
-  for (u64 i = 0; i < table_shape.c; i++) {
-    memcpy(&tg_table[table_hw * i], table_data, sizeof(u8) * table_hw);
+  for (uint64_t i = 0; i < table_shape.c; i++) {
+    memcpy(&tg_table[table_hw * i], table_data, sizeof(uint8_t) * table_hw);
   }
 }
 
 inline void genTableBF16(const cvk_tl_shape_t &table_shape, const float min_value,
-                         const float max_value, u16 *table_pos_neg) {
-  u32 half = table_shape.h * table_shape.w / 2;
+                         const float max_value, uint16_t *table_pos_neg) {
+  uint32_t half = table_shape.h * table_shape.w / 2;
   int table_hw = table_shape.h * table_shape.w;
 
   // data >= 0
-  for (u32 i = 0; i < half; i++) {
+  for (uint32_t i = 0; i < half; i++) {
     table_pos_neg[i] = convert_fp32_bf16(max_value);
   }
 
   // data < 0
-  for (u32 i = half; i < half * 2; i++) {
+  for (uint32_t i = half; i < half * 2; i++) {
     table_pos_neg[i] = convert_fp32_bf16(min_value);
   }
 
   // duplicate channel #1 to #31
   // TODO: tensor copy
-  for (u64 i = 1; i < table_shape.c; i++) {
-    memcpy(&table_pos_neg[table_hw * i], &table_pos_neg[0], sizeof(u16) * table_hw);
+  for (uint64_t i = 1; i < table_shape.c; i++) {
+    memcpy(&table_pos_neg[table_hw * i], &table_pos_neg[0], sizeof(uint16_t) * table_hw);
   }
 }
 
@@ -108,7 +109,8 @@ inline void cviImg2TL(bmctx_t *ctx, cvk_context_t *cvk_ctx, const CviImg &img, c
   cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p);
 }
 
-inline void constantFillTL(bmctx_t *ctx, cvk_context_t *cvk_ctx, const u16 value, cvk_tl_t *lmem) {
+inline void constantFillTL(bmctx_t *ctx, cvk_context_t *cvk_ctx, const uint16_t value,
+                           cvk_tl_t *lmem) {
   cvk_tdma_g2l_tensor_fill_constant_param_t p_fill;
   p_fill.constant = value;
   p_fill.dst = lmem;
@@ -138,7 +140,7 @@ inline void bf16LookupTable(cvk_context_t *cvk_ctx, const cvm_tiu_mask_param_t *
   cvk_ctx->ops->tiu_lookup_table(cvk_ctx, &p12);
 }
 
-inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, u32 *quantized_multiplier,
+inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, uint32_t *quantized_multiplier,
                                              int *right_shift) {
   if (real_multiplier <= 0.f || real_multiplier > 1.f) {
     std::cerr << "Multiplier should be bigger than 0, smaller or euqal to 1." << std::endl;
@@ -146,7 +148,7 @@ inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, u32 *quantiz
     *right_shift = 0;
     return;
   } else if (real_multiplier == 1.f) {
-    *quantized_multiplier = (u32)(1ll << 31) - 1;
+    *quantized_multiplier = (uint32_t)(1ll << 31) - 1;
     *right_shift = 0;
   } else {
     int s = 0;
@@ -160,7 +162,7 @@ inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, u32 *quantiz
     }
     // Now that the real multiplier is in [1/2, 1), we convert it
     // into a fixed-point number.
-    s64 q = static_cast<s64>(round(real_multiplier * (1ll << 31)));
+    int64_t q = static_cast<int64_t>(round(real_multiplier * (1ll << 31)));
     assert(q <= (1ll << 31));
     // Handle the special case when the real multiplier was so close to 1
     // that its fixed-point approximation was undistinguishable from 1.
@@ -171,19 +173,19 @@ inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, u32 *quantiz
       s--;
     }
     assert(s >= 0);
-    assert(q <= (s64)LONG_MAX);
-    *quantized_multiplier = (u32)q;
+    assert(q <= (int64_t)LONG_MAX);
+    *quantized_multiplier = (uint32_t)q;
     *right_shift = s;
   }
 }
 
-inline void pack_per_chan_cal_data(u32 channels, bool has_bias, s32 *bias, u32 *multiplier,
-                                   s8 *shift, u8 *packed_data) {
-  u8 *ptr = packed_data;
+inline void pack_per_chan_cal_data(uint32_t channels, bool has_bias, int32_t *bias,
+                                   uint32_t *multiplier, int8_t *shift, uint8_t *packed_data) {
+  uint8_t *ptr = packed_data;
 
-  for (u32 i = 0; i < channels; i++) {
+  for (uint32_t i = 0; i < channels; i++) {
     if (has_bias) {
-      u32 val = (u32)bias[i];
+      uint32_t val = (uint32_t)bias[i];
       *ptr = val & 0xff;
       ptr++;
       *ptr = (val >> 8) & 0xff;
@@ -195,7 +197,7 @@ inline void pack_per_chan_cal_data(u32 channels, bool has_bias, s32 *bias, u32 *
     }
 
     {
-      u32 val = multiplier[i];
+      uint32_t val = multiplier[i];
       *ptr = val & 0xff;
       ptr++;
       *ptr = (val >> 8) & 0xff;
@@ -207,18 +209,18 @@ inline void pack_per_chan_cal_data(u32 channels, bool has_bias, s32 *bias, u32 *
     }
 
     {
-      u8 val = shift[i];
+      uint8_t val = shift[i];
       *ptr = val;
       ptr++;
     }
   }
 }
 
-inline void getPackedMultiplierArrayBuffer(const u32 c, const u32 &quantized_multiplier,
-                                           const int &right_shift, u8 *cal_data) {
+inline void getPackedMultiplierArrayBuffer(const uint32_t c, const uint32_t &quantized_multiplier,
+                                           const int &right_shift, uint8_t *cal_data) {
   // Create tl_multiplier
-  u32 *multiplier_data = new u32[c];
-  s8 *shift_data = new s8[c];
+  uint32_t *multiplier_data = new uint32_t[c];
+  int8_t *shift_data = new int8_t[c];
   for (unsigned int i = 0; i < c; ++i) {
     // multipliers typically range in [2^30 ; 2^31 - 1].
     // Values in [0, 2^30 - 1] are normally unused, but harmless.
@@ -240,13 +242,13 @@ inline void getPackedMultiplierArrayBuffer(const u32 c, const u32 &quantized_mul
   delete[] shift_data;
 }
 
-inline u8 *getPackedMultiplierArray(const u32 c, const u32 &quantized_multiplier,
-                                    const int &right_shift) {
+inline uint8_t *getPackedMultiplierArray(const uint32_t c, const uint32_t &quantized_multiplier,
+                                         const int &right_shift) {
   const int per_chan_cal_data_size = MULTIPLIER_ONLY_PACKED_DATA_SIZE;  // p_param->has_bias ? 9 :
                                                                         // 5;  // bias(4) +
                                                                         // multiplier(4) + shift(1)
   const int cal_data_size = c * per_chan_cal_data_size;
-  u8 *cal_data = (u8 *)malloc(cal_data_size);
+  uint8_t *cal_data = (uint8_t *)malloc(cal_data_size);
   getPackedMultiplierArrayBuffer(c, quantized_multiplier, right_shift, cal_data);
   return cal_data;
 }
@@ -273,22 +275,22 @@ static inline bmmem_device_t get_tensor_l2g(bmctx_t *ctx, cvk_context_t *cvk_ctx
   return bm_dev;
 }
 
-static inline u8 *get_bm_vaddr(bmctx_t *ctx, bmmem_device_t bm_dev) {
+static inline uint8_t *get_bm_vaddr(bmctx_t *ctx, bmmem_device_t bm_dev) {
   if (bmmem_device_invld(*ctx, bm_dev) != BM_SUCCESS) {
     return nullptr;
   }
   return bmmem_device_v_addr(bm_dev);
 }
 
-// static inline u8 *get_tensor_l2g_submit(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+// static inline uint8_t *get_tensor_l2g_submit(bmctx_t *ctx, cvk_context_t *cvk_ctx,
 //                                         const cvk_tl_t *tl) {
 //   bmmem_device_t bm_dev = get_tensor_l2g(ctx, cvk_ctx, tl);
 //   cviruntime_cvikernel_submit(*ctx);
 //   if (bmmem_device_invld(*ctx, bm_dev) != BM_SUCCESS) {
 //     return nullptr;
 //   }
-//   u8 *bm_data = bmmem_device_v_addr(bm_dev);
+//   uint8_t *bm_data = bmmem_device_v_addr(bm_dev);
 //   size_t total_size = tl->shape.n * tl->shape.c * tl->shape.h * tl->shape.w *
-//   getFmtSize(tl->fmt); u8 *data = new u8[total_size]; memset(data, 1, total_size); memcpy(data,
-//   bm_data, total_size); bmmem_device_free(*ctx, bm_dev); return data;
+//   getFmtSize(tl->fmt); uint8_t *data = new uint8_t[total_size]; memset(data, 1, total_size);
+//   memcpy(data, bm_data, total_size); bmmem_device_free(*ctx, bm_dev); return data;
 // }

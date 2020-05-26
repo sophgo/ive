@@ -138,11 +138,11 @@ int main(int argc, char **argv) {
 int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE_DST_IMAGE_S *dstV,
             IVE_DST_IMAGE_S *dstMagL1, IVE_DST_IMAGE_S *dstMagL2, IVE_DST_IMAGE_S *dstAng) {
   int ret = CVI_SUCCESS;
-  u16 *dstH_ptr = (u16 *)dstH->pu8VirAddr[0];
-  u16 *dstV_ptr = (u16 *)dstV->pu8VirAddr[0];
-  u16 *dstMagL1_ptr = (u16 *)dstMagL1->pu8VirAddr[0];
-  u16 *dstMagL2_ptr = (u16 *)dstMagL2->pu8VirAddr[0];
-  u16 *dstAng_ptr = (u16 *)dstAng->pu8VirAddr[0];
+  uint16_t *dstH_ptr = (uint16_t *)dstH->pu8VirAddr[0];
+  uint16_t *dstV_ptr = (uint16_t *)dstV->pu8VirAddr[0];
+  uint16_t *dstMagL1_ptr = (uint16_t *)dstMagL1->pu8VirAddr[0];
+  uint16_t *dstMagL2_ptr = (uint16_t *)dstMagL2->pu8VirAddr[0];
+  uint16_t *dstAng_ptr = (uint16_t *)dstAng->pu8VirAddr[0];
   float mul_val = 180.f / M_PI;
   float abs_epsilon = 1;
   float sqrt_epsilon = 2;

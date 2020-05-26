@@ -11,7 +11,7 @@ int IveTPUOr::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
 int IveTPUOr::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                        const std::vector<cvk_tg_shape_t> &tg_in_slices,
                        const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                       std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                       std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                        const bool enable_cext) {
   cvk_tl_shape_t tl_shape;
   tl_shape.n = tg_in_slices[0].n;
@@ -32,6 +32,6 @@ int IveTPUOr::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUOr::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUOr::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   cvk_ctx->ops->tiu_or_int8(cvk_ctx, &m_p_or);
 }

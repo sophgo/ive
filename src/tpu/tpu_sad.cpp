@@ -7,7 +7,8 @@ void IveTPUSAD::setTblMgr(TblMgr *tblmgr) { mp_tblmgr = tblmgr; }
 void IveTPUSAD::outputThresholdOnly(bool value) { m_output_thresh_only = value; }
 void IveTPUSAD::doThreshold(bool value) { m_do_threshold = value; }
 
-void IveTPUSAD::setThreshold(const u16 threshold, const u8 min_val, const u8 max_val) {
+void IveTPUSAD::setThreshold(const uint16_t threshold, const uint8_t min_val,
+                             const uint8_t max_val) {
   m_threshold = threshold;
   m_min_value = min_val;
   m_max_value = max_val;
@@ -42,7 +43,7 @@ int IveTPUSAD::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
 int IveTPUSAD::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                         const std::vector<cvk_tg_shape_t> &tg_in_slices,
                         const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                        std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                        std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                         const bool enable_cext) {
   cvk_tl_shape_t tl_shape;
   tl_shape.n = tg_in_slices[0].n;
@@ -124,7 +125,7 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
     {
       mp_table_pos_neg = new CviImg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, CVK_FMT_BF16);
       genTableBF16(tl_table_s, (float)m_min_value, (float)m_max_value,
-                   (u16 *)mp_table_pos_neg->GetVAddr());
+                   (uint16_t *)mp_table_pos_neg->GetVAddr());
       cviImgFlush2TL(ctx, cvk_ctx, *mp_table_pos_neg, tl_pos_neg_table);
     }
 
@@ -146,7 +147,7 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUSAD::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUSAD::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   cvk_ctx->ops->tiu_min(cvk_ctx, &m_p_min);
   cvk_ctx->ops->tiu_max(cvk_ctx, &m_p_max);
   cvk_ctx->ops->tiu_sub(cvk_ctx, &m_p_sub);

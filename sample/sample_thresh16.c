@@ -33,7 +33,8 @@ int main(int argc, char** argv) {
   for (size_t i = 0; i < img_data_sz; i++) {
     ((CVI_S16*)src_s16.pu8VirAddr[0])[i] = src.pu8VirAddr[0][i];
     if (i == 15) {
-      printf("Original %u s16 %u\n", src.pu8VirAddr[0][i], ((CVI_S16*)src_s16.pu8VirAddr[0])[i]);
+      printf("Original %u int16_t %u\n", src.pu8VirAddr[0][i],
+             ((CVI_S16*)src_s16.pu8VirAddr[0])[i]);
     }
   }
   CVI_IVE_BufFlush(handle, &src_s16);

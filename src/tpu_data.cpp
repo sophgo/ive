@@ -5,11 +5,13 @@
 #endif
 
 CviImg::CviImg() {}
-CviImg::CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt, CviImg *cvi_img) {
+CviImg::CviImg(bmctx_t *ctx, uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt,
+               CviImg *cvi_img) {
   Init(ctx, img_c, img_h, img_w, fmt, cvi_img);
 }
 
-CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) {
+CviImg::CviImg(bmctx_t *ctx, const CviImg &img, uint32_t x1, uint32_t y1, uint32_t x2,
+               uint32_t y2) {
   if (!this->m_is_stride_ceq) {
     std::cerr << "Sub-image does not support non-equal stride in different channels." << std::endl;
     return;
@@ -19,21 +21,21 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) 
     return;
   }
   if (x1 > x2) {
-    u32 tmp = x1;
+    uint32_t tmp = x1;
     x1 = x2;
     x2 = tmp;
   }
   if (y1 > y2) {
-    u32 tmp = y1;
+    uint32_t tmp = y1;
     y1 = y2;
     y2 = tmp;
   }
-  u32 x1_new = x1 > img.m_tg.shape.w ? img.m_tg.shape.w : x1;
-  u32 y1_new = y1 > img.m_tg.shape.h ? img.m_tg.shape.h : y1;
-  u32 x2_new = x2 > img.m_tg.shape.w ? img.m_tg.shape.w : x2;
-  u32 y2_new = y2 > img.m_tg.shape.h ? img.m_tg.shape.h : y2;
-  u32 new_width = x2_new - x1_new;
-  u32 new_height = y2_new - y1_new;
+  uint32_t x1_new = x1 > img.m_tg.shape.w ? img.m_tg.shape.w : x1;
+  uint32_t y1_new = y1 > img.m_tg.shape.h ? img.m_tg.shape.h : y1;
+  uint32_t x2_new = x2 > img.m_tg.shape.w ? img.m_tg.shape.w : x2;
+  uint32_t y2_new = y2 > img.m_tg.shape.h ? img.m_tg.shape.h : y2;
+  uint32_t new_width = x2_new - x1_new;
+  uint32_t new_height = y2_new - y1_new;
   if (new_width == 0 || new_height == 0) {
     std::cerr << "Error width " << new_width << " or height " << new_height << " cannot be 0."
               << std::endl;
@@ -57,15 +59,15 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2) 
   this->m_tg = img.m_tg;
   this->m_tg.shape.h = new_height;
   this->m_tg.shape.w = new_width;
-  u32 start_offset = y1_new * img.m_tg.stride.h + x1_new * getFmtSize(img.m_tg.fmt);
+  uint32_t start_offset = y1_new * img.m_tg.stride.h + x1_new * getFmtSize(img.m_tg.fmt);
   this->m_tg.start_address = img.m_tg.start_address + start_offset;
   this->m_paddr = img.m_paddr + start_offset;
   this->m_vaddr = img.m_vaddr + start_offset;
   this->m_is_sub_img = true;
 }
 
-CviImg::CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides,
-               std::vector<u32> heights, CVIIMGTYPE img_type, cvk_fmt_t fmt, CviImg *cvi_img) {
+CviImg::CviImg(bmctx_t *ctx, uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
+               std::vector<uint32_t> heights, CVIIMGTYPE img_type, cvk_fmt_t fmt, CviImg *cvi_img) {
   if (strides.size() == 0) {
     std::cerr << "No stride given." << std::endl;
     return;
@@ -113,8 +115,8 @@ CviImg::CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides,
   AllocateDevice(ctx);
 
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
-  u64 new_paddr = Align64(this->m_paddr, SCALAR_C_ALIGN);
-  u64 offset = new_paddr - this->m_paddr;
+  uint64_t new_paddr = Align64(this->m_paddr, SCALAR_C_ALIGN);
+  uint64_t offset = new_paddr - this->m_paddr;
   this->m_paddr = new_paddr;
   this->m_vaddr += offset;
   if (m_is_stride_ceq) {
@@ -125,9 +127,9 @@ CviImg::CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides,
 #endif
 }
 
-CviImg::CviImg(u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> heights,
-               std::vector<u32> u32_lengths, u8 *vaddr, u64 paddr, CVIIMGTYPE img_type,
-               cvk_fmt_t fmt) {
+CviImg::CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
+               std::vector<uint32_t> heights, std::vector<uint32_t> u32_lengths, uint8_t *vaddr,
+               uint64_t paddr, CVIIMGTYPE img_type, cvk_fmt_t fmt) {
   if (strides.size() == 0) {
     std::cerr << "No stride given." << std::endl;
     return;
@@ -169,12 +171,12 @@ CviImg::CviImg(u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> 
   }
 }
 
-void CviImg::SetupImageInfo(u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt) {
+void CviImg::SetupImageInfo(uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt) {
   this->m_fmt = fmt;
   this->m_channel = img_c;
   this->m_width = img_w;
   this->m_height = img_h;
-  u32 w_stride = img_w;
+  uint32_t w_stride = img_w;
   this->m_strides.resize(this->m_channel, w_stride);
   this->m_heights.resize(this->m_channel, this->m_height);
   this->m_coffsets.clear();
@@ -199,7 +201,8 @@ void CviImg::SetupImageInfo(u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt) {
   this->m_is_planar = true;
 }
 
-int CviImg::Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt, CviImg *cvi_img) {
+int CviImg::Init(bmctx_t *ctx, uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt,
+                 CviImg *cvi_img) {
   SetupImageInfo(img_c, img_h, img_w, fmt);
   if (cvi_img != nullptr) {
     if (this->m_size < cvi_img->m_size) {
@@ -215,19 +218,19 @@ uint8_t *CviImg::GetVAddr() { return m_vaddr; }
 
 uint64_t CviImg::GetPAddr() const { return m_paddr; }
 
-const u32 CviImg::GetImgChannel() const { return m_channel; }
+const uint32_t CviImg::GetImgChannel() const { return m_channel; }
 
-const u32 CviImg::GetImgWidth() const { return m_width; }
+const uint32_t CviImg::GetImgWidth() const { return m_width; }
 
-const u32 CviImg::GetImgHeight() const { return m_height; }
+const uint32_t CviImg::GetImgHeight() const { return m_height; }
 
-const std::vector<u32> CviImg::GetImgCOffsets() const { return m_coffsets; }
+const std::vector<uint32_t> CviImg::GetImgCOffsets() const { return m_coffsets; }
 
-const std::vector<u32> CviImg::GetImgStrides() const { return m_strides; }
+const std::vector<uint32_t> CviImg::GetImgStrides() const { return m_strides; }
 
-const std::vector<u32> CviImg::GetImgHeights() const { return m_heights; }
+const std::vector<uint32_t> CviImg::GetImgHeights() const { return m_heights; }
 
-const u64 CviImg::GetImgSize() const { return m_size; }
+const uint64_t CviImg::GetImgSize() const { return m_size; }
 
 const bool CviImg::IsSubImg() const { return m_is_sub_img; }
 

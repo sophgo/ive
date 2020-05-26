@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
   int nChannels = 1;
   int width = src1.u16Width;
   int height = src1.u16Height;
-  u32 img_sz = nChannels * width * height;
+  uint32_t img_sz = nChannels * width * height;
   printf("Image size is %d X %d\n", width, height);
   IVE_SRC_IMAGE_S src2, src3;
   CVI_IVE_CreateImage(handle, &src3, IVE_IMAGE_TYPE_U8C1, width * 2, height * 2);

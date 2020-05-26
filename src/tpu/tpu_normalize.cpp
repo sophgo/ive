@@ -19,7 +19,7 @@ int IveTPUNormalize::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
 int IveTPUNormalize::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                               const std::vector<cvk_tg_shape_t> &tg_in_slices,
                               const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                              std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                              std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                               const bool enable_cext) {
   m_input.clear();
   if (m_fmt != CVK_FMT_U8 && m_fmt != CVK_FMT_I8) {
@@ -63,7 +63,7 @@ int IveTPUNormalize::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUNormalize::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUNormalize::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_add.res_low = m_input[ping_idx];
   m_p_add.a_low = m_input[ping_idx];
   m_p_mul.res_low = m_input[ping_idx];

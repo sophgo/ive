@@ -42,11 +42,11 @@ static int getFmtSize(cvk_fmt_t fmt) {
  *
  */
 struct sliceUnit {
-  u32 slice;
-  u32 skip;
-  u32 turn;
-  u32 left;
-  u32 c_multiplier = 1;
+  uint32_t slice;
+  uint32_t skip;
+  uint32_t turn;
+  uint32_t left;
+  uint32_t c_multiplier = 1;
 };
 
 /**
@@ -55,11 +55,11 @@ struct sliceUnit {
  */
 struct SliceInfo {
   cvk_fmt_t io_fmt = CVK_FMT_INVALID;
-  u32 ping_pong_size = 1;
-  u32 ping_pong_share_tl = 0;
-  u32 nums_of_tl = 2;
-  u32 fix_lmem_size = 0;
-  u32 nums_of_table = 0;
+  uint32_t ping_pong_size = 1;
+  uint32_t ping_pong_share_tl = 0;
+  uint32_t nums_of_tl = 2;
+  uint32_t fix_lmem_size = 0;
+  uint32_t nums_of_table = 0;
 };
 
 struct SliceRes {
@@ -87,12 +87,12 @@ struct TensorSliceInfo {
  *
  */
 struct kernelInfo {
-  u32 nums_of_kernel = 0;
+  uint32_t nums_of_kernel = 0;
   bool use_multiplier = 0;
-  u32 pad[4] = {0};  // L R T B
-  u32 size = 1;
-  u32 default_stride_x = 1;
-  u32 default_stride_y = 1;
+  uint32_t pad[4] = {0};  // L R T B
+  uint32_t size = 1;
+  uint32_t default_stride_x = 1;
+  uint32_t default_stride_y = 1;
 };
 
 /**
@@ -101,7 +101,7 @@ struct kernelInfo {
  */
 struct img_multiplier {
   float f = 1.f;
-  u32 base = 2147483647;
+  uint32_t base = 2147483647;
   int shift = 0;
 };
 
@@ -129,16 +129,16 @@ inline bool IsImgPlanar(CVIIMGTYPE img_type) {
   return is_planar;
 }
 
-inline u32 WidthAlign(const u32 width, const u32 align) {
-  u32 stride = (u32)(width / align) * align;
+inline uint32_t WidthAlign(const uint32_t width, const uint32_t align) {
+  uint32_t stride = (uint32_t)(width / align) * align;
   if (stride < width) {
     stride += align;
   }
   return stride;
 }
 
-inline u64 Align64(const u64 length, const u64 align) {
-  u64 stride = (u64)(length / align) * align;
+inline uint64_t Align64(const uint64_t length, const uint64_t align) {
+  uint64_t stride = (uint64_t)(length / align) * align;
   if (stride < length) {
     stride += align;
   }
@@ -169,7 +169,8 @@ class CviImg {
    * @param img_w Image width
    * @param fmt cvk_fmt_t type
    */
-  CviImg(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt, CviImg *cvi_img = nullptr);
+  CviImg(bmctx_t *ctx, uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt,
+         CviImg *cvi_img = nullptr);
 
   /**
    * @brief Construct a new CviImg object from an existing CviImg with given region.
@@ -177,7 +178,7 @@ class CviImg {
    * @param ctx bm context
    * @param img cvi_img
    */
-  CviImg(bmctx_t *ctx, const CviImg &img, u32 x1, u32 y1, u32 x2, u32 y2);
+  CviImg(bmctx_t *ctx, const CviImg &img, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
 
   /**
    * @brief Construct a new CviImg object with given strides.
@@ -190,8 +191,9 @@ class CviImg {
    * @param img_type CviImg type enum.
    * @param fmt cvk_fmt_t type
    */
-  CviImg(bmctx_t *ctx, u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> heights,
-         CVIIMGTYPE img_type, cvk_fmt_t fmt, CviImg *cvi_img = nullptr);
+  CviImg(bmctx_t *ctx, uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
+         std::vector<uint32_t> heights, CVIIMGTYPE img_type, cvk_fmt_t fmt,
+         CviImg *cvi_img = nullptr);
 
   /**
    * @brief Construct a new CviImg from VIDEO_FRAME_S
@@ -206,8 +208,9 @@ class CviImg {
    * @param img_type CviImg type enum.
    * @param fmt cvk_fmt_t type
    */
-  CviImg(u32 img_h, u32 img_w, std::vector<u32> strides, std::vector<u32> heights,
-         std::vector<u32> u32_lengths, u8 *vaddr, u64 paddr, CVIIMGTYPE img_type, cvk_fmt_t fmt);
+  CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
+         std::vector<uint32_t> heights, std::vector<uint32_t> u32_lengths, uint8_t *vaddr,
+         uint64_t paddr, CVIIMGTYPE img_type, cvk_fmt_t fmt);
 
   /**
    * @brief Init CviImg if default constructor is used.
@@ -219,7 +222,8 @@ class CviImg {
    * @param fmt cvk_fmt_t type
    * @return int Return 0 if success
    */
-  int Init(bmctx_t *ctx, u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt, CviImg *img_ptr);
+  int Init(bmctx_t *ctx, uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt,
+           CviImg *img_ptr);
 
   /**
    * @brief Check if device memory is allocated.
@@ -246,51 +250,51 @@ class CviImg {
   /**
    * @brief Get the channel of the image.
    *
-   * @return const u32 image channel.
+   * @return const uint32_t image channel.
    */
-  const u32 GetImgChannel() const;
+  const uint32_t GetImgChannel() const;
 
   /**
    * @brief Get the width of the image.
    *
-   * @return const u32 image width.
+   * @return const uint32_t image width.
    */
-  const u32 GetImgWidth() const;
+  const uint32_t GetImgWidth() const;
 
   /**
    * @brief Get the height of the image.
    *
-   * @return const u32 image height.
+   * @return const uint32_t image height.
    */
-  const u32 GetImgHeight() const;
+  const uint32_t GetImgHeight() const;
 
   /**
    * @brief Get the channel offset of the image.
    *
-   * @return const std::vector<u32> image channel offsets.
+   * @return const std::vector<uint32_t> image channel offsets.
    */
-  const std::vector<u32> GetImgCOffsets() const;
+  const std::vector<uint32_t> GetImgCOffsets() const;
 
   /**
    * @brief Get the strides of the image.
    *
-   * @return const std::vector<u32> image strides.
+   * @return const std::vector<uint32_t> image strides.
    */
-  const std::vector<u32> GetImgStrides() const;
+  const std::vector<uint32_t> GetImgStrides() const;
 
   /**
    * @brief Get the heights of the image.
    *
-   * @return const std::vector<u32> image heights.
+   * @return const std::vector<uint32_t> image heights.
    */
-  const std::vector<u32> GetImgHeights() const;
+  const std::vector<uint32_t> GetImgHeights() const;
 
   /**
    * @brief Get the size of the image in bytes.
    *
-   * @return const u64 image size
+   * @return const uint64_t image size
    */
-  const u64 GetImgSize() const;
+  const uint64_t GetImgSize() const;
 
   /**
    * @brief Tells if this image instance is a sub-image of an image.
@@ -363,7 +367,7 @@ class CviImg {
    * @param img_w Input image width.
    * @param fmt fmt type.
    */
-  inline void SetupImageInfo(u32 img_c, u32 img_h, u32 img_w, cvk_fmt_t fmt);
+  inline void SetupImageInfo(uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt);
 
   /**
    * @brief Allocate device memory.
@@ -373,14 +377,14 @@ class CviImg {
    */
   int AllocateDevice(bmctx_t *ctx);
 
-  u32 m_channel = 0;
-  u32 m_width = 0;
-  u32 m_height = 0;
-  std::vector<u32> m_coffsets;
-  std::vector<u32> m_strides;
-  std::vector<u32> m_heights;
+  uint32_t m_channel = 0;
+  uint32_t m_width = 0;
+  uint32_t m_height = 0;
+  std::vector<uint32_t> m_coffsets;
+  std::vector<uint32_t> m_strides;
+  std::vector<uint32_t> m_heights;
   cvk_fmt_t m_fmt = CVK_FMT_U8;
-  u64 m_size = 0;  // Total size of memory
+  uint64_t m_size = 0;  // Total size of memory
 
   bmmem_device_t m_bmmem = NULL;  // Set to NULL if not initialized
   uint64_t m_paddr = -1;          // Set to maximum of uint64_t if not initaulized
@@ -417,15 +421,15 @@ class FmtnSize {
   }
 
   const cvk_fmt_t getFmt() const { return m_fmt; }
-  const u32 getSize() const { return m_fmt_size; }
+  const uint32_t getSize() const { return m_fmt_size; }
 
  private:
   cvk_fmt_t m_fmt = CVK_FMT_U8;
-  u32 m_fmt_size = 1;
+  uint32_t m_fmt_size = 1;
 };
 
 struct BMAddrInfo {
-  std::vector<u64> addr_vec;
+  std::vector<uint64_t> addr_vec;
   std::vector<FmtnSize> fns_vec;
 };
 

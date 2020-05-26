@@ -1,7 +1,7 @@
 #include <string.h>
 #include "tpu/tpu_copy.hpp"
 
-void IveTPUCopyInterval::setInvertal(u32 hori, u32 verti) {
+void IveTPUCopyInterval::setInvertal(uint32_t hori, uint32_t verti) {
   m_hori = hori;
   m_verti = verti;
 }
@@ -28,8 +28,8 @@ int IveTPUCopyInterval::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, Sli
 int IveTPUCopyInterval::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                                  const std::vector<cvk_tg_shape_t> &tg_in_slices,
                                  const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                                 std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
-                                 const bool enable_cext) {
+                                 std::vector<uint32_t> *tl_in_idx,
+                                 std::vector<uint32_t> *tl_out_idx, const bool enable_cext) {
   cvk_tl_shape_t tl_shape;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;
@@ -55,7 +55,7 @@ int IveTPUCopyInterval::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUCopyInterval::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUCopyInterval::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   auto *tl_in = m_tl_vec[0];
   auto *tl_out = m_tl_vec[1];
   auto shape = tl_out->shape;

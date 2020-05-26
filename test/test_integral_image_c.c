@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
   printf("Image size is %d X %d, channel %d\n", width, height, nChannels);
 
   IVE_DST_MEM_INFO_S dstInteg;
-  CVI_U32 dstIntegSize = (width + 1) * (height + 1) * sizeof(u32);
+  CVI_U32 dstIntegSize = (width + 1) * (height + 1) * sizeof(uint32_t);
   CVI_IVE_CreateMemInfo(handle, &dstInteg, dstIntegSize);
   dstIntegSize = (width + 1) * (height + 1);
 
@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
     // write result to disk
     printf("Output Integral Image.\n");
     for (size_t j = 0; j < (width); j++) {
-      printf("%3d ", ((u32 *)dstInteg.pu8VirAddr)[width + j]);
+      printf("%3d ", ((uint32_t *)dstInteg.pu8VirAddr)[width + j]);
     }
     printf("\n");
   }
@@ -80,9 +80,9 @@ int main(int argc, char **argv) {
 int cpu_ref(const int channels, IVE_SRC_IMAGE_S *src, IVE_DST_IMAGE_S *dstH, IVE_DST_IMAGE_S *dstV,
             IVE_DST_IMAGE_S *dstAng) {
   int ret = CVI_SUCCESS;
-  u16 *dstH_ptr = (u16 *)dstH->pu8VirAddr[0];
-  u16 *dstV_ptr = (u16 *)dstV->pu8VirAddr[0];
-  u16 *dstAng_ptr = (u16 *)dstAng->pu8VirAddr[0];
+  uint16_t *dstH_ptr = (uint16_t *)dstH->pu8VirAddr[0];
+  uint16_t *dstV_ptr = (uint16_t *)dstV->pu8VirAddr[0];
+  uint16_t *dstAng_ptr = (uint16_t *)dstAng->pu8VirAddr[0];
   float mul_val = 180.f / M_PI;
   float ang_abs_limit = 1;
 

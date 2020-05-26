@@ -14,7 +14,7 @@ int IveTPUSigmoid::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
 int IveTPUSigmoid::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                             const std::vector<cvk_tg_shape_t> &tg_in_slices,
                             const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                            std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                            std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                             const bool enable_cext) {
   m_input.clear();
   m_output.clear();
@@ -39,7 +39,7 @@ int IveTPUSigmoid::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   auto *tl_table_answer_slope = allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
   table = new CviImg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, CVK_FMT_BF16);
   table_slope = new CviImg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, CVK_FMT_BF16);
-  cvm_sigmoid_tbl((u16 *)table->GetVAddr(), (u16 *)table_slope->GetVAddr(), &tl_table_s,
+  cvm_sigmoid_tbl((uint16_t *)table->GetVAddr(), (uint16_t *)table_slope->GetVAddr(), &tl_table_s,
                   range_start, range_end);
   cviImgFlush2TL(ctx, cvk_ctx, *table, tl_table_answer);
   cviImgFlush2TL(ctx, cvk_ctx, *table_slope, tl_table_answer_slope);
@@ -55,7 +55,7 @@ int IveTPUSigmoid::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUSigmoid::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUSigmoid::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_sig.ifmap = m_input[ping_idx];
   m_p_sig.buf = m_buf[ping_idx];
   m_p_sig.ofmap = m_output[ping_idx];

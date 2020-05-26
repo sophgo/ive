@@ -15,7 +15,7 @@ int IveTPUMulSum::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
 int IveTPUMulSum::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                            const std::vector<cvk_tg_shape_t> &tg_in_slices,
                            const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                           std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                           std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                            const bool enable_cext) {
   m_input.clear();
   cvk_tl_shape_t tl_shape;
@@ -43,7 +43,7 @@ int IveTPUMulSum::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUMulSum::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUMulSum::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_mul.a = m_input[ping_idx];
   m_p_mul.res_low = mp_tl_mulsum;
   cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul);
@@ -51,16 +51,16 @@ void IveTPUMulSum::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx)
 
 void IveTPUMulSum::beforeSubmit(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
                                 std::vector<CviImg> *output) {
-  u32 total_data_size = m_tl_mulsum_shape.h * m_tl_mulsum_shape.w;
-  u32 data_size = total_data_size;
-  u32 fmt_size = getFmtSize(mp_tl_mulsum->fmt);
+  uint32_t total_data_size = m_tl_mulsum_shape.h * m_tl_mulsum_shape.w;
+  uint32_t data_size = total_data_size;
+  uint32_t fmt_size = getFmtSize(mp_tl_mulsum->fmt);
   cvk_tiu_mul_param_t p_mul;
   cvk_tl_t tl_1;
   cvk_tl_t tl_2;
   tl_1.fmt = mp_tl_mulsum->fmt;
   tl_2.fmt = mp_tl_mulsum->fmt;
   while (data_size > 1) {
-    u32 start_addr = mp_tl_mulsum->start_address;
+    uint32_t start_addr = mp_tl_mulsum->start_address;
     bool add_1 = false;
     if (data_size % 2 != 0) {
       add_1 = true;
@@ -68,8 +68,8 @@ void IveTPUMulSum::beforeSubmit(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vecto
       start_addr += fmt_size;
     }
     data_size /= 2;
-    u32 w = data_size;
-    u32 h = 1;
+    uint32_t w = data_size;
+    uint32_t h = 1;
     auto m = w / 2;
     for (size_t i = 2; i < m; i++) {
       if (data_size % i == 0) {
@@ -106,11 +106,11 @@ void IveTPUMulSum::beforeSubmit(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vecto
 }
 
 int IveTPUMulSum::postProcess(bmctx_t *ctx) {
-  u8 *data = get_bm_vaddr(ctx, m_bm_dev);
+  uint8_t *data = get_bm_vaddr(ctx, m_bm_dev);
   if (data == nullptr) {
     return CVI_FAILURE;
   }
-  u16 *bf16_data = (u16 *)data;
+  uint16_t *bf16_data = (uint16_t *)data;
   size_t total_size = m_tl_mulsum_shape.c;
   for (size_t i = 0; i < total_size; i++) {
     float val = convert_bf16_fp32(bf16_data[i]);

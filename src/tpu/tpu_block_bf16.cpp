@@ -39,7 +39,7 @@ int IveTPUBlockBF16::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceR
 int IveTPUBlockBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                               const std::vector<cvk_tg_shape_t> &tg_in_slices,
                               const std::vector<cvk_tg_shape_t> &tg_out_slices,
-                              std::vector<u32> *tl_in_idx, std::vector<u32> *tl_out_idx,
+                              std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                               const bool enable_cext) {
   if (m_channel != tg_in_slices[0].c) {
     std::cerr << "Channel changed, slicing result may not be suitable." << std::endl;
@@ -98,7 +98,7 @@ int IveTPUBlockBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUBlockBF16::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, u32 ping_idx) {
+void IveTPUBlockBF16::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv);
   cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul);
 }
