@@ -15,7 +15,7 @@
 #define MULTIPLIER_ONLY_PACKED_DATA_SIZE 5
 
 inline int createHandle(bmctx_t *ctx, cvk_context_t **cvk_ctx) {
-  int ret = bm_init_chip(0, ctx, "cv1880v2");
+  int ret = bm_init(0, ctx);
   if (ret != BM_SUCCESS) {
     fprintf(stderr, "cvi_init failed, err %d\n", ret);
     return CVI_FAILURE;
@@ -24,8 +24,16 @@ inline int createHandle(bmctx_t *ctx, cvk_context_t **cvk_ctx) {
   strncpy(req_info.chip_ver_str, "cv1880v2", sizeof(req_info.chip_ver_str) - 1);
   req_info.cmdbuf_size = 0x10000000;
   req_info.cmdbuf = static_cast<uint8_t *>(malloc(req_info.cmdbuf_size));
+  if (!req_info.cmdbuf) {
+    printf("cmdbuf init failed. Insufficient memory %x.\n", req_info.cmdbuf_size);
+    return CVI_FAILURE;
+  }
   // req_info.cmdbuf = bmk_info_.cmdbuf;
   *cvk_ctx = cvikernel_register(&req_info);
+  if (!*cvk_ctx) {
+    printf("cmdbuf register failed.\n");
+    return CVI_FAILURE;
+  }
   return CVI_SUCCESS;
 }
 
