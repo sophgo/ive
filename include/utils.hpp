@@ -21,7 +21,7 @@ inline int createHandle(bmctx_t *ctx, cvk_context_t **cvk_ctx) {
     return CVI_FAILURE;
   }
   cvk_reg_info_t req_info;
-  strncpy(req_info.chip_ver_str, "cv1880v2", sizeof(req_info.chip_ver_str) - 1);
+  strncpy(req_info.chip_ver_str, "cv183x", sizeof(req_info.chip_ver_str) - 1);
   req_info.cmdbuf_size = 0x10000000;
   req_info.cmdbuf = static_cast<uint8_t *>(malloc(req_info.cmdbuf_size));
   if (!req_info.cmdbuf) {
