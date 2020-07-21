@@ -3,7 +3,7 @@ include(ExternalProject)
 set_directory_properties(PROPERTIES EP_BASE ${CMAKE_CURRENT_BINARY_DIR})
 # Only Ninja needs this => BUILD_BYPRODUCTS.
 ExternalProject_Add(tracer
-                    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libtracer.so
+                    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libcvitracer.so
                     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/tracer
                     INSTALL_DIR ${INSTALL_DIR}
                     CMAKE_ARGS
