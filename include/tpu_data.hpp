@@ -3,7 +3,7 @@
 
 #include <bmruntime.h>
 #include <cvikernel/cvikernel.h>
-#include <cvimath/cvimath.h>
+#include <cvimath/cvimath_internal.h>
 #include <string.h>
 #include <iostream>
 #include <vector>
