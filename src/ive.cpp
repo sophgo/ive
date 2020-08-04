@@ -505,14 +505,15 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
       break;
   }
   IVE_IMAGE_S img;
+  memset(&img, 0, sizeof(IVE_IMAGE_S));
   if (desiredNChannels >= 0) {
     int width, height, nChannels;
     stbi_uc *stbi_data = stbi_load(filename, &width, &height, &nChannels, desiredNChannels);
-    CVI_IVE_CreateImage(pIveHandle, &img, enType, width, height);
     if (stbi_data == nullptr) {
       std::cerr << "Image " << filename << " read failed." << std::endl;
       return img;
     }
+    CVI_IVE_CreateImage(pIveHandle, &img, enType, width, height);
     printf("desiredNChannels, width, height: %d %d %d\n", desiredNChannels, width, height);
     if (enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
       for (size_t i = 0; i < (size_t)height; i++) {
