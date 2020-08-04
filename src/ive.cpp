@@ -375,7 +375,9 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   return CVI_SUCCESS;
 }
 
-CVI_S32 CVI_IVE_Image2VideoFrame(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_S *pstVFDst) {
+CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *pstVFIDst) {
+  pstVFIDst->u32PoolId = -1;
+  VIDEO_FRAME_S *pstVFDst = &pstVFIDst->stVFrame;
   memset(pstVFDst, 0, sizeof(VIDEO_FRAME_S));
   switch (pstIISrc->enType) {
     case IVE_IMAGE_TYPE_U8C1: {
@@ -416,7 +418,8 @@ CVI_S32 CVI_IVE_Image2VideoFrame(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_S *pstVFDst)
   return CVI_SUCCESS;
 }
 
-CVI_S32 CVI_IVE_VideoFrame2Image(VIDEO_FRAME_S *pstVFSrc, IVE_IMAGE_S *pstIIDst) {
+CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S *pstIIDst) {
+  VIDEO_FRAME_S *pstVFSrc = &pstVFISrc->stVFrame;
   size_t c = 1;
   CVIIMGTYPE img_type = CVIIMGTYPE::CVI_GRAY;
   cvk_fmt_t fmt = CVK_FMT_U8;
