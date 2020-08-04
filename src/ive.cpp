@@ -406,7 +406,8 @@ CVI_S32 CVI_IVE_Image2VideoFrame(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_S *pstVFDst)
     pstVFDst->u64PhyAddr[i] = pstIISrc->u64PhyAddr[i];
     pstVFDst->pu8VirAddr[i] = pstIISrc->pu8VirAddr[i];
   }
-  for (size_t i = 0; i < src_img->GetImgHeights().size() - 1; i++) {
+
+  for (size_t i = 0; i < src_img->GetImgHeights().size(); i++) {
     pstVFDst->u32Length[i] = src_img->GetImgCOffsets()[i + 1];
   }
   if (src_img->GetImgHeights().size() > 2) {
@@ -527,11 +528,9 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
       }
     } else {
       stbi_uc *ptr = stbi_data;
-      for (size_t i = 0; i < (size_t)desiredNChannels; i++) {
-        for (size_t j = 0; j < (size_t)height; j++) {
-          memcpy(img.pu8VirAddr[i] + (j * img.u16Stride[i]), ptr, width);
-          ptr += width;
-        }
+      for (size_t j = 0; j < (size_t)height; j++) {
+        memcpy(img.pu8VirAddr[0] + (j * img.u16Stride[0]), ptr, width * 3);
+        ptr += width * 3;
       }
     }
     CVI_IVE_BufFlush(pIveHandle, &img);
@@ -567,7 +566,7 @@ CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAG
     case IVE_IMAGE_TYPE_U8C3_PACKAGE:
       desiredNChannels = STBI_rgb;
       arr = pstImg->pu8VirAddr[0];
-      stride = 3;
+      stride = 1;
       break;
     default:
       std::cerr << "Not support channel " << imgEnTypeStr[pstImg->enType] << std::endl;

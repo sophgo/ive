@@ -88,22 +88,21 @@ CviImg::CviImg(bmctx_t *ctx, uint32_t img_h, uint32_t img_w, std::vector<uint32_
   this->m_size = 0;
   this->m_coffsets.push_back(this->m_size);
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
-  this->m_size = Align64(strides[0] * heights[0] * getFmtSize(this->m_fmt), SCALAR_C_ALIGN);
-  for (size_t i = 1; i < strides.size(); i++) {
+  for (size_t i = 0; i < strides.size(); i++) {
+    this->m_size += Align64(strides[i] * heights[i] * getFmtSize(this->m_fmt), SCALAR_C_ALIGN);
     if (strides[i] != strides[0]) {
       m_is_stride_ceq = false;
     }
     this->m_coffsets.push_back(this->m_size);
-    this->m_size += Align64(strides[i] * heights[i] * getFmtSize(this->m_fmt), SCALAR_C_ALIGN);
   }
 #else
-  this->m_size = strides[0] * heights[0] * getFmtSize(this->m_fmt);
-  for (size_t i = 1; i < strides.size(); i++) {
+
+  for (size_t i = 0; i < strides.size(); i++) {
+    this->m_size += strides[i] * heights[i] * getFmtSize(this->m_fmt);
     if (strides[i] != strides[0]) {
       m_is_stride_ceq = false;
     }
     this->m_coffsets.push_back(this->m_size);
-    this->m_size += strides[i] * heights[i] * getFmtSize(this->m_fmt);
   }
 #endif
 
