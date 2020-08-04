@@ -141,3 +141,5 @@ add_subdirectory(sample)
 if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "SDKRelease")
   add_subdirectory(test)
 endif()
+# Install cmake file
+install(FILES cmake/ive.cmake DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/)
