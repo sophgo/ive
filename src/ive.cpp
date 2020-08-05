@@ -375,7 +375,8 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   return CVI_SUCCESS;
 }
 
-CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *pstVFIDst) {
+CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *pstVFIDst,
+                                     CVI_BOOL invertPackage) {
   pstVFIDst->u32PoolId = -1;
   VIDEO_FRAME_S *pstVFDst = &pstVFIDst->stVFrame;
   memset(pstVFDst, 0, sizeof(VIDEO_FRAME_S));
@@ -390,7 +391,7 @@ CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *
       pstVFDst->enPixelFormat = PIXEL_FORMAT_YUV_PLANAR_422;
     } break;
     case IVE_IMAGE_TYPE_U8C3_PACKAGE: {
-      pstVFDst->enPixelFormat = PIXEL_FORMAT_RGB_888;
+      pstVFDst->enPixelFormat = invertPackage ? PIXEL_FORMAT_BGR_888 : PIXEL_FORMAT_RGB_888;
     } break;
     case IVE_IMAGE_TYPE_U8C3_PLANAR: {
       pstVFDst->enPixelFormat = PIXEL_FORMAT_RGB_888_PLANAR;
@@ -443,7 +444,8 @@ CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S 
       pstIIDst->enType = IVE_IMAGE_TYPE_YUV422P;
       heights.resize(3, pstVFSrc->u32Height);
     } break;
-    case PIXEL_FORMAT_RGB_888: {
+    case PIXEL_FORMAT_RGB_888:
+    case PIXEL_FORMAT_BGR_888: {
       c = 1;
       img_type = CVIIMGTYPE::CVI_RGB_PACKED;
       pstIIDst->enType = IVE_IMAGE_TYPE_U8C3_PACKAGE;
@@ -491,8 +493,8 @@ CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S 
   return CVI_SUCCESS;
 }
 
-IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
-                              IVE_IMAGE_TYPE_E enType) {
+IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAGE_TYPE_E enType,
+                               CVI_BOOL invertPackage) {
   int desiredNChannels = -1;
   switch (enType) {
     case IVE_IMAGE_TYPE_U8C1:
@@ -530,16 +532,35 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
         }
       }
     } else {
-      stbi_uc *ptr = stbi_data;
-      for (size_t j = 0; j < (size_t)height; j++) {
-        memcpy(img.pu8VirAddr[0] + (j * img.u16Stride[0]), ptr, width * 3);
-        ptr += width * 3;
+      if (invertPackage) {
+        for (size_t i = 0; i < (size_t)height; i++) {
+          uint32_t stb_stride = i * width * 3;
+          uint32_t image_stride = (i * img.u16Stride[0]);
+          for (size_t j = 0; j < (size_t)width; j++) {
+            uint32_t stb_idx = stb_stride + (j * 3);
+            uint32_t img_idx = image_stride + (j * 3);
+            img.pu8VirAddr[0][img_idx] = stbi_data[stb_idx + 2];
+            img.pu8VirAddr[0][img_idx + 1] = stbi_data[stb_idx + 1];
+            img.pu8VirAddr[0][img_idx + 2] = stbi_data[stb_idx];
+          }
+        }
+      } else {
+        stbi_uc *ptr = stbi_data;
+        for (size_t j = 0; j < (size_t)height; j++) {
+          memcpy(img.pu8VirAddr[0] + (j * img.u16Stride[0]), ptr, width * 3);
+          ptr += width * 3;
+        }
       }
     }
     CVI_IVE_BufFlush(pIveHandle, &img);
     stbi_image_free(stbi_data);
   }
   return img;
+}
+
+IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
+                              IVE_IMAGE_TYPE_E enType) {
+  return CVI_IVE_ReadImage2(pIveHandle, filename, enType, false);
 }
 
 CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAGE_S *pstImg) {

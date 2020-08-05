@@ -105,6 +105,9 @@ struct img_multiplier {
   int shift = 0;
 };
 
+// FIXME: RGB images stores the data in the order of RGB by default.
+// But the enum here only present the data type not the order.
+// Need to be fixed.
 enum CVIIMGTYPE {
   CVI_RGB_PLANAR = 0,
   CVI_RGB_PACKED,

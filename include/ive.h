@@ -111,13 +111,16 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
  *
  * @param pstIISrc IVE_IMAGE_S input.
  * @param pstVFIDst VIDEO_FRAME_INFO_S output.
+ * @param invertPackage Give hint to the function to tell IVE_IMAGE_S stores RGB package in inverse
+ * order.
  * @return CVI_S32 Return CVI_SUCCESS if operation succeeded.
  */
-CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *pstVFIDst);
+CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *pstVFIDst,
+                                     CVI_BOOL invertPackage);
 
 /**
  * @brief Convert VIDEO_FRAME_INFO_S to IVE_IMAGE_S. Note that this function does not map or unmap
- * for you.
+ * for you. IVE also does not care about the order of RGB_888 or BGR_888 package images.
  *
  * @param pstVFISrc VIDEO_FRAME_INFO_S input.
  * @param pstIIDst IVE_IMAGE_S output.
@@ -126,7 +129,7 @@ CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *
 CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S *pstIIDst);
 
 /**
- * @brief Read an image from file system.
+ * @brief Read an image from file system. Default is in the order of RGB.
  *
  * @param pIveHandle Ive instance handler.
  * @param filename File path to the image.
@@ -134,6 +137,18 @@ CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S 
  * @return IVE_IMAGE_S Return IVE_IMAGE_S
  */
 IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAGE_TYPE_E enType);
+
+/**
+ * @brief Read an image from file system. Default is in the order of RGB.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param filename File path to the image.
+ * @param enType Type of the destination image.
+ * @param invertPackage Invert the order of RGB package image to BGR.
+ * @return IVE_IMAGE_S Return IVE_IMAGE_S
+ */
+IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAGE_TYPE_E enType,
+                               CVI_BOOL invertPackage);
 
 /**
  * @brief Write an IVE_IMAGE_S to file system.
