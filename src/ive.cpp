@@ -808,7 +808,7 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
        pstDst->enType == IVE_IMAGE_TYPE_BF16C1)
           ? true
           : false;
-  if (((x == 1 && y == 1) || (x == 0.f && y == 0.f)) || !is_bf16) {
+  if (((x == 1 && y == 1) || (x == 0.f && y == 0.f)) && !is_bf16) {
     handle_ctx->t_h.t_add.init(&handle_ctx->ctx, handle_ctx->cvk_ctx);
     ret = handle_ctx->t_h.t_add.run(&handle_ctx->ctx, handle_ctx->cvk_ctx, inputs, &outputs);
   } else {
