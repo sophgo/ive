@@ -532,7 +532,7 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
         }
       }
     } else {
-      if (invertPackage) {
+      if (invertPackage && enType == IVE_IMAGE_TYPE_U8C3_PACKAGE) {
         for (size_t i = 0; i < (size_t)height; i++) {
           uint32_t stb_stride = i * width * 3;
           uint32_t image_stride = (i * img.u16Stride[0]);
@@ -547,8 +547,8 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
       } else {
         stbi_uc *ptr = stbi_data;
         for (size_t j = 0; j < (size_t)height; j++) {
-          memcpy(img.pu8VirAddr[0] + (j * img.u16Stride[0]), ptr, width * 3);
-          ptr += width * 3;
+          memcpy(img.pu8VirAddr[0] + (j * img.u16Stride[0]), ptr, width * desiredNChannels);
+          ptr += width * desiredNChannels;
         }
       }
     }
