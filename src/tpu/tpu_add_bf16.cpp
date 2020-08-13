@@ -2,8 +2,8 @@
 #include "tpu/tpu_add.hpp"
 
 void IveTPUAddBF16::setCoef(float a, float b) {
-  m_p_mul.b_const.val = convert_fp32_bf16(b);
-  m_p_mac.b_const.val = convert_fp32_bf16(a);
+  m_p_mul.b_const.val = convert_fp32_bf16(a);
+  m_p_mac.b_const.val = convert_fp32_bf16(b);
 }
 
 int IveTPUAddBF16::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
@@ -50,8 +50,8 @@ int IveTPUAddBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
 }
 
 void IveTPUAddBF16::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
-  m_p_mul.a = m_input2[ping_idx];
-  m_p_mul.res_low = m_input2[ping_idx];
+  m_p_mul.a = m_input1[ping_idx];
+  m_p_mul.res_low = m_input1[ping_idx];
   m_p_mac.a = m_input2[ping_idx];
   m_p_mac.res_low = m_input1[ping_idx];
   cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul);
