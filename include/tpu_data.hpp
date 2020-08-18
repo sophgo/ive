@@ -1,9 +1,10 @@
 #pragma once
 #include "cvi_type.h"
 
-#include <bmruntime.h>
 #include <cvikernel/cvikernel.h>
 #include <cvimath/cvimath_internal.h>
+#include <cviruntime.h>
+#include <cviruntime_context.h>
 #include <string.h>
 #include <iostream>
 #include <vector>
@@ -166,27 +167,28 @@ class CviImg {
   /**
    * @brief Construct a new CviImg object
    *
-   * @param ctx bm context
+   * @param rt_handle bm context
    * @param img_c Image channel
    * @param img_h Image height
    * @param img_w Image width
    * @param fmt cvk_fmt_t type
    */
-  CviImg(bmctx_t *ctx, uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt,
+  CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt,
          CviImg *cvi_img = nullptr);
 
   /**
    * @brief Construct a new CviImg object from an existing CviImg with given region.
    *
-   * @param ctx bm context
+   * @param rt_handle bm context
    * @param img cvi_img
    */
-  CviImg(bmctx_t *ctx, const CviImg &img, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
+  CviImg(CVI_RT_HANDLE rt_handle, const CviImg &img, uint32_t x1, uint32_t y1, uint32_t x2,
+         uint32_t y2);
 
   /**
    * @brief Construct a new CviImg object with given strides.
    *
-   * @param ctx bm context
+   * @param rt_handle bm context
    * @param img_h Image height.
    * @param img_w Image width.
    * @param strides Image strides, the channel of CviImg will be set to the size of strides.
@@ -194,7 +196,7 @@ class CviImg {
    * @param img_type CviImg type enum.
    * @param fmt cvk_fmt_t type
    */
-  CviImg(bmctx_t *ctx, uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
+  CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
          std::vector<uint32_t> heights, CVIIMGTYPE img_type, cvk_fmt_t fmt,
          CviImg *cvi_img = nullptr);
 
@@ -218,14 +220,14 @@ class CviImg {
   /**
    * @brief Init CviImg if default constructor is used.
    *
-   * @param ctx bm context
+   * @param rt_handle bm context
    * @param img_c Image channel
    * @param img_h Image height
    * @param img_w Image width
    * @param fmt cvk_fmt_t type
    * @return int Return 0 if success
    */
-  int Init(bmctx_t *ctx, uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt,
+  int Init(CVI_RT_HANDLE rt_handle, uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt,
            CviImg *img_ptr);
 
   /**
@@ -318,21 +320,21 @@ class CviImg {
   /**
    * @brief Release allocated device memory.
    *
-   * @param ctx bm context
+   * @param rt_handle bm context
    * @return int return 0 if success
    */
-  int Free(bmctx_t *ctx);
+  int Free(CVI_RT_HANDLE rt_handle);
 
   /**
    * @brief Flush cache data to RAM.
    *
-   * @param ctx bm context.
+   * @param rt_handle bm context.
    * @return int return 0 if success.
    */
-  int Flush(bmctx_t *ctx) {
+  int Flush(CVI_RT_HANDLE rt_handle) {
 #ifdef CVI_SOC
-    if (m_bmmem != NULL) {
-      return bmmem_device_flush(*ctx, m_bmmem) == BM_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
+    if (m_rtmem != NULL) {
+      return CVI_RT_MemFlush(rt_handle, m_rtmem) == CVI_RC_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
     } else {
       return CVI_SUCCESS;
     }
@@ -344,13 +346,13 @@ class CviImg {
   /**
    * @brief Update cache data from RAM.
    *
-   * @param ctx bm context.
+   * @param rt_handle bm context.
    * @return int return 0 if success.
    */
-  int Invld(bmctx_t *ctx) {
+  int Invld(CVI_RT_HANDLE rt_handle) {
 #ifdef CVI_SOC
-    if (m_bmmem != NULL) {
-      return bmmem_device_invld(*ctx, m_bmmem) == BM_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
+    if (m_rtmem != NULL) {
+      return CVI_RT_MemInvld(rt_handle, m_rtmem) == CVI_RC_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
     } else {
       return CVI_SUCCESS;
     }
@@ -375,10 +377,10 @@ class CviImg {
   /**
    * @brief Allocate device memory.
    *
-   * @param ctx bm context
+   * @param rt_handle bm context
    * @return int Return 0 if success
    */
-  int AllocateDevice(bmctx_t *ctx);
+  int AllocateDevice(CVI_RT_HANDLE rt_handle);
 
   uint32_t m_channel = 0;
   uint32_t m_width = 0;
@@ -389,9 +391,9 @@ class CviImg {
   cvk_fmt_t m_fmt = CVK_FMT_U8;
   uint64_t m_size = 0;  // Total size of memory
 
-  bmmem_device_t m_bmmem = NULL;  // Set to NULL if not initialized
-  uint64_t m_paddr = -1;          // Set to maximum of uint64_t if not initaulized
-  uint8_t *m_vaddr = nullptr;     // Set to nullptr if not initualized
+  CVI_RT_MEM m_rtmem = NULL;   // Set to NULL if not initialized
+  uint64_t m_paddr = -1;       // Set to maximum of uint64_t if not initaulized
+  uint8_t *m_vaddr = nullptr;  // Set to nullptr if not initualized
 
   /**
    * These are variables used for different framework.

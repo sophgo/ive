@@ -1,7 +1,7 @@
 #include "tpu/tpu_sigmoid.hpp"
 #include <string.h>
 
-int IveTPUSigmoid::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUSigmoid::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_slice_info.io_fmt = CVK_FMT_BF16;
   m_slice_info.ping_pong_size = 2;
   m_slice_info.ping_pong_share_tl = 0;
@@ -11,7 +11,7 @@ int IveTPUSigmoid::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUSigmoid::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUSigmoid::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                             const std::vector<cvk_tg_shape_t> &tg_in_slices,
                             const std::vector<cvk_tg_shape_t> &tg_out_slices,
                             std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -37,12 +37,12 @@ int IveTPUSigmoid::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   cvk_tl_shape_t tl_table_s = {1, 32, 32, 8};
   auto *tl_table_answer = allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
   auto *tl_table_answer_slope = allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
-  table = new CviImg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, CVK_FMT_BF16);
-  table_slope = new CviImg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, CVK_FMT_BF16);
+  table = new CviImg(rt_handle, tl_table_s.c, tl_table_s.h, tl_table_s.w, CVK_FMT_BF16);
+  table_slope = new CviImg(rt_handle, tl_table_s.c, tl_table_s.h, tl_table_s.w, CVK_FMT_BF16);
   cvm_sigmoid_tbl((uint16_t *)table->GetVAddr(), (uint16_t *)table_slope->GetVAddr(), &tl_table_s,
                   range_start, range_end);
-  cviImgFlush2TL(ctx, cvk_ctx, *table, tl_table_answer);
-  cviImgFlush2TL(ctx, cvk_ctx, *table_slope, tl_table_answer_slope);
+  cviImgFlush2TL(rt_handle, cvk_ctx, *table, tl_table_answer);
+  cviImgFlush2TL(rt_handle, cvk_ctx, *table_slope, tl_table_answer_slope);
 
   m_p_sig.scale = scale;
   m_p_sig.table_answer = tl_table_answer;
@@ -55,7 +55,7 @@ int IveTPUSigmoid::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUSigmoid::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUSigmoid::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_sig.ifmap = m_input[ping_idx];
   m_p_sig.buf = m_buf[ping_idx];
   m_p_sig.ofmap = m_output[ping_idx];
@@ -63,14 +63,14 @@ void IveTPUSigmoid::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t pin
                    m_p_sig.table_answer_slope, m_p_sig.ofmap, m_p_sig.scale);
 }
 
-int IveTPUSigmoid::postProcess(bmctx_t *ctx) {
+int IveTPUSigmoid::postProcess(CVI_RT_HANDLE rt_handle) {
   if (table) {
-    table->Free(ctx);
+    table->Free(rt_handle);
     delete table;
     table = nullptr;
   }
   if (table_slope) {
-    table_slope->Free(ctx);
+    table_slope->Free(rt_handle);
     delete table_slope;
     table_slope = nullptr;
   }

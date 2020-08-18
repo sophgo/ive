@@ -8,14 +8,14 @@ void IveTPUThresholdSlope::setThreshold(int low, int high) {
   m_threshold_high = high;
 }
 
-int IveTPUThresholdSlope::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUThresholdSlope::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "threshSlope";
   m_slice_info.nums_of_tl = 1;
 
   return CVI_SUCCESS;
 }
 
-int IveTPUThresholdSlope::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUThresholdSlope::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                                    const std::vector<cvk_tg_shape_t> &tg_in_slices,
                                    const std::vector<cvk_tg_shape_t> &tg_out_slices,
                                    std::vector<uint32_t> *tl_in_idx,
@@ -46,7 +46,8 @@ int IveTPUThresholdSlope::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUThresholdSlope::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUThresholdSlope::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                                     uint32_t ping_idx) {
   cvk_ctx->ops->tiu_max(cvk_ctx, &m_p_max);
   cvk_ctx->ops->tiu_min(cvk_ctx, &m_p_min);
 }

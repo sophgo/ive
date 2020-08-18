@@ -1,7 +1,7 @@
 #include "tpu/tpu_mulsum.hpp"
 #include <string.h>
 
-int IveTPUMulSum::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUMulSum::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "mulsum";
   m_force_use_ext = true;
   m_slice_info.io_fmt = CVK_FMT_BF16;
@@ -12,7 +12,7 @@ int IveTPUMulSum::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUMulSum::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUMulSum::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                            const std::vector<cvk_tg_shape_t> &tg_in_slices,
                            const std::vector<cvk_tg_shape_t> &tg_out_slices,
                            std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -29,7 +29,7 @@ int IveTPUMulSum::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   mp_tl_mulsum = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1);
   m_tl_mulsum_shape = tl_shape;
   m_tl_mulsum_stride = mp_tl_mulsum->stride;
-  constantFillTL(ctx, cvk_ctx, convert_fp32_bf16(1.f), mp_tl_mulsum);
+  constantFillTL(rt_handle, cvk_ctx, convert_fp32_bf16(1.f), mp_tl_mulsum);
 
   m_p_mul.b_is_const = 0;
   m_p_mul.b = mp_tl_mulsum;
@@ -43,14 +43,14 @@ int IveTPUMulSum::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUMulSum::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUMulSum::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_mul.a = m_input[ping_idx];
   m_p_mul.res_low = mp_tl_mulsum;
   cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul);
 }
 
-void IveTPUMulSum::beforeSubmit(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
-                                std::vector<CviImg> *output) {
+void IveTPUMulSum::beforeSubmit(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                                std::vector<CviImg> &input, std::vector<CviImg> *output) {
   uint32_t total_data_size = m_tl_mulsum_shape.h * m_tl_mulsum_shape.w;
   uint32_t data_size = total_data_size;
   uint32_t fmt_size = getFmtSize(mp_tl_mulsum->fmt);
@@ -102,11 +102,11 @@ void IveTPUMulSum::beforeSubmit(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vecto
   mp_tl_mulsum->stride =
       cvk_ctx->ops->tl_default_stride(cvk_ctx, mp_tl_mulsum->shape, mp_tl_mulsum->fmt, 1);
   m_sum = 1.f;
-  m_bm_dev = get_tensor_l2g(ctx, cvk_ctx, mp_tl_mulsum);
+  m_rt_dev = get_tensor_l2g(rt_handle, cvk_ctx, mp_tl_mulsum);
 }
 
-int IveTPUMulSum::postProcess(bmctx_t *ctx) {
-  uint8_t *data = get_bm_vaddr(ctx, m_bm_dev);
+int IveTPUMulSum::postProcess(CVI_RT_HANDLE rt_handle) {
+  uint8_t *data = get_rt_vaddr(rt_handle, m_rt_dev);
   if (data == nullptr) {
     return CVI_FAILURE;
   }
@@ -116,8 +116,8 @@ int IveTPUMulSum::postProcess(bmctx_t *ctx) {
     float val = convert_bf16_fp32(bf16_data[i]);
     m_sum *= val;
   }
-  bmmem_device_free(*ctx, m_bm_dev);
-  m_bm_dev = NULL;
+  CVI_RT_MemFree(rt_handle, m_rt_dev);
+  m_rt_dev = NULL;
   return CVI_SUCCESS;
 }
 

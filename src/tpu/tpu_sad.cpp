@@ -25,7 +25,7 @@ void IveTPUSAD::setWindowSize(const int window_size) {
   m_kernel_info.pad[3] = pad + 1;
 }
 
-int IveTPUSAD::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUSAD::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "sad";
   m_slice_info.io_fmt = CVK_FMT_BF16;
   if (m_do_threshold) {
@@ -40,7 +40,7 @@ int IveTPUSAD::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUSAD::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUSAD::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                         const std::vector<cvk_tg_shape_t> &tg_in_slices,
                         const std::vector<cvk_tg_shape_t> &tg_out_slices,
                         std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -69,7 +69,7 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   tl_block_shape.h = m_kernel_info.size;
   tl_block_shape.w = m_kernel_info.size;
   auto *block_kernel = allocTLMem(cvk_ctx, tl_block_shape, CVK_FMT_BF16, 1, IVETLType::KERNEL);
-  constantFillTL(ctx, cvk_ctx, convert_fp32_bf16(1.f), block_kernel);
+  constantFillTL(rt_handle, cvk_ctx, convert_fp32_bf16(1.f), block_kernel);
 
   m_p_min.a = tl_input;
   m_p_min.b = tl_input2;
@@ -123,10 +123,11 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
     const cvk_tl_shape_t tl_table_s = mp_tblmgr->getTblTLShape(CVK_FMT_BF16);
     auto *tl_pos_neg_table = allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
     {
-      mp_table_pos_neg = new CviImg(ctx, tl_table_s.c, tl_table_s.h, tl_table_s.w, CVK_FMT_BF16);
+      mp_table_pos_neg =
+          new CviImg(rt_handle, tl_table_s.c, tl_table_s.h, tl_table_s.w, CVK_FMT_BF16);
       genTableBF16(tl_table_s, (float)m_min_value, (float)m_max_value,
                    (uint16_t *)mp_table_pos_neg->GetVAddr());
-      cviImgFlush2TL(ctx, cvk_ctx, *mp_table_pos_neg, tl_pos_neg_table);
+      cviImgFlush2TL(rt_handle, cvk_ctx, *mp_table_pos_neg, tl_pos_neg_table);
     }
 
     m_p_add_thresh.a_high = NULL;
@@ -147,7 +148,7 @@ int IveTPUSAD::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUSAD::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUSAD::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   cvk_ctx->ops->tiu_min(cvk_ctx, &m_p_min);
   cvk_ctx->ops->tiu_max(cvk_ctx, &m_p_max);
   cvk_ctx->ops->tiu_sub(cvk_ctx, &m_p_sub);
@@ -158,9 +159,9 @@ void IveTPUSAD::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_id
   }
 }
 
-int IveTPUSAD::postProcess(bmctx_t *ctx) {
+int IveTPUSAD::postProcess(CVI_RT_HANDLE rt_handle) {
   if (mp_table_pos_neg) {
-    mp_table_pos_neg->Free(ctx);
+    mp_table_pos_neg->Free(rt_handle);
     delete mp_table_pos_neg;
     mp_table_pos_neg = nullptr;
   }

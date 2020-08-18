@@ -11,14 +11,14 @@ void IveTPUFilter::setKernel(IveKernel &kernel) {
   m_kernel_info.pad[3] = pad;
 }
 
-int IveTPUFilter::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUFilter::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_slice_info.io_fmt = CVK_FMT_U8;
   m_slice_info.nums_of_tl = 2;
   m_kernel_info.nums_of_kernel = 1;
   return CVI_SUCCESS;
 }
 
-int IveTPUFilter::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUFilter::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                            const std::vector<cvk_tg_shape_t> &tg_in_slices,
                            const std::vector<cvk_tg_shape_t> &tg_out_slices,
                            std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -52,15 +52,16 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   }
   int tmp_c = m_kernel->img.m_tg.shape.c;
   m_kernel->img.m_tg.shape.c = tl_shape.c;
-  cviImgFlush2TL(ctx, cvk_ctx, m_kernel->img, tl_kernel);
+  cviImgFlush2TL(rt_handle, cvk_ctx, m_kernel->img, tl_kernel);
   m_kernel->img.m_tg.shape.c = tmp_c;
 
   auto *tl_multiplier = allocTLMem(cvk_ctx, packed_s, CVK_FMT_U8, 1);
   {
-    mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, CVK_FMT_U8);
+    mp_multiplier =
+        new CviImg(rt_handle, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, CVK_FMT_U8);
     getPackedMultiplierArrayBuffer(tl_shape.c, m_kernel->multiplier.base,
                                    m_kernel->multiplier.shift, mp_multiplier->GetVAddr());
-    cviImgFlush2TL(ctx, cvk_ctx, *mp_multiplier, tl_multiplier);
+    cviImgFlush2TL(rt_handle, cvk_ctx, *mp_multiplier, tl_multiplier);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
     tl_multiplier->stride =
         cvk_ctx->ops->tl_default_stride(cvk_ctx, tl_multiplier->shape, tl_multiplier->fmt, 0);
@@ -96,12 +97,12 @@ int IveTPUFilter::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUFilter::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUFilter::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   cvk_ctx->ops->tiu_depthwise_convolution(cvk_ctx, &m_p_conv);
 }
 
-int IveTPUFilter::postProcess(bmctx_t *ctx) {
-  mp_multiplier->Free(ctx);
+int IveTPUFilter::postProcess(CVI_RT_HANDLE rt_handle) {
+  mp_multiplier->Free(rt_handle);
   delete mp_multiplier;
   mp_multiplier = nullptr;
   return CVI_SUCCESS;
@@ -117,14 +118,14 @@ void IveTPUFilterBF16::setKernel(const IveKernel &kernel) {
   m_kernel_info.pad[3] = pad;
 }
 
-int IveTPUFilterBF16::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUFilterBF16::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "filter";
   m_slice_info.nums_of_tl = 2 * 2;
   m_kernel_info.nums_of_kernel = 1;
   return CVI_SUCCESS;
 }
 
-int IveTPUFilterBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUFilterBF16::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                                const std::vector<cvk_tg_shape_t> &tg_in_slices,
                                const std::vector<cvk_tg_shape_t> &tg_out_slices,
                                std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -185,6 +186,7 @@ int IveTPUFilterBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUFilterBF16::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUFilterBF16::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                                 uint32_t ping_idx) {
   cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv);
 }

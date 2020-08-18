@@ -13,4 +13,5 @@ enum IVE_KERNEL {
   CUSTOM
 };
 
-IveKernel createKernel(bmctx_t *ctx, uint32_t img_c, uint32_t k_h, uint32_t k_w, IVE_KERNEL type);
+IveKernel createKernel(CVI_RT_HANDLE rt_handle, uint32_t img_c, uint32_t k_h, uint32_t k_w,
+                       IVE_KERNEL type);

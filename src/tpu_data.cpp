@@ -5,12 +5,12 @@
 #endif
 
 CviImg::CviImg() {}
-CviImg::CviImg(bmctx_t *ctx, uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt,
-               CviImg *cvi_img) {
-  Init(ctx, img_c, img_h, img_w, fmt, cvi_img);
+CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_c, uint32_t img_h, uint32_t img_w,
+               cvk_fmt_t fmt, CviImg *cvi_img) {
+  Init(rt_handle, img_c, img_h, img_w, fmt, cvi_img);
 }
 
-CviImg::CviImg(bmctx_t *ctx, const CviImg &img, uint32_t x1, uint32_t y1, uint32_t x2,
+CviImg::CviImg(CVI_RT_HANDLE rt_handle, const CviImg &img, uint32_t x1, uint32_t y1, uint32_t x2,
                uint32_t y2) {
   if (!this->m_is_stride_ceq) {
     std::cerr << "Sub-image does not support non-equal stride in different channels." << std::endl;
@@ -43,7 +43,7 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, uint32_t x1, uint32_t y1, uint32
   }
 
   // Update subimage shape
-  this->m_bmmem = img.m_bmmem;
+  this->m_rtmem = img.m_rtmem;
   this->m_size = img.m_size;
   this->m_fmt = img.m_fmt;
   this->m_channel = img.m_channel;
@@ -66,8 +66,9 @@ CviImg::CviImg(bmctx_t *ctx, const CviImg &img, uint32_t x1, uint32_t y1, uint32
   this->m_is_sub_img = true;
 }
 
-CviImg::CviImg(bmctx_t *ctx, uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
-               std::vector<uint32_t> heights, CVIIMGTYPE img_type, cvk_fmt_t fmt, CviImg *cvi_img) {
+CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_h, uint32_t img_w,
+               std::vector<uint32_t> strides, std::vector<uint32_t> heights, CVIIMGTYPE img_type,
+               cvk_fmt_t fmt, CviImg *cvi_img) {
   if (strides.size() == 0) {
     std::cerr << "No stride given." << std::endl;
     return;
@@ -108,10 +109,10 @@ CviImg::CviImg(bmctx_t *ctx, uint32_t img_h, uint32_t img_w, std::vector<uint32_
 
   if (cvi_img != nullptr) {
     if (this->m_size < cvi_img->m_size) {
-      this->m_bmmem = cvi_img->m_bmmem;
+      this->m_rtmem = cvi_img->m_rtmem;
     }
   }
-  AllocateDevice(ctx);
+  AllocateDevice(rt_handle);
 
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
   uint64_t new_paddr = Align64(this->m_paddr, SCALAR_C_ALIGN);
@@ -200,15 +201,15 @@ void CviImg::SetupImageInfo(uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_
   this->m_is_planar = true;
 }
 
-int CviImg::Init(bmctx_t *ctx, uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt,
-                 CviImg *cvi_img) {
+int CviImg::Init(CVI_RT_HANDLE rt_handle, uint32_t img_c, uint32_t img_h, uint32_t img_w,
+                 cvk_fmt_t fmt, CviImg *cvi_img) {
   SetupImageInfo(img_c, img_h, img_w, fmt);
   if (cvi_img != nullptr) {
     if (this->m_size < cvi_img->m_size) {
-      this->m_bmmem = cvi_img->m_bmmem;
+      this->m_rtmem = cvi_img->m_rtmem;
     }
   }
-  return AllocateDevice(ctx);
+  return AllocateDevice(rt_handle);
 }
 
 const bool CviImg::IsInit() { return this->m_vaddr == nullptr ? false : true; }
@@ -235,12 +236,12 @@ const bool CviImg::IsSubImg() const { return m_is_sub_img; }
 
 const bool CviImg::IsStideCEQ() const { return m_is_stride_ceq; }
 
-int CviImg::AllocateDevice(bmctx_t *ctx) {
-  if (this->m_bmmem == NULL) {
-    this->m_bmmem = bmmem_device_alloc_raw(*ctx, this->m_size);
+int CviImg::AllocateDevice(CVI_RT_HANDLE rt_handle) {
+  if (this->m_rtmem == NULL) {
+    this->m_rtmem = CVI_RT_MemAlloc(rt_handle, this->m_size);
   }
-  m_vaddr = (uint8_t *)bmmem_device_v_addr(this->m_bmmem);
-  m_paddr = bmmem_device_addr(this->m_bmmem);
+  m_vaddr = (uint8_t *)CVI_RT_MemGetVAddr(this->m_rtmem);
+  m_paddr = CVI_RT_MemGetPAddr(this->m_rtmem);
   if (m_is_stride_ceq) {
     this->m_tg.start_address = m_paddr;
     this->m_tg.base_reg_index = 0;
@@ -253,10 +254,10 @@ int CviImg::AllocateDevice(bmctx_t *ctx) {
   return CVI_SUCCESS;
 }
 
-int CviImg::Free(bmctx_t *ctx) {
-  if (this->m_bmmem != NULL) {
-    bmmem_device_free(*ctx, this->m_bmmem);
-    this->m_bmmem = NULL;
+int CviImg::Free(CVI_RT_HANDLE rt_handle) {
+  if (this->m_rtmem != NULL) {
+    CVI_RT_MemFree(rt_handle, this->m_rtmem);
+    this->m_rtmem = NULL;
   }
   return CVI_SUCCESS;
 }

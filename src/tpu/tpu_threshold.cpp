@@ -5,14 +5,14 @@
 
 void IveTPUThreshold::setThreshold(int threshold) { m_threshold = threshold; }
 
-int IveTPUThreshold::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUThreshold::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "thresh";
   m_slice_info.nums_of_tl = 3;
 
   return CVI_SUCCESS;
 }
 
-int IveTPUThreshold::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUThreshold::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                               const std::vector<cvk_tg_shape_t> &tg_in_slices,
                               const std::vector<cvk_tg_shape_t> &tg_out_slices,
                               std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -33,8 +33,8 @@ int IveTPUThreshold::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
     m_threshold = 1;
   }
 
-  constantFillTL(ctx, cvk_ctx, m_threshold - 1, tl_threshold);
-  constantFillTL(ctx, cvk_ctx, 0, tl_high_bit);
+  constantFillTL(rt_handle, cvk_ctx, m_threshold - 1, tl_threshold);
+  constantFillTL(rt_handle, cvk_ctx, 0, tl_high_bit);
 
   m_p_mac.res_high = tl_high_bit;
   m_p_mac.res_low = tl_input;
@@ -61,7 +61,8 @@ int IveTPUThreshold::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUThreshold::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUThreshold::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                                uint32_t ping_idx) {
   cvk_ctx->ops->tiu_mac(cvk_ctx, &m_p_mac);
   cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul);
 }

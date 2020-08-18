@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-int IveTPUSubAbs::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUSubAbs::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "subAbs";
   // 2 - in
   // 1 -tmp
@@ -15,7 +15,7 @@ int IveTPUSubAbs::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUSubAbs::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUSubAbs::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                            const std::vector<cvk_tg_shape_t> &tg_in_slices,
                            const std::vector<cvk_tg_shape_t> &tg_out_slices,
                            std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -34,7 +34,7 @@ int IveTPUSubAbs::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
     m_min.emplace_back(allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1));
   }
   auto *tl_high_bit = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
-  constantFillTL(ctx, cvk_ctx, 0, tl_high_bit);
+  constantFillTL(rt_handle, cvk_ctx, 0, tl_high_bit);
 
   m_p_min.b_is_const = 0;
 
@@ -57,7 +57,7 @@ int IveTPUSubAbs::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUSubAbs::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUSubAbs::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_min.a = m_input1[ping_idx];
   m_p_min.b = m_input2[ping_idx];
   m_p_min.min = m_min[ping_idx];

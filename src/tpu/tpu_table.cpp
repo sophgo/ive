@@ -3,17 +3,17 @@
 
 #include <string.h>
 
-void IveTPUTbl::setTable(bmctx_t *ctx, TblMgr *tblmgr, const uint8_t *tbl_data) {
+void IveTPUTbl::setTable(CVI_RT_HANDLE rt_handle, TblMgr *tblmgr, const uint8_t *tbl_data) {
   mp_tblmgr = tblmgr;
   auto &tl_shape_s = mp_tblmgr->getTblTLShape(CVK_FMT_U8);
   if (mp_table == nullptr) {
-    mp_table = new CviImg(ctx, tl_shape_s.c, tl_shape_s.h, tl_shape_s.w, CVK_FMT_U8);
+    mp_table = new CviImg(rt_handle, tl_shape_s.c, tl_shape_s.h, tl_shape_s.w, CVK_FMT_U8);
   }
   genTableU8(tl_shape_s, tbl_data, mp_table->GetVAddr());
-  mp_table->Flush(ctx);
+  mp_table->Flush(rt_handle);
 }
 
-int IveTPUTbl::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUTbl::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_slice_info.io_fmt = CVK_FMT_U8;
   m_cmdbuf_subfix = "tbl";
   m_slice_info.ping_pong_size = 2;
@@ -24,7 +24,7 @@ int IveTPUTbl::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUTbl::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUTbl::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                         const std::vector<cvk_tg_shape_t> &tg_in_slices,
                         const std::vector<cvk_tg_shape_t> &tg_out_slices,
                         std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -44,7 +44,7 @@ int IveTPUTbl::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
 
   cvk_tl_shape_t tl_shape_s = mp_tblmgr->getTblTLShape(CVK_FMT_U8);
   auto tl_table = allocTLMem(cvk_ctx, tl_shape_s, CVK_FMT_U8, 1, IVETLType::TABLE);
-  cviImg2TL(ctx, cvk_ctx, *mp_table, tl_table);
+  cviImg2TL(rt_handle, cvk_ctx, *mp_table, tl_table);
 
   m_p_tbl.table = tl_table;
 
@@ -55,15 +55,15 @@ int IveTPUTbl::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUTbl::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUTbl::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_tbl.ifmap = m_input[ping_idx];
   m_p_tbl.ofmap = m_input[ping_idx];
   cvk_ctx->ops->tiu_lookup_table(cvk_ctx, &m_p_tbl);
 }
 
-int IveTPUTbl::postProcess(bmctx_t *ctx) {
+int IveTPUTbl::postProcess(CVI_RT_HANDLE rt_handle) {
   if (mp_table != nullptr) {
-    mp_table->Free(ctx);
+    mp_table->Free(rt_handle);
     delete mp_table;
     mp_table = nullptr;
   }

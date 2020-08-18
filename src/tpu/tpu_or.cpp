@@ -1,14 +1,14 @@
 #include "tpu/tpu_or.hpp"
 #include <string.h>
 
-int IveTPUOr::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUOr::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "or";
   m_slice_info.nums_of_tl = 2;
 
   return CVI_SUCCESS;
 }
 
-int IveTPUOr::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUOr::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                        const std::vector<cvk_tg_shape_t> &tg_in_slices,
                        const std::vector<cvk_tg_shape_t> &tg_out_slices,
                        std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -32,6 +32,6 @@ int IveTPUOr::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUOr::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUOr::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   cvk_ctx->ops->tiu_or_int8(cvk_ctx, &m_p_or);
 }

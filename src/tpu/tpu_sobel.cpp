@@ -17,7 +17,7 @@ void IveTPUSobel::setKernel(IveKernel &kernel_x, IveKernel &kernel_y) {
 
 void IveTPUSobel::magDistMethod(int method) { m_dist_method = method; }
 
-int IveTPUSobel::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUSobel::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "sobel";
   m_slice_info.io_fmt = CVK_FMT_BF16;
   // 1 input tl
@@ -31,7 +31,7 @@ int IveTPUSobel::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUSobel::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUSobel::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                           const std::vector<cvk_tg_shape_t> &tg_in_slices,
                           const std::vector<cvk_tg_shape_t> &tg_out_slices,
                           std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -54,8 +54,8 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                                 m_kernel_info.size};
   auto *tl_kernel_gx = allocTLMem(cvk_ctx, tl_kernel_s, CVK_FMT_BF16, 1, IVETLType::KERNEL);
   auto *tl_kernel_gy = allocTLMem(cvk_ctx, tl_kernel_s, CVK_FMT_BF16, 1, IVETLType::KERNEL);
-  cviImgFlush2TL(ctx, cvk_ctx, m_kernel_x->img, tl_kernel_gx);
-  cviImgFlush2TL(ctx, cvk_ctx, m_kernel_y->img, tl_kernel_gy);
+  cviImgFlush2TL(rt_handle, cvk_ctx, m_kernel_x->img, tl_kernel_gx);
+  cviImgFlush2TL(rt_handle, cvk_ctx, m_kernel_y->img, tl_kernel_gy);
 
   cvk_tl_t *tl_table_data = nullptr, *tl_table_data_mantissa = nullptr;
   if (m_dist_method == 1) {
@@ -65,8 +65,8 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
     {
       const CviImg *table_data = mp_tblmgr->sqrt(TBLSQRT::TBLSQRT_DATA);
       const CviImg *table_data_mantissa = mp_tblmgr->sqrt(TBLSQRT::TBLSQRT_MANTISSA);
-      cviImg2TL(ctx, cvk_ctx, *table_data, tl_table_data);
-      cviImg2TL(ctx, cvk_ctx, *table_data_mantissa, tl_table_data_mantissa);
+      cviImg2TL(rt_handle, cvk_ctx, *table_data, tl_table_data);
+      cviImg2TL(rt_handle, cvk_ctx, *table_data_mantissa, tl_table_data_mantissa);
     }
   }
 
@@ -164,7 +164,7 @@ int IveTPUSobel::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUSobel::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUSobel::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   if (m_dist_method == 0) {
     cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv_x);
     cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul_a);

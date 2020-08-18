@@ -358,7 +358,7 @@ inline void updateLMemSize(cvk_context_t *cvk_ctx, const int &npu_num, const cvk
 
 IveCore::IveCore() {}
 
-int IveCore::run(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
+int IveCore::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
                  std::vector<CviImg> *output, bool legacy_mode) {
   m_chip_info = cvk_ctx->info;
   for (const auto &img : input) {
@@ -377,7 +377,7 @@ int IveCore::run(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &inpu
   }
   int ret = CVI_SUCCESS;
   if (legacy_mode) {
-    ret = runSingleSizeKernel(ctx, cvk_ctx, input, output);
+    ret = runSingleSizeKernel(rt_handle, cvk_ctx, input, output);
   } else {
     bool has_sub_image = false;
     for (const auto &img : input) {
@@ -388,9 +388,9 @@ int IveCore::run(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &inpu
     }
     uint32_t total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
     if ((has_sub_image || m_kernel_info.size != 1 || m_force_use_ext) || (total_size % 16)) {
-      ret = runSingleSizeExtKernel(ctx, cvk_ctx, input, output);
+      ret = runSingleSizeExtKernel(rt_handle, cvk_ctx, input, output);
     } else {
-      ret = runNoKernel(ctx, cvk_ctx, input, output);
+      ret = runNoKernel(rt_handle, cvk_ctx, input, output);
     }
   }
   return ret;
@@ -524,13 +524,14 @@ int IveCore::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_o
   return CVI_SUCCESS;
 }
 
-void IveCore::beforeSubmit(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
-                           std::vector<CviImg> *output) {}
+void IveCore::beforeSubmit(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                           std::vector<CviImg> &input, std::vector<CviImg> *output) {}
 
-int IveCore::postProcess(bmctx_t *ctx) { return CVI_SUCCESS; }
+int IveCore::postProcess(CVI_RT_HANDLE rt_handle) { return CVI_SUCCESS; }
 
-int IveCore::runSingleSizeKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
-                                 std::vector<CviImg> *output, bool enable_min_max) {
+int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                                 std::vector<CviImg> &input, std::vector<CviImg> *output,
+                                 bool enable_min_max) {
   // FIXME: Support later
   if (m_slice_info.ping_pong_size != 1) {
     std::cerr << "Currently runSingleSizeKernel does not support ping pong." << std::endl;
@@ -598,7 +599,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vect
 
   // allocate tl shape and get input/ output indices.
   std::vector<uint32_t> tl_in_idx, tl_out_idx;
-  runSetup(ctx, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
+  runSetup(rt_handle, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
 
   // Dummy check, can be turned off in official release
   if (tl_in_idx.size() != input.size()) {
@@ -709,7 +710,7 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vect
         bm_src_addr_w[k] += 1 * in_slice_res.w.skip * bm_src_info.fns_vec[k].getSize();
       }
 
-      operation(ctx, cvk_ctx, 0);
+      operation(rt_handle, cvk_ctx, 0);
 
       // tl2tg
       for (size_t k = 0; k < tl_out_info.lmem_vec.size(); k++) {
@@ -773,18 +774,18 @@ int IveCore::runSingleSizeKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vect
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], false, true);
 
-  beforeSubmit(ctx, cvk_ctx, input, output);
+  beforeSubmit(rt_handle, cvk_ctx, input, output);
 
   if (ret == CVI_SUCCESS) {
-    submitCmdbuf(ctx, cvk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
+    CVI_RT_Submit(cvk_ctx);
   }
 
   freeTLMems(cvk_ctx);
-  postProcess(ctx);
+  postProcess(rt_handle);
   return ret;
 }
 
-int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                                     std::vector<CviImg> &input, std::vector<CviImg> *output,
                                     bool enable_min_max) {
   if (m_slice_info.io_fmt == CVK_FMT_INVALID) {
@@ -979,7 +980,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx,
 
   // allocate tl shape and get input/ output indices.
   std::vector<uint32_t> tl_in_idx, tl_out_idx;
-  runSetup(ctx, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, true);
+  runSetup(rt_handle, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, true);
 
   // Dummy check, can be turned off in official release
   if (tl_in_idx.size() != input.size()) {
@@ -1116,7 +1117,7 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx,
           bm_src_addr_w[k] += 1 * in_slice_res.w.skip * bm_src_info.fns_vec[k].getSize();
         }
 
-        operation(ctx, cvk_ctx, 0);
+        operation(rt_handle, cvk_ctx, 0);
 
         // tl2tg
         for (size_t k = 0; k < tl_out_info.lmem_vec.size(); k++) {
@@ -1220,19 +1221,20 @@ int IveCore::runSingleSizeExtKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", out_slice_res.w.slice,
             out_slice_res.w.turn, out_slice_res.w.skip, out_slice_res.w.left);
 
-  beforeSubmit(ctx, cvk_ctx, input, output);
+  beforeSubmit(rt_handle, cvk_ctx, input, output);
 
   if (ret == CVI_SUCCESS) {
-    submitCmdbuf(ctx, cvk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
+    CVI_RT_Submit(cvk_ctx);
   }
 
   freeTLMems(cvk_ctx);
-  postProcess(ctx);
+  postProcess(rt_handle);
   return CVI_SUCCESS;
 }
 
-int IveCore::runNoKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
-                         std::vector<CviImg> *output, bool enable_min_max) {
+int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                         std::vector<CviImg> &input, std::vector<CviImg> *output,
+                         bool enable_min_max) {
   // Only supports kernel size = 1. NoKernel means kernel size = 1. You still can use depthwise
   // conv + qdm as uint8_t div.
   if (m_kernel_info.size != 1) {
@@ -1306,7 +1308,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviIm
   }
   // allocate tl shape and get input/ output indices.
   std::vector<uint32_t> tl_in_idx, tl_out_idx;
-  runSetup(ctx, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
+  runSetup(rt_handle, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
 
   // Find and create input/ output fmt size pair.
   TLInfo tl_in_info, tl_out_info;
@@ -1356,7 +1358,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviIm
     }
 
     for (size_t pp = 0; pp < m_slice_info.ping_pong_size; pp++) {
-      operation(ctx, cvk_ctx, pp);
+      operation(rt_handle, cvk_ctx, pp);
     }
 
     // tl2tg
@@ -1457,7 +1459,7 @@ int IveCore::runNoKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviIm
       bm_src_info.addr_vec[k] += 1 * jump_src * bm_src_info.fns_vec[k].getSize();
     }
 
-    operation(ctx, cvk_ctx, 0);
+    operation(rt_handle, cvk_ctx, 0);
 
     // tl2tg
     tl_idx = tl_out_info.lmem_vec.size() / m_slice_info.ping_pong_size;
@@ -1482,13 +1484,13 @@ int IveCore::runNoKernel(bmctx_t *ctx, cvk_context_t *cvk_ctx, std::vector<CviIm
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], true, false);
 
-  beforeSubmit(ctx, cvk_ctx, input, output);
+  beforeSubmit(rt_handle, cvk_ctx, input, output);
 
   if (ret == CVI_SUCCESS) {
-    submitCmdbuf(ctx, cvk_ctx, m_cmdbuf_subfix, m_write_cmdbuf);
+    CVI_RT_Submit(cvk_ctx);
   }
 
   freeTLMems(cvk_ctx);
-  postProcess(ctx);
+  postProcess(rt_handle);
   return CVI_SUCCESS;
 }

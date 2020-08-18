@@ -13,8 +13,8 @@ class TblMgr {
  public:
   TblMgr();
   ~TblMgr();
-  int init(bmctx_t *ctx, cvk_context_t *cvk_ctx);
-  int free(bmctx_t *ctx);
+  int init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx);
+  int free(CVI_RT_HANDLE rt_handle);
   const cvk_tl_shape_t getTblTLShape(cvk_fmt_t fmt);
   const CviImg *atan(enum TBLATAN tblatan);
   const CviImg *reciprocal(enum TBLRECIPROCAL tblrpc);

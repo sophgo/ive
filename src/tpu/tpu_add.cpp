@@ -1,7 +1,7 @@
 #include "tpu/tpu_add.hpp"
 #include <string.h>
 
-int IveTPUAdd::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUAdd::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "add";
   m_slice_info.ping_pong_size = 2;
   m_slice_info.ping_pong_share_tl = 1;
@@ -10,7 +10,7 @@ int IveTPUAdd::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUAdd::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUAdd::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                         const std::vector<cvk_tg_shape_t> &tg_in_slices,
                         const std::vector<cvk_tg_shape_t> &tg_out_slices,
                         std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -27,7 +27,7 @@ int IveTPUAdd::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
     m_input2.emplace_back(allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1));
   }
   auto *high_bit_zeros = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
-  constantFillTL(ctx, cvk_ctx, 0, high_bit_zeros);
+  constantFillTL(rt_handle, cvk_ctx, 0, high_bit_zeros);
 
   m_p_add.res_high = NULL;
   m_p_add.a_high = high_bit_zeros;
@@ -44,7 +44,7 @@ int IveTPUAdd::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUAdd::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUAdd::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_add.res_low = m_input1[ping_idx];
   m_p_add.a_low = m_input1[ping_idx];
   m_p_add.b.low = m_input2[ping_idx];

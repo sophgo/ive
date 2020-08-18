@@ -3,7 +3,7 @@
 #include "tpu_data.hpp"
 
 #include <bmkernel/bm1880v2/1880v2_fp_convert.h>
-#include <bmruntime.h>
+#include <cviruntime.h>
 
 #include <assert.h>
 #include <limits.h>
@@ -14,52 +14,18 @@
 
 #define MULTIPLIER_ONLY_PACKED_DATA_SIZE 5
 
-inline int createHandle(bmctx_t *ctx, cvk_reg_info_t *req_info, cvk_context_t **cvk_ctx) {
-  int ret = bm_init(0, ctx);
-  if (ret != BM_SUCCESS) {
-    fprintf(stderr, "cvi_init failed, err %d\n", ret);
+inline int createHandle(CVI_RT_HANDLE *rt_handle, cvk_context_t **cvk_ctx) {
+  if (CVI_RT_Init(rt_handle) != CVI_SUCCESS) {
+    printf("Runtime init failed.\n");
     return CVI_FAILURE;
   }
-  strncpy(req_info->chip_ver_str, "cv183x", sizeof(req_info->chip_ver_str) - 1);
-  req_info->cmdbuf_size = 0x10000000;
-  req_info->cmdbuf = static_cast<uint8_t *>(malloc(req_info->cmdbuf_size));
-  if (!req_info->cmdbuf) {
-    printf("cmdbuf init failed. Insufficient memory %x.\n", req_info->cmdbuf_size);
-    return CVI_FAILURE;
-  }
-  *cvk_ctx = cvikernel_register(req_info);
-  if (!*cvk_ctx) {
-    printf("cmdbuf register failed.\n");
-    return CVI_FAILURE;
-  }
+  *cvk_ctx = (cvk_context_t *)CVI_RT_RegisterKernel(*rt_handle, 0x10000000);
   return CVI_SUCCESS;
 }
 
-inline void destroyHandle(bmctx_t *ctx, cvk_reg_info_t *req_info, cvk_context_t *cvk_ctx) {
-  if (cvk_ctx) {
-    cvk_ctx->ops->cleanup(cvk_ctx);
-  }
-  bm_exit(*ctx);
-  if (req_info->cmdbuf) {
-    free(req_info->cmdbuf);
-  }
-}
-
-inline void submitCmdbuf(bmctx_t *ctx, cvk_context_t *cvk_ctx, const std::string &cmdbuf_subfix,
-                         bool write_cmdbuf = false) {
-  uint32_t len;
-  uint8_t *buf = cvk_ctx->ops->acquire_cmdbuf(cvk_ctx, &len);
-  if (write_cmdbuf) {
-    printf("Cmdbuf length %u\n", len);
-    FILE *pFile;
-    std::string name = cmdbuf_subfix == "" ? "cmdbuf.bin" : "cmdbuf_" + cmdbuf_subfix + ".bin";
-    pFile = fopen(name.c_str(), "wb");
-    fwrite(buf, sizeof(char), len, pFile);
-    fclose(pFile);
-  }
-  uint16_t seq_no;
-  bm_send_cmdbuf(*ctx, buf, (size_t)len, &seq_no);
-  cvk_ctx->ops->reset(cvk_ctx);
+inline void destroyHandle(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
+  CVI_RT_UnRegisterKernel(cvk_ctx);
+  CVI_RT_DeInit(rt_handle);
 }
 
 inline void genTableU8(const cvk_tl_shape_t &table_shape, const uint8_t *table_data,
@@ -103,22 +69,24 @@ inline bool tgTLShapeCompare(cvk_tl_shape_t &tl_shape, cvk_tg_shape_t &tg_shape)
   return false;
 }
 
-inline void cviImgFlush2TL(bmctx_t *ctx, cvk_context_t *cvk_ctx, CviImg &img, cvk_tl_t *lmem) {
-  img.Flush(ctx);
+inline void cviImgFlush2TL(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, CviImg &img,
+                           cvk_tl_t *lmem) {
+  img.Flush(rt_handle);
   cvk_tdma_g2l_tensor_copy_param_t p;
   p.src = &img.m_tg;
   p.dst = lmem;
   cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p);
 }
 
-inline void cviImg2TL(bmctx_t *ctx, cvk_context_t *cvk_ctx, const CviImg &img, cvk_tl_t *lmem) {
+inline void cviImg2TL(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, const CviImg &img,
+                      cvk_tl_t *lmem) {
   cvk_tdma_g2l_tensor_copy_param_t p;
   p.src = &img.m_tg;
   p.dst = lmem;
   cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p);
 }
 
-inline void constantFillTL(bmctx_t *ctx, cvk_context_t *cvk_ctx, const uint16_t value,
+inline void constantFillTL(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, const uint16_t value,
                            cvk_tl_t *lmem) {
   cvk_tdma_g2l_tensor_fill_constant_param_t p_fill;
   p_fill.constant = value;
@@ -262,8 +230,8 @@ inline uint8_t *getPackedMultiplierArray(const uint32_t c, const uint32_t &quant
   return cal_data;
 }
 
-static inline bmmem_device_t get_tensor_l2g(bmctx_t *ctx, cvk_context_t *cvk_ctx,
-                                            const cvk_tl_t *tl) {
+static inline CVI_RT_MEM get_tensor_l2g(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                                        const cvk_tl_t *tl) {
   cvk_tg_shape_t s;
   s.n = tl->shape.n;
   s.c = tl->shape.h;
@@ -271,9 +239,9 @@ static inline bmmem_device_t get_tensor_l2g(bmctx_t *ctx, cvk_context_t *cvk_ctx
   s.w = tl->shape.c;
   size_t total_size = s.n * s.c * s.h * s.w * getFmtSize(tl->fmt);
   cvk_tg_t tg;
-  bmmem_device_t bm_dev = bmmem_device_alloc_raw(*ctx, total_size);
+  CVI_RT_MEM rt_dev = CVI_RT_MemAlloc(rt_handle, total_size);
   tg.base_reg_index = 0;
-  tg.start_address = bmmem_device_addr(bm_dev);
+  tg.start_address = CVI_RT_MemGetPAddr(rt_dev);
   tg.fmt = tl->fmt;
   tg.shape = s;
   tg.stride = cvk_ctx->ops->tg_default_stride(cvk_ctx, s, tl->fmt);
@@ -281,25 +249,12 @@ static inline bmmem_device_t get_tensor_l2g(bmctx_t *ctx, cvk_context_t *cvk_ctx
   p.src = tl;
   p.dst = &tg;
   cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p);
-  return bm_dev;
+  return rt_dev;
 }
 
-static inline uint8_t *get_bm_vaddr(bmctx_t *ctx, bmmem_device_t bm_dev) {
-  if (bmmem_device_invld(*ctx, bm_dev) != BM_SUCCESS) {
+static inline uint8_t *get_rt_vaddr(CVI_RT_HANDLE rt_handle, CVI_RT_MEM rt_dev) {
+  if (CVI_RT_MemInvld(rt_handle, rt_dev) != CVI_RC_SUCCESS) {
     return nullptr;
   }
-  return bmmem_device_v_addr(bm_dev);
+  return CVI_RT_MemGetVAddr(rt_dev);
 }
-
-// static inline uint8_t *get_tensor_l2g_submit(bmctx_t *ctx, cvk_context_t *cvk_ctx,
-//                                         const cvk_tl_t *tl) {
-//   bmmem_device_t bm_dev = get_tensor_l2g(ctx, cvk_ctx, tl);
-//   cviruntime_cvikernel_submit(*ctx);
-//   if (bmmem_device_invld(*ctx, bm_dev) != BM_SUCCESS) {
-//     return nullptr;
-//   }
-//   uint8_t *bm_data = bmmem_device_v_addr(bm_dev);
-//   size_t total_size = tl->shape.n * tl->shape.c * tl->shape.h * tl->shape.w *
-//   getFmtSize(tl->fmt); uint8_t *data = new uint8_t[total_size]; memset(data, 1, total_size);
-//   memcpy(data, bm_data, total_size); bmmem_device_free(*ctx, bm_dev); return data;
-// }

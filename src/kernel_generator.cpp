@@ -1,9 +1,9 @@
 #include "kernel_generator.hpp"
 #include "utils.hpp"
 
-static inline IveKernel createGaussianKernel(bmctx_t *ctx, uint32_t img_c, uint32_t k_h,
+static inline IveKernel createGaussianKernel(CVI_RT_HANDLE rt_handle, uint32_t img_c, uint32_t k_h,
                                              uint32_t k_w) {
-  CviImg cimg(ctx, img_c, k_h, k_w, CVK_FMT_I8);
+  CviImg cimg(rt_handle, img_c, k_h, k_w, CVK_FMT_I8);
   IveKernel kernel;
   kernel.img = cimg;
   uint8_t *v_addr = cimg.GetVAddr();
@@ -67,15 +67,16 @@ static int8_t morph_ellipse_kernel_5x5[] = { 0, 1, 1, 1, 0, \
                                          0, 1, 1, 1, 0};
 // clang-format on
 
-static inline IveKernel createKernel(bmctx_t *ctx, uint32_t img_c, uint32_t k_h, uint32_t k_w,
-                                     IVE_KERNEL kernel_type, float multiplir_val = 1.f) {
+static inline IveKernel createKernel(CVI_RT_HANDLE rt_handle, uint32_t img_c, uint32_t k_h,
+                                     uint32_t k_w, IVE_KERNEL kernel_type,
+                                     float multiplir_val = 1.f) {
   bool is_1x1 = false;
   if (k_h == 1 && k_w == 1) {
     is_1x1 = true;
     k_h = 3;
     k_w = 3;
   }
-  CviImg cimg(ctx, img_c, k_h, k_w, CVK_FMT_I8);
+  CviImg cimg(rt_handle, img_c, k_h, k_w, CVK_FMT_I8);
   IveKernel kernel;
   kernel.img = cimg;
   kernel.multiplier.f = multiplir_val;
@@ -157,14 +158,15 @@ static inline IveKernel createKernel(bmctx_t *ctx, uint32_t img_c, uint32_t k_h,
   return kernel;
 }
 
-IveKernel createKernel(bmctx_t *ctx, uint32_t img_c, uint32_t k_h, uint32_t k_w, IVE_KERNEL type) {
+IveKernel createKernel(CVI_RT_HANDLE rt_handle, uint32_t img_c, uint32_t k_h, uint32_t k_w,
+                       IVE_KERNEL type) {
   IveKernel kernel;
   switch (type) {
     case IVE_KERNEL::GAUSSIAN:
-      return createGaussianKernel(ctx, img_c, k_h, k_w);
+      return createGaussianKernel(rt_handle, img_c, k_h, k_w);
       break;
     default:
-      return createKernel(ctx, img_c, k_h, k_w, type, 1.f);
+      return createKernel(rt_handle, img_c, k_h, k_w, type, 1.f);
   }
   return kernel;
 }

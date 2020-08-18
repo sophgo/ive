@@ -3,15 +3,16 @@
 
 class IveTPUAdd : public IveCore {
  public:
-  virtual int init(bmctx_t *ctx, cvk_context_t *cvk_ctx) override;
+  virtual int init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) override;
 
  protected:
-  virtual int runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+  virtual int runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                        const std::vector<cvk_tg_shape_t> &tg_in_slices,
                        const std::vector<cvk_tg_shape_t> &tg_out_slices,
                        std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                        const bool enable_cext) override;
-  virtual void operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) override;
+  virtual void operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                         uint32_t ping_idx) override;
 
  private:
   std::vector<cvk_tl_t *> m_input1;
@@ -22,15 +23,16 @@ class IveTPUAdd : public IveCore {
 class IveTPUAddBF16 : public IveCore {
  public:
   void setCoef(float a, float b);
-  virtual int init(bmctx_t *ctx, cvk_context_t *cvk_ctx) override;
+  virtual int init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) override;
 
  protected:
-  virtual int runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+  virtual int runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                        const std::vector<cvk_tg_shape_t> &tg_in_slices,
                        const std::vector<cvk_tg_shape_t> &tg_out_slices,
                        std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                        const bool enable_cext) override;
-  virtual void operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) override;
+  virtual void operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                         uint32_t ping_idx) override;
 
  private:
   std::vector<cvk_tl_t *> m_input1;

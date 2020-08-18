@@ -45,14 +45,6 @@ CVI_S32 CVI_IVE_BufFlush(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg);
 CVI_S32 CVI_IVE_BufRequest(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg);
 
 /**
- * @brief Flush the TPU command buffer saved inside the instnace handler.
- *
- * @param pIveHandle Ive instance handler.
- * @return CVI_S32 Return CVI_SUCCESS if operation succeed.
- */
-CVI_S32 CVI_IVE_CmdFlush(IVE_HANDLE pIveHandle);
-
-/**
  * @brief Create a IVE_MEM_INFO_S.
  *
  * @param pIveHandle Ive instance handler.

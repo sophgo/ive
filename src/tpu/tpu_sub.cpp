@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-int IveTPUSub::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUSub::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "sub";
   m_slice_info.ping_pong_size = 2;
   m_slice_info.ping_pong_share_tl = 1;
@@ -12,7 +12,7 @@ int IveTPUSub::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUSub::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUSub::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                         const std::vector<cvk_tg_shape_t> &tg_in_slices,
                         const std::vector<cvk_tg_shape_t> &tg_out_slices,
                         std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -30,7 +30,7 @@ int IveTPUSub::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   }
   auto *tl_high_bit = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
 
-  constantFillTL(ctx, cvk_ctx, 0, tl_high_bit);
+  constantFillTL(rt_handle, cvk_ctx, 0, tl_high_bit);
 
   m_p_mac.res_high = tl_high_bit;
   m_p_mac.b_is_const = 1;
@@ -49,7 +49,7 @@ int IveTPUSub::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUSub::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUSub::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_mac.res_low = m_input1[ping_idx];
   m_p_mac.a = m_input2[ping_idx];
   cvk_ctx->ops->tiu_mac(cvk_ctx, &m_p_mac);

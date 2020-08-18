@@ -15,7 +15,7 @@ void IveTPUBlock::setCellSize(const int cell_size, const int channel) {
   m_channel = channel;
 }
 
-int IveTPUBlock::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUBlock::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "block";
   m_slice_info.nums_of_tl = 2;
   // Reserved for rgb multiplier
@@ -37,7 +37,7 @@ int IveTPUBlock::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *
   return CVI_SUCCESS;
 }
 
-int IveTPUBlock::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUBlock::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                           const std::vector<cvk_tg_shape_t> &tg_in_slices,
                           const std::vector<cvk_tg_shape_t> &tg_out_slices,
                           std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -64,7 +64,7 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   tl_block_shape.h = m_kernel_info.size;
   tl_block_shape.w = m_kernel_info.size;
   auto *block_kernel = allocTLMem(cvk_ctx, tl_block_shape, CVK_FMT_U8, 1, IVETLType::KERNEL);
-  constantFillTL(ctx, cvk_ctx, 1, block_kernel);
+  constantFillTL(rt_handle, cvk_ctx, 1, block_kernel);
   float real_multiplier = 1.f / (m_kernel_info.size * m_kernel_info.size * m_bin_num);
   cvk_tl_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
   auto *tl_multiplier = allocTLMem(cvk_ctx, packed_s, CVK_FMT_U8, 1);
@@ -72,10 +72,11 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
     uint32_t quantized_multiplier;
     int right_shift;
     QuantizeMultiplierSmallerThanOne(real_multiplier, &quantized_multiplier, &right_shift);
-    mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, CVK_FMT_U8);
+    mp_multiplier =
+        new CviImg(rt_handle, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, CVK_FMT_U8);
     getPackedMultiplierArrayBuffer(tl_shape.c, quantized_multiplier, right_shift,
                                    mp_multiplier->GetVAddr());
-    cviImgFlush2TL(ctx, cvk_ctx, *mp_multiplier, tl_multiplier);
+    cviImgFlush2TL(rt_handle, cvk_ctx, *mp_multiplier, tl_multiplier);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
     tl_multiplier->stride =
         cvk_ctx->ops->tl_default_stride(cvk_ctx, tl_multiplier->shape, CVK_FMT_U8, 0);
@@ -106,12 +107,12 @@ int IveTPUBlock::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUBlock::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUBlock::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   cvk_ctx->ops->tiu_depthwise_convolution(cvk_ctx, &m_p_conv);
 }
 
-int IveTPUBlock::postProcess(bmctx_t *ctx) {
-  mp_multiplier->Free(ctx);
+int IveTPUBlock::postProcess(CVI_RT_HANDLE rt_handle) {
+  mp_multiplier->Free(rt_handle);
   delete mp_multiplier;
   mp_multiplier = nullptr;
   return CVI_SUCCESS;

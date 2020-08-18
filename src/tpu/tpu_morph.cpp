@@ -11,7 +11,7 @@ void IveTPUErode::setKernel(IveKernel &kernel) {
   m_kernel_info.pad[3] = pad;
 }
 
-int IveTPUErode::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUErode::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "morph";
   m_slice_info.io_fmt = CVK_FMT_U8;
   m_slice_info.nums_of_tl = 3;
@@ -19,7 +19,7 @@ int IveTPUErode::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUErode::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUErode::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                           const std::vector<cvk_tg_shape_t> &tg_in_slices,
                           const std::vector<cvk_tg_shape_t> &tg_out_slices,
                           std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -44,15 +44,16 @@ int IveTPUErode::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   auto *tl_kernel = allocTLMem(cvk_ctx, tl_kernel_s, CVK_FMT_U8, 1, IVETLType::KERNEL);
   int tmp_c = m_kernel->img.m_tg.shape.c;
   m_kernel->img.m_tg.shape.c = tl_shape.c;
-  cviImgFlush2TL(ctx, cvk_ctx, m_kernel->img, tl_kernel);
+  cviImgFlush2TL(rt_handle, cvk_ctx, m_kernel->img, tl_kernel);
   m_kernel->img.m_tg.shape.c = tmp_c;
 
   auto *tl_multiplier = allocTLMem(cvk_ctx, packed_s, CVK_FMT_U8, 1);
   {
-    mp_multiplier = new CviImg(ctx, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, CVK_FMT_U8);
+    mp_multiplier =
+        new CviImg(rt_handle, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE, CVK_FMT_U8);
     getPackedMultiplierArrayBuffer(tl_shape.c, m_kernel->multiplier.base,
                                    m_kernel->multiplier.shift, mp_multiplier->GetVAddr());
-    cviImgFlush2TL(ctx, cvk_ctx, *mp_multiplier, tl_multiplier);
+    cviImgFlush2TL(rt_handle, cvk_ctx, *mp_multiplier, tl_multiplier);
     tl_multiplier->shape = {1, tl_shape.c, 1, 1};
     tl_multiplier->stride =
         cvk_ctx->ops->tl_default_stride(cvk_ctx, m_tl_vec[3]->shape, tl_multiplier->fmt, 0);
@@ -84,7 +85,7 @@ int IveTPUErode::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   m_p_conv.chl_quan_param = tl_multiplier;
 
   mp_xor_ones = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
-  constantFillTL(ctx, cvk_ctx, 255, mp_xor_ones);
+  constantFillTL(rt_handle, cvk_ctx, 255, mp_xor_ones);
 
   m_p_xor.b = mp_xor_ones;
   m_p_xor.layer_id = 0;
@@ -94,7 +95,7 @@ int IveTPUErode::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUErode::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUErode::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   m_p_xor.a = m_tl_vec[0];
   m_p_xor.res = m_tl_vec[0];
   mp_xor_ones->shape = m_tl_vec[0]->shape;
@@ -108,8 +109,8 @@ void IveTPUErode::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_
   cvk_ctx->ops->tiu_xor_int8(cvk_ctx, &m_p_xor);
 }
 
-int IveTPUErode::postProcess(bmctx_t *ctx) {
-  mp_multiplier->Free(ctx);
+int IveTPUErode::postProcess(CVI_RT_HANDLE rt_handle) {
+  mp_multiplier->Free(rt_handle);
   delete mp_multiplier;
   mp_multiplier = nullptr;
   return CVI_SUCCESS;

@@ -16,7 +16,7 @@ void IveTPUBlockBF16::setCellSize(const int cell_size, const int channel) {
   m_channel = channel;
 }
 
-int IveTPUBlockBF16::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUBlockBF16::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "blockBF16";
   m_slice_info.nums_of_tl = 3 * 2;
   m_kernel_info.nums_of_kernel = 1;
@@ -36,7 +36,7 @@ int IveTPUBlockBF16::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceR
   return CVI_SUCCESS;
 }
 
-int IveTPUBlockBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUBlockBF16::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                               const std::vector<cvk_tg_shape_t> &tg_in_slices,
                               const std::vector<cvk_tg_shape_t> &tg_out_slices,
                               std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -64,7 +64,7 @@ int IveTPUBlockBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   tl_block_shape.h = m_kernel_info.size;
   tl_block_shape.w = m_kernel_info.size;
   auto *block_kernel = allocTLMem(cvk_ctx, tl_block_shape, CVK_FMT_BF16, 1, IVETLType::KERNEL);
-  constantFillTL(ctx, cvk_ctx, convert_fp32_bf16(1.f), block_kernel);
+  constantFillTL(rt_handle, cvk_ctx, convert_fp32_bf16(1.f), block_kernel);
   float real_multiplier = 1.f / (m_kernel_info.size * m_kernel_info.size * m_bin_num);
 
   m_p_conv.pad_top = m_kernel_info.pad[2];
@@ -98,7 +98,8 @@ int IveTPUBlockBF16::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUBlockBF16::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUBlockBF16::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                                uint32_t ping_idx) {
   cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv);
   cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul);
 }

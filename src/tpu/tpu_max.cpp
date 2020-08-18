@@ -10,7 +10,7 @@ void IveTPUMax::setKernelSize(uint32_t kz) {
   m_kernel_info.pad[3] = 0;
 }
 
-int IveTPUMax::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUMax::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "max";
   m_slice_info.io_fmt = CVK_FMT_U8;
   m_slice_info.nums_of_tl = 2;
@@ -18,7 +18,7 @@ int IveTPUMax::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUMax::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUMax::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                         const std::vector<cvk_tg_shape_t> &tg_in_slices,
                         const std::vector<cvk_tg_shape_t> &tg_out_slices,
                         std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -52,6 +52,6 @@ int IveTPUMax::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUMax::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUMax::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   cvk_ctx->ops->tiu_max_pooling(cvk_ctx, &m_p_max);
 }

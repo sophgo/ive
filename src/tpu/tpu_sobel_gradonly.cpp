@@ -13,7 +13,7 @@ void IveTPUSobelGradOnly::setKernel(IveKernel &kernel_x, IveKernel &kernel_y) {
   m_kernel_info.pad[3] = pad;
 }
 
-int IveTPUSobelGradOnly::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUSobelGradOnly::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "sobelGrad";
   // 1 input tl
   // 2 conv result
@@ -25,7 +25,7 @@ int IveTPUSobelGradOnly::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUSobelGradOnly::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUSobelGradOnly::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                                   const std::vector<cvk_tg_shape_t> &tg_in_slices,
                                   const std::vector<cvk_tg_shape_t> &tg_out_slices,
                                   std::vector<uint32_t> *tl_in_idx,
@@ -47,8 +47,8 @@ int IveTPUSobelGradOnly::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                                 m_kernel_info.size};
   auto *tl_kernel_gx = allocTLMem(cvk_ctx, tl_kernel_s, CVK_FMT_BF16, 1, IVETLType::KERNEL);
   auto *tl_kernel_gy = allocTLMem(cvk_ctx, tl_kernel_s, CVK_FMT_BF16, 1, IVETLType::KERNEL);
-  cviImgFlush2TL(ctx, cvk_ctx, m_kernel_x->img, tl_kernel_gx);
-  cviImgFlush2TL(ctx, cvk_ctx, m_kernel_y->img, tl_kernel_gy);
+  cviImgFlush2TL(rt_handle, cvk_ctx, m_kernel_x->img, tl_kernel_gx);
+  cviImgFlush2TL(rt_handle, cvk_ctx, m_kernel_y->img, tl_kernel_gy);
 
   if (enable_cext) {
     m_p_conv.pad_top = 0;
@@ -79,7 +79,8 @@ int IveTPUSobelGradOnly::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUSobelGradOnly::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUSobelGradOnly::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                                    uint32_t ping_idx) {
   m_p_conv.ofmap = m_tl_vec[1];
   m_p_conv.weight = m_tl_vec[3];
   cvk_ctx->ops->tiu_pt_depthwise_convolution(cvk_ctx, &m_p_conv);

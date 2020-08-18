@@ -22,7 +22,7 @@ void IveTPUMagAndAng::magDistMethod(int method) {
 
 void IveTPUMagAndAng::noNegative(bool value) { m_no_negative = value; }
 
-int IveTPUMagAndAng::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUMagAndAng::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "magnang";
   m_slice_info.io_fmt = CVK_FMT_BF16;
   // 2 input tl
@@ -50,7 +50,7 @@ int IveTPUMagAndAng::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
   return CVI_SUCCESS;
 }
 
-int IveTPUMagAndAng::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUMagAndAng::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                               const std::vector<cvk_tg_shape_t> &tg_in_slices,
                               const std::vector<cvk_tg_shape_t> &tg_out_slices,
                               std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -82,8 +82,8 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
         allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
     const CviImg *table_data = mp_tblmgr->sqrt(TBLSQRT::TBLSQRT_DATA);
     const CviImg *table_data_mantissa = mp_tblmgr->sqrt(TBLSQRT::TBLSQRT_MANTISSA);
-    cviImg2TL(ctx, cvk_ctx, *table_data, tl_sqrt_table_answer);
-    cviImg2TL(ctx, cvk_ctx, *table_data_mantissa, tl_sqrt_table_answer_mantissa);
+    cviImg2TL(rt_handle, cvk_ctx, *table_data, tl_sqrt_table_answer);
+    cviImg2TL(rt_handle, cvk_ctx, *table_data_mantissa, tl_sqrt_table_answer_mantissa);
   }
 
   cvk_tl_t *tl_y0_table = NULL, *tl_invert_table = NULL, *tl_pos_neg_table = NULL,
@@ -100,9 +100,9 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
                                              : mp_tblmgr->atan(TBLATAN::TBLATAN_Y0);
       const CviImg *table_data_atan_invert = mp_tblmgr->atan(TBLATAN::TBLATAN_INVERT);
       const CviImg *table_data_atan_pos_neg = mp_tblmgr->atan(TBLATAN::TBLATAN_POSNEG);
-      cviImg2TL(ctx, cvk_ctx, *table_data_atan_y0, tl_y0_table);
-      cviImg2TL(ctx, cvk_ctx, *table_data_atan_invert, tl_invert_table);
-      cviImg2TL(ctx, cvk_ctx, *table_data_atan_pos_neg, tl_pos_neg_table);
+      cviImg2TL(rt_handle, cvk_ctx, *table_data_atan_y0, tl_y0_table);
+      cviImg2TL(rt_handle, cvk_ctx, *table_data_atan_invert, tl_invert_table);
+      cviImg2TL(rt_handle, cvk_ctx, *table_data_atan_pos_neg, tl_pos_neg_table);
     }
     {
       tl_reciprocal_table_answer =
@@ -112,8 +112,8 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
       const CviImg *table_data = mp_tblmgr->reciprocal(TBLRECIPROCAL::TBLRECIPROCAL_DATA);
       const CviImg *table_data_mantissa =
           mp_tblmgr->reciprocal(TBLRECIPROCAL::TBLRECIPROCAL_MANTISSA);
-      cviImg2TL(ctx, cvk_ctx, *table_data, tl_reciprocal_table_answer);
-      cviImg2TL(ctx, cvk_ctx, *table_data_mantissa, tl_reciprocal_table_answer_mantissa);
+      cviImg2TL(rt_handle, cvk_ctx, *table_data, tl_reciprocal_table_answer);
+      cviImg2TL(rt_handle, cvk_ctx, *table_data_mantissa, tl_reciprocal_table_answer_mantissa);
     }
   }
 
@@ -233,7 +233,8 @@ int IveTPUMagAndAng::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUMagAndAng::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUMagAndAng::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                                uint32_t ping_idx) {
   if (m_export_mag) {
     if (m_dist_method == 0) {
       cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul_a);

@@ -1,14 +1,14 @@
 #include "tpu/tpu_xor.hpp"
 #include <string.h>
 
-int IveTPUXOr::init(bmctx_t *ctx, cvk_context_t *cvk_ctx) {
+int IveTPUXOr::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_cmdbuf_subfix = "xor";
   m_slice_info.nums_of_tl = 2;
 
   return CVI_SUCCESS;
 }
 
-int IveTPUXOr::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
+int IveTPUXOr::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                         const std::vector<cvk_tg_shape_t> &tg_in_slices,
                         const std::vector<cvk_tg_shape_t> &tg_out_slices,
                         std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
@@ -32,6 +32,6 @@ int IveTPUXOr::runSetup(bmctx_t *ctx, cvk_context_t *cvk_ctx,
   return CVI_SUCCESS;
 }
 
-void IveTPUXOr::operation(bmctx_t *ctx, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
+void IveTPUXOr::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) {
   cvk_ctx->ops->tiu_xor_int8(cvk_ctx, &m_p_or);
 }
