@@ -129,6 +129,7 @@ struct TPU_HANDLE {
 
 struct IVE_HANDLE_CTX {
   bmctx_t ctx;
+  cvk_reg_info_t req_info;
   cvk_context_t *cvk_ctx;
   TPU_HANDLE t_h;
   // VIP
@@ -136,7 +137,7 @@ struct IVE_HANDLE_CTX {
 
 IVE_HANDLE CVI_IVE_CreateHandle() {
   IVE_HANDLE_CTX *handle_ctx = new IVE_HANDLE_CTX;
-  if (createHandle(&handle_ctx->ctx, &handle_ctx->cvk_ctx) != CVI_SUCCESS) {
+  if (createHandle(&handle_ctx->ctx, &handle_ctx->req_info, &handle_ctx->cvk_ctx) != CVI_SUCCESS) {
     delete handle_ctx;
     return NULL;
   }
@@ -150,7 +151,7 @@ IVE_HANDLE CVI_IVE_CreateHandle() {
 CVI_S32 CVI_IVE_DestroyHandle(IVE_HANDLE pIveHandle) {
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_tblmgr.free(&handle_ctx->ctx);
-  destroyHandle(&handle_ctx->ctx, handle_ctx->cvk_ctx);
+  destroyHandle(&handle_ctx->ctx, &handle_ctx->req_info, handle_ctx->cvk_ctx);
   delete handle_ctx;
   return CVI_SUCCESS;
 }
