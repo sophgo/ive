@@ -404,10 +404,7 @@ CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *
   }
 
   for (size_t i = 0; i < src_img->GetImgHeights().size(); i++) {
-    pstVFDst->u32Length[i] = src_img->GetImgCOffsets()[i + 1];
-  }
-  if (src_img->GetImgHeights().size() > 2) {
-    pstVFDst->u32Length[2] = src_img->GetImgSize() - src_img->GetImgCOffsets()[2];
+    pstVFDst->u32Length[i] = src_img->GetImgCOffsets()[i + 1] - src_img->GetImgCOffsets()[i];
   }
   return CVI_SUCCESS;
 }
