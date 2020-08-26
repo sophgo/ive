@@ -20,6 +20,7 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_and.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_block_bf16.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_block.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_const_fill.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_copy_direct.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_copy_interval.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_filter.cpp

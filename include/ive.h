@@ -198,6 +198,18 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                                  bool bInstant);
 
 /**
+ * @brief Fill whole image with a single value.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param value Fill value. Note if output is U8 value must between 0-255.
+ * @param pstDst Output result.
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_ConstFill(IVE_HANDLE pIveHandle, const CVI_FLOAT value, IVE_DST_IMAGE_S *pstDst,
+                          bool bInstant);
+
+/**
  * @brief Add two image and output the result.
  *
  * @param pIveHandle Ive instance handler.

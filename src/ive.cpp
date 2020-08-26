@@ -16,6 +16,7 @@
 #include "tpu/tpu_block.hpp"
 #include "tpu/tpu_cmp.hpp"
 #include "tpu/tpu_copy.hpp"
+#include "tpu/tpu_fill.hpp"
 #include "tpu/tpu_filter.hpp"
 #include "tpu/tpu_magandang.hpp"
 #include "tpu/tpu_morph.hpp"
@@ -104,6 +105,7 @@ struct TPU_HANDLE {
   IveTPUAnd t_and;
   IveTPUBlock t_block;
   IveTPUBlockBF16 t_block_bf16;
+  IveTPUConstFill t_const_fill;
   IveTPUCopyInterval t_copy_int;
   IveTPUErode t_erode;
   IveTPUFilter t_filter;
@@ -766,6 +768,20 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
     return CVI_FAILURE;
   }
   return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_ConstFill(IVE_HANDLE pIveHandle, const CVI_FLOAT value, IVE_DST_IMAGE_S *pstDst,
+                          bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
+  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_BF16C1)) {
+    return CVI_FAILURE;
+  }
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+  std::vector<CviImg> outputs = {*cpp_dst};
+  return handle_ctx->t_h.t_const_fill.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, value,
+                                          &outputs);
 }
 
 CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
