@@ -206,7 +206,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
   CVIIMGTYPE img_type;
   std::vector<uint32_t> strides;
   std::vector<uint32_t> heights;
-  const uint32_t align = 16;
+  const uint32_t align = 32;
   switch (enType) {
     case IVE_IMAGE_TYPE_S8C1: {
       img_type = CVI_SINGLE;
