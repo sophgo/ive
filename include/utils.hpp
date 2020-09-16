@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <string.h>
+#include <sys/sysinfo.h>
 #include <iostream>
 #include <neon_utils.hpp>
 #include <vector>
@@ -19,7 +20,12 @@ inline int createHandle(CVI_RT_HANDLE *rt_handle, cvk_context_t **cvk_ctx) {
     printf("Runtime init failed.\n");
     return CVI_FAILURE;
   }
-  *cvk_ctx = (cvk_context_t *)CVI_RT_RegisterKernel(*rt_handle, 0x10000000);
+  struct sysinfo info;
+  if (sysinfo(&info) < 0) {
+    return CVI_FAILURE;
+  }
+  uint64_t mem = info.freeram * 0.5;
+  *cvk_ctx = (cvk_context_t *)CVI_RT_RegisterKernel(*rt_handle, mem);
   return CVI_SUCCESS;
 }
 
