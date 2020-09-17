@@ -13,6 +13,17 @@
 #include <neon_utils.hpp>
 #include <vector>
 
+/*
+ * For 4k images around 1.2MB. Take 2M.
+ * For 1080p images around 300KB. Take 500KB.
+ * For 1080p images around 134KB. Take 150KB.
+ * For 480p images around 46KB. Take 50KB.
+ */
+#define CMDBUF4k 2000000
+#define CMDBUF1080 500000
+#define CMDBUF720 150000
+#define CMDBUF640 50000
+
 #define MULTIPLIER_ONLY_PACKED_DATA_SIZE 5
 
 inline int createHandle(CVI_RT_HANDLE *rt_handle, cvk_context_t **cvk_ctx) {
@@ -24,7 +35,15 @@ inline int createHandle(CVI_RT_HANDLE *rt_handle, cvk_context_t **cvk_ctx) {
   if (sysinfo(&info) < 0) {
     return CVI_FAILURE;
   }
-  uint64_t mem = info.freeram * 0.5;
+
+  uint64_t mem = CMDBUF4k;
+  if (info.freeram < CMDBUF720) {
+    mem = CMDBUF640;
+  } else if (info.freeram < CMDBUF1080) {
+    mem = CMDBUF720;
+  } else if (info.freeram < CMDBUF4k) {
+    mem = CMDBUF1080;
+  }
   *cvk_ctx = (cvk_context_t *)CVI_RT_RegisterKernel(*rt_handle, mem);
   return CVI_SUCCESS;
 }
