@@ -90,7 +90,6 @@ CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_h, uint32_t img_w,
   this->m_coffsets.push_back(this->m_size);
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
   for (size_t i = 0; i < strides.size(); i++) {
-    printf("stride %u\n", strides[i]);
     // FIXME: Should be Align64(strides[i] * heights[i] * getFmtSize(this->m_fmt), SCALAR_C_ALIGN)
     // But there is a bug in core, so we use this method temporarily.
     this->m_size += Align64(strides[i] * heights[i], SCALAR_C_ALIGN) * getFmtSize(this->m_fmt);
@@ -116,7 +115,6 @@ CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_h, uint32_t img_w,
     }
   }
   AllocateDevice(rt_handle);
-  printf("size %lu\n", this->m_size);
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
   uint64_t new_paddr = Align64(this->m_paddr, SCALAR_C_ALIGN);
   uint64_t offset = new_paddr - this->m_paddr;
