@@ -235,7 +235,7 @@ typedef struct IVE_SOBEL_CTRL {
   CVI_S8 as8Mask[25];
 } IVE_SOBEL_CTRL_S;
 
-typedef enum hiIVE_SUB_MODE_E {
+typedef enum IVE_SUB_MODE_E {
   IVE_SUB_MODE_NORMAL = 0x0,
   IVE_SUB_MODE_ABS = 0x1,
   IVE_SUB_MODE_BUTT
