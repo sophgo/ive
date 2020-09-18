@@ -35,13 +35,13 @@ inline int createHandle(CVI_RT_HANDLE *rt_handle, cvk_context_t **cvk_ctx) {
   if (sysinfo(&info) < 0) {
     return CVI_FAILURE;
   }
-
+  auto available_mem = info.freeram * info.mem_unit;
   uint64_t mem = CMDBUF4k;
-  if (info.freeram < CMDBUF720) {
+  if (available_mem < CMDBUF720) {
     mem = CMDBUF640;
-  } else if (info.freeram < CMDBUF1080) {
+  } else if (available_mem < CMDBUF1080) {
     mem = CMDBUF720;
-  } else if (info.freeram < CMDBUF4k) {
+  } else if (available_mem < CMDBUF4k) {
     mem = CMDBUF1080;
   }
   *cvk_ctx = (cvk_context_t *)CVI_RT_RegisterKernel(*rt_handle, mem);
