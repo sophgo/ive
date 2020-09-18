@@ -881,13 +881,13 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   std::vector<CviImg> outputs = {*cpp_dst};
   int ret = CVI_FAILURE;
   if (cpp_src->m_tg.fmt == CVK_FMT_U8 && cpp_dst->m_tg.fmt == CVK_FMT_U8) {
-    handle_ctx->t_h.t_block.setBinNum(pstBlkCtrl->f32BinSize);
+    handle_ctx->t_h.t_block.setScaleNum(pstBlkCtrl->f32ScaleSize);
     handle_ctx->t_h.t_block.setCellSize(u32CellSize, cpp_src->m_tg.shape.c);
     handle_ctx->t_h.t_block.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     ret = handle_ctx->t_h.t_block.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs,
                                       true);
   } else {
-    handle_ctx->t_h.t_block_bf16.setBinNum(pstBlkCtrl->f32BinSize);
+    handle_ctx->t_h.t_block_bf16.setScaleNum(pstBlkCtrl->f32ScaleSize);
     handle_ctx->t_h.t_block_bf16.setCellSize(u32CellSize, cpp_src->m_tg.shape.c);
     handle_ctx->t_h.t_block_bf16.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     ret = handle_ctx->t_h.t_block_bf16.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,

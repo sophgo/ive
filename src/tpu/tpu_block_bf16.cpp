@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-void IveTPUBlockBF16::setBinNum(const float bin_num) { m_bin_num = bin_num; }
+void IveTPUBlockBF16::setScaleNum(const float scale_num) { m_scale_num = scale_num; }
 
 void IveTPUBlockBF16::setCellSize(const int cell_size, const int channel) {
   m_kernel_info.size = cell_size;
@@ -65,7 +65,7 @@ int IveTPUBlockBF16::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   tl_block_shape.w = m_kernel_info.size;
   auto *block_kernel = allocTLMem(cvk_ctx, tl_block_shape, CVK_FMT_BF16, 1, IVETLType::KERNEL);
   constantFillTL(rt_handle, cvk_ctx, convert_fp32_bf16(1.f), block_kernel);
-  float real_multiplier = 1.f / (m_kernel_info.size * m_kernel_info.size * m_bin_num);
+  float real_multiplier = 1.f / (m_kernel_info.size * m_kernel_info.size * m_scale_num);
 
   m_p_conv.pad_top = m_kernel_info.pad[2];
   m_p_conv.pad_bottom = m_kernel_info.pad[3];

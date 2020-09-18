@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
   // You can also setup the additional f32BinSize to do additional division.
   // Y = averageInACell(X1...Xn) / f32BinSize
   IVE_BLOCK_CTRL_S iveBlkCtrl;
-  iveBlkCtrl.f32BinSize = 2;
+  iveBlkCtrl.f32ScaleSize = 2;
   iveBlkCtrl.u32CellSize = CELL_SZ;
   // The size of the output must meet the requirement of
   // ==> src.width % dst.width == 0

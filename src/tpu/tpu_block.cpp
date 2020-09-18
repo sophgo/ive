@@ -1,7 +1,7 @@
 #include "tpu/tpu_block.hpp"
 #include <string.h>
 
-void IveTPUBlock::setBinNum(const float bin_num) { m_bin_num = bin_num; }
+void IveTPUBlock::setScaleNum(const float scale_num) { m_scale_num = scale_num; }
 
 void IveTPUBlock::setCellSize(const int cell_size, const int channel) {
   m_kernel_info.size = cell_size;
@@ -65,7 +65,7 @@ int IveTPUBlock::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   tl_block_shape.w = m_kernel_info.size;
   auto *block_kernel = allocTLMem(cvk_ctx, tl_block_shape, CVK_FMT_U8, 1, IVETLType::KERNEL);
   constantFillTL(rt_handle, cvk_ctx, 1, block_kernel);
-  float real_multiplier = 1.f / (m_kernel_info.size * m_kernel_info.size * m_bin_num);
+  float real_multiplier = 1.f / (m_kernel_info.size * m_kernel_info.size * m_scale_num);
   cvk_tl_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
   auto *tl_multiplier = allocTLMem(cvk_ctx, packed_s, CVK_FMT_U8, 1);
   {
