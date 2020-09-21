@@ -379,15 +379,28 @@ int IveCore::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, std::vector<Cv
   if (legacy_mode) {
     ret = runSingleSizeKernel(rt_handle, cvk_ctx, input, output);
   } else {
-    bool has_sub_image = false;
+    bool use_ext = false;
+    if (input.size() > 1 && output->size() > 1) {
+      if (input[0].m_tg.fmt != (*output)[0].m_tg.fmt) {
+        use_ext |= true;
+      }
+    } else if (input.size() > 1) {
+      uint32_t total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
+      use_ext |= (total_size % 16 == 0) ? true : false;
+    } else {
+      uint32_t total_size = (*output)[0].m_tg.stride.n / getFmtSize((*output)[0].m_tg.fmt);
+      use_ext |= (total_size % 16 == 0) ? true : false;
+    }
     for (const auto &img : input) {
-      has_sub_image |= img.IsSubImg();
+      use_ext |= img.IsSubImg();
     }
     for (const auto &img : (*output)) {
-      has_sub_image |= img.IsSubImg();
+      use_ext |= img.IsSubImg();
     }
-    uint32_t total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
-    if ((has_sub_image || m_kernel_info.size != 1 || m_force_use_ext) || (total_size % 16)) {
+    if (m_kernel_info.size != 1) {
+      use_ext |= true;
+    }
+    if (use_ext || m_force_use_ext) {
       ret = runSingleSizeExtKernel(rt_handle, cvk_ctx, input, output);
     } else {
       ret = runNoKernel(rt_handle, cvk_ctx, input, output);
