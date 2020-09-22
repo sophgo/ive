@@ -7,6 +7,7 @@ void IveTPUAddBF16::setCoef(float a, float b) {
 }
 
 int IveTPUAddBF16::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
+  m_slice_info.io_fmt = CVK_FMT_BF16;
   m_cmdbuf_subfix = "add_bf16";
   m_slice_info.ping_pong_size = 2;
   m_slice_info.ping_pong_share_tl = 0;

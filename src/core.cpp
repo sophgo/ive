@@ -381,15 +381,17 @@ int IveCore::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, std::vector<Cv
   } else {
     bool use_ext = false;
     if (input.size() > 1 && output->size() > 1) {
-      if (input[0].m_tg.fmt != (*output)[0].m_tg.fmt) {
+      uint32_t total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
+      uint32_t total_size2 = (*output)[0].m_tg.stride.n / getFmtSize((*output)[0].m_tg.fmt);
+      if (total_size != total_size2) {
         use_ext |= true;
       }
     } else if (input.size() > 1) {
       uint32_t total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
-      use_ext |= (total_size % 16 == 0) ? true : false;
+      use_ext |= (total_size % 16 != 0) ? true : false;
     } else {
       uint32_t total_size = (*output)[0].m_tg.stride.n / getFmtSize((*output)[0].m_tg.fmt);
-      use_ext |= (total_size % 16 == 0) ? true : false;
+      use_ext |= (total_size % 16 != 0) ? true : false;
     }
     for (const auto &img : input) {
       use_ext |= img.IsSubImg();

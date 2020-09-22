@@ -4,6 +4,7 @@
 #include <string.h>
 
 int IveTPUSubAbs::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
+  m_slice_info.io_fmt = CVK_FMT_U8;
   m_cmdbuf_subfix = "subAbs";
   // 2 - in
   // 1 -tmp

@@ -5,6 +5,7 @@
 void IveTPUBlockBF16::setScaleNum(const float scale_num) { m_scale_num = scale_num; }
 
 void IveTPUBlockBF16::setCellSize(const int cell_size, const int channel) {
+  m_slice_info.io_fmt = CVK_FMT_BF16;
   m_kernel_info.size = cell_size;
   m_kernel_info.default_stride_x = cell_size;
   m_kernel_info.default_stride_y = cell_size;

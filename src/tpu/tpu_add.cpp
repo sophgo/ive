@@ -2,6 +2,7 @@
 #include <string.h>
 
 int IveTPUAdd::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
+  m_slice_info.io_fmt = CVK_FMT_U8;
   m_cmdbuf_subfix = "add";
   m_slice_info.ping_pong_size = 2;
   m_slice_info.ping_pong_share_tl = 1;

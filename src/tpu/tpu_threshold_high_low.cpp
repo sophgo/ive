@@ -10,6 +10,7 @@ void IveTPUThresholdHighLow::setThreshold(int threshold, int low, int high) {
 }
 
 int IveTPUThresholdHighLow::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
+  m_slice_info.io_fmt = CVK_FMT_U8;
   m_cmdbuf_subfix = "threshHL";
   m_slice_info.nums_of_tl = 3;
 

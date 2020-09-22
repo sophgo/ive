@@ -6,6 +6,7 @@
 void IveTPUThreshold::setThreshold(int threshold) { m_threshold = threshold; }
 
 int IveTPUThreshold::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
+  m_slice_info.io_fmt = CVK_FMT_U8;
   m_cmdbuf_subfix = "thresh";
   m_slice_info.nums_of_tl = 3;
 

@@ -9,6 +9,7 @@ void IveTPUThresholdSlope::setThreshold(int low, int high) {
 }
 
 int IveTPUThresholdSlope::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
+  m_slice_info.io_fmt = CVK_FMT_U8;
   m_cmdbuf_subfix = "threshSlope";
   m_slice_info.nums_of_tl = 1;
 
