@@ -90,9 +90,7 @@ CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_h, uint32_t img_w,
   this->m_coffsets.push_back(this->m_size);
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
   for (size_t i = 0; i < strides.size(); i++) {
-    // FIXME: Should be Align64(strides[i] * heights[i] * getFmtSize(this->m_fmt), SCALAR_C_ALIGN)
-    // But there is a bug in core, so we use this method temporarily.
-    this->m_size += Align64(strides[i] * heights[i], SCALAR_C_ALIGN) * getFmtSize(this->m_fmt);
+    this->m_size += Align64(strides[i] * heights[i], SCALAR_C_ALIGN);
     if (strides[i] != strides[0]) {
       m_is_stride_ceq = false;
     }
@@ -101,7 +99,7 @@ CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_h, uint32_t img_w,
 #else
 
   for (size_t i = 0; i < strides.size(); i++) {
-    this->m_size += strides[i] * heights[i] * getFmtSize(this->m_fmt);
+    this->m_size += strides[i] * heights[i];
     if (strides[i] != strides[0]) {
       m_is_stride_ceq = false;
     }
@@ -166,7 +164,7 @@ CviImg::CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
     this->m_tg.base_reg_index = 0;
     this->m_tg.fmt = this->m_fmt;
     this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
-    this->m_tg.stride.h = this->m_strides[0] * getFmtSize(this->m_tg.fmt);
+    this->m_tg.stride.h = this->m_strides[0];
     this->m_tg.stride.c = u32_lengths[0];
     this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
   }
@@ -177,14 +175,14 @@ void CviImg::SetupImageInfo(uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_
   this->m_channel = img_c;
   this->m_width = img_w;
   this->m_height = img_h;
-  uint32_t w_stride = img_w;
+  uint32_t w_stride = img_w * getFmtSize(this->m_fmt);
   this->m_strides.resize(this->m_channel, w_stride);
   this->m_heights.resize(this->m_channel, this->m_height);
   this->m_coffsets.clear();
   this->m_size = 0;
   for (size_t i = 0; i < this->m_strides.size(); i++) {
     this->m_coffsets.push_back(this->m_size);
-    this->m_size += this->m_strides[i] * this->m_heights[i] * getFmtSize(this->m_fmt);
+    this->m_size += this->m_strides[i] * this->m_heights[i];
   }
   if (this->m_fmt == CVK_FMT_U8) {
     if (this->m_channel == 1) {
@@ -248,7 +246,7 @@ int CviImg::AllocateDevice(CVI_RT_HANDLE rt_handle) {
     this->m_tg.base_reg_index = 0;
     this->m_tg.fmt = this->m_fmt;
     this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
-    this->m_tg.stride.h = this->m_strides[0] * getFmtSize(this->m_tg.fmt);
+    this->m_tg.stride.h = this->m_strides[0];
     this->m_tg.stride.c = m_tg.shape.h * this->m_tg.stride.h;
     this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
   }
