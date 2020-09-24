@@ -1108,13 +1108,13 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
           tg_in.fmt = bm_src_info.fns_vec[k].getFmt();
 
           // clang-format off
-          LOGD("[%lu] In\n"
+          LOGD("[%u] In\n"
                " tg start address %lu\n"
                " tg shape %d %d %d %d\n"
                " tg stride %d %d %d\n"
                " tl shape %d %d %d %d\n"
                " tl stride %u %u %u %u\n",
-               k,
+               (uint32_t)k,
                tg_in.start_address,
                tg_in.shape.n, tg_in.shape.c, tg_in.shape.h, tg_in.shape.w,
                tg_in.stride.n, tg_in.stride.c, tg_in.stride.h,
@@ -1156,13 +1156,13 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
           out_shape.shape.w = tg_out.shape.w;
 
           // clang-format off
-          LOGD("[%lu] Out\n"
+          LOGD("[%u] Out\n"
                " tg start address %lu\n"
                " tg shape %d %d %d %d\n"
                " tg stride %d %d %d\n"
                " tl shape %d %d %d %d\n"
                " tl stride %u %u %u %u\n",
-               k,
+               (uint32_t)k,
                tg_out.start_address,
                tg_out.shape.n, tg_out.shape.c, tg_out.shape.h, tg_out.shape.w,
                tg_out.stride.n, tg_out.stride.c, tg_out.stride.h,
