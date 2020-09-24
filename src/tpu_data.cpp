@@ -1,4 +1,5 @@
 #include "tpu_data.hpp"
+#include "ive_log.hpp"
 
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
 #define SCALAR_C_ALIGN 0x1000
@@ -13,11 +14,11 @@ CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_c, uint32_t img_h, uint32_t
 CviImg::CviImg(CVI_RT_HANDLE rt_handle, const CviImg &img, uint32_t x1, uint32_t y1, uint32_t x2,
                uint32_t y2) {
   if (!this->m_is_stride_ceq) {
-    std::cerr << "Sub-image does not support non-equal stride in different channels." << std::endl;
+    LOGE("Sub-image does not support non-equal stride in different channels.\n");
     return;
   }
   if (!this->m_is_planar) {
-    std::cerr << "Sub-image only supports planar images." << std::endl;
+    LOGE("Sub-image only supports planar images.\n");
     return;
   }
   if (x1 > x2) {
@@ -37,8 +38,7 @@ CviImg::CviImg(CVI_RT_HANDLE rt_handle, const CviImg &img, uint32_t x1, uint32_t
   uint32_t new_width = x2_new - x1_new;
   uint32_t new_height = y2_new - y1_new;
   if (new_width == 0 || new_height == 0) {
-    std::cerr << "Error width " << new_width << " or height " << new_height << " cannot be 0."
-              << std::endl;
+    LOGE("Error! width %u or height %u cannot be 0.\n", new_width, new_height);
     return;
   }
 
@@ -70,11 +70,11 @@ CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_h, uint32_t img_w,
                std::vector<uint32_t> strides, std::vector<uint32_t> heights, CVIIMGTYPE img_type,
                cvk_fmt_t fmt, CviImg *cvi_img) {
   if (strides.size() == 0) {
-    std::cerr << "No stride given." << std::endl;
+    LOGE("Strides are empty.\n");
     return;
   }
   if (strides.size() != heights.size()) {
-    std::cerr << "Strides size and heights size must be the same." << std::endl;
+    LOGE("Strides size and heights size must be the same.\n");
     return;
   }
   this->m_fmt = fmt;
@@ -132,11 +132,11 @@ CviImg::CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
                std::vector<uint32_t> heights, std::vector<uint32_t> u32_lengths, uint8_t *vaddr,
                uint64_t paddr, CVIIMGTYPE img_type, cvk_fmt_t fmt) {
   if (strides.size() == 0) {
-    std::cerr << "No stride given." << std::endl;
+    LOGE("Strides are empty.\n");
     return;
   }
   if (strides.size() != heights.size()) {
-    std::cerr << "Strides size and heights size must be the same." << std::endl;
+    LOGE("Strides size and heights size must be the same.\n");
     return;
   }
   this->m_fmt = fmt;

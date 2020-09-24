@@ -1,5 +1,6 @@
 #pragma once
 #include "cvi_type.h"
+#include "ive_log.hpp"
 
 #include <cvikernel/cvikernel.h>
 #include <cvimath/cvimath_internal.h>
@@ -33,7 +34,7 @@ static int getFmtSize(cvk_fmt_t fmt) {
       fmt_size = 4;
       break;
     default:
-      std::cerr << "Unsupported fmt type: " << fmt << std::endl;
+      LOGE("Unsupported fmt type: %u.\n.", fmt);
   }
   return fmt_size;
 }

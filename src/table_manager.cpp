@@ -1,4 +1,5 @@
 #include "table_manager.hpp"
+#include "ive_log.hpp"
 
 TblMgr::TblMgr() {}
 TblMgr::~TblMgr() {}
@@ -127,7 +128,7 @@ const cvk_tl_shape_t TblMgr::getTblTLShape(cvk_fmt_t fmt) {
   } else if (fmt == CVK_FMT_BF16) {
     return m_table_s;
   }
-  std::cerr << "Unsupported fmt " << fmt << std::endl;
+  LOGE("Unsupported fmt %u.\n", fmt);
   return {0, 0, 0, 0};
 }
 

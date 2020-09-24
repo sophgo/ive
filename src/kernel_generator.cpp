@@ -1,4 +1,5 @@
 #include "kernel_generator.hpp"
+#include "ive_log.hpp"
 #include "utils.hpp"
 
 static inline IveKernel createGaussianKernel(CVI_RT_HANDLE rt_handle, uint32_t img_c, uint32_t k_h,
@@ -23,7 +24,7 @@ static inline IveKernel createGaussianKernel(CVI_RT_HANDLE rt_handle, uint32_t i
     }
     kernel.multiplier.f = 1.f / 16;
   } else {
-    std::cerr << "Not supported kernel shape. ( " << k_h << ", " << k_w << ")" << std::endl;
+    LOGE("Not supported kernel shape. ( %u, %u).\n", k_h, k_w);
   }
   QuantizeMultiplierSmallerThanOne(kernel.multiplier.f, &kernel.multiplier.base,
                                    &kernel.multiplier.shift);
@@ -90,7 +91,7 @@ static inline IveKernel createKernel(CVI_RT_HANDLE rt_handle, uint32_t img_c, ui
         filter = sobel_x_kernel_1x1;
         break;
       default:
-        std::cerr << "Not supported kernel type." << std::endl;
+        LOGE("Not supported kernel type.\n");
         break;
     }
   } else if (k_h == 3 && k_w == 3) {
@@ -117,7 +118,7 @@ static inline IveKernel createKernel(CVI_RT_HANDLE rt_handle, uint32_t img_c, ui
         filter = morph_ellipse_kernel_3x3;
         break;
       default:
-        std::cerr << "Not supported kernel type." << std::endl;
+        LOGE("Not supported kernel type.\n");
         break;
     }
   } else if (k_h == 5 && k_w == 5) {
@@ -138,11 +139,11 @@ static inline IveKernel createKernel(CVI_RT_HANDLE rt_handle, uint32_t img_c, ui
         filter = morph_ellipse_kernel_5x5;
         break;
       default:
-        std::cerr << "Not supported kernel type." << std::endl;
+        LOGE("Not supported kernel type.\n");
         break;
     }
   } else {
-    std::cerr << "Not supported kernel shape. ( " << k_h << ", " << k_w << ")" << std::endl;
+    LOGE("Not supported kernel shape. ( %u, %u).\n", k_h, k_w);
   }
 
   uint8_t *v_addr = cimg.GetVAddr();

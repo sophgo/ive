@@ -1,5 +1,6 @@
 #include "ive.h"
 #include "ive_experimental.h"
+#include "ive_log.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
@@ -74,7 +75,7 @@ namespace detail {
 inline bool IsValidImageType(IVE_IMAGE_S *pstImg, std::string pstImgStr,
                              std::initializer_list<const IVE_IMAGE_TYPE_E> enType) {
   if (pstImg == NULL) {
-    std::cerr << pstImgStr << " cannot be NULL." << std::endl;
+    LOGE("%s cannot be NULL.\n", pstImgStr.c_str());
     return false;
   }
   for (auto it : enType) {
@@ -87,7 +88,7 @@ inline bool IsValidImageType(IVE_IMAGE_S *pstImg, std::string pstImgStr,
   for (auto it : enType) {
     msg += (std::string(imgEnTypeStr[it]) + std::string(" "));
   }
-  std::cerr << msg << std::endl;
+  LOGE("%s.\n", msg.c_str());
   return false;
 }
 }  // namespace detail
@@ -139,13 +140,16 @@ struct IVE_HANDLE_CTX {
 IVE_HANDLE CVI_IVE_CreateHandle() {
   IVE_HANDLE_CTX *handle_ctx = new IVE_HANDLE_CTX;
   if (createHandle(&handle_ctx->rt_handle, &handle_ctx->cvk_ctx) != CVI_SUCCESS) {
+    LOGE("Create handle failed.\n");
     delete handle_ctx;
     return NULL;
   }
   if (handle_ctx->t_h.t_tblmgr.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx) != CVI_SUCCESS) {
+    LOGE("Create table failed.\n");
     delete handle_ctx;
     return NULL;
   }
+  LOGI("Create handle.\n");
   return (void *)handle_ctx;
 }
 
@@ -154,6 +158,7 @@ CVI_S32 CVI_IVE_DestroyHandle(IVE_HANDLE pIveHandle) {
   handle_ctx->t_h.t_tblmgr.free(handle_ctx->rt_handle);
   destroyHandle(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   delete handle_ctx;
+  LOGI("Destroy handle.\n");
   return CVI_SUCCESS;
 }
 
@@ -187,7 +192,7 @@ CVI_S32 CVI_IVE_CreateMemInfo(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo,
 CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
                              uint16_t u16Width, uint16_t u16Height, IVE_IMAGE_S *pstBuffer) {
   if (u16Width == 0 || u16Height == 0) {
-    std::cerr << "Image width or height cannot be 0." << std::endl;
+    LOGE("Image width or height cannot be 0.\n");
     pstImg->tpu_block = NULL;
     pstImg->enType = enType;
     pstImg->u16Width = 0;
@@ -293,12 +298,12 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
       fmt = CVK_FMT_F32;
     } break;
     default:
-      std::cerr << "Not supported enType " << imgEnTypeStr[enType] << std::endl;
+      LOGE("Not supported enType %s.\n", imgEnTypeStr[enType]);
       return CVI_FAILURE;
       break;
   }
   if (strides.size() == 0 || heights.size() == 0) {
-    std::cerr << "[DEV] Stride not set." << std::endl;
+    LOGE("[DEV] Stride not set.\n");
     return CVI_FAILURE;
   }
 
@@ -307,6 +312,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
   auto *cpp_img = new CviImg(handle_ctx->rt_handle, u16Height, u16Width, strides, heights, img_type,
                              fmt, buffer_ptr);
   if (!cpp_img->IsInit()) {
+    LOGE("Failed to init IVE_IMAGE_S.\n");
     return CVI_FAILURE;
   }
 
@@ -339,7 +345,7 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
 CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                          CVI_U16 u16X1, CVI_U16 u16Y1, CVI_U16 u16X2, CVI_U16 u16Y2) {
   if (u16X1 >= u16X2 || u16Y1 >= u16Y2) {
-    std::cerr << "(X1, Y1) must smaller than (X2, Y2)." << std::endl;
+    LOGE("(X1, Y1) must smaller than (X2, Y2).\n");
     return CVI_FAILURE;
   }
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
@@ -392,7 +398,7 @@ CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *
       pstVFDst->enPixelFormat = PIXEL_FORMAT_RGB_888_PLANAR;
     } break;
     default: {
-      std::cerr << "Unsupported conversion type: " << imgEnTypeStr[pstIISrc->enType] << std::endl;
+      LOGE("Unsupported conversion type: %s.\n", imgEnTypeStr[pstIISrc->enType]);
       return CVI_FAILURE;
     } break;
   }
@@ -450,7 +456,7 @@ CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S 
       heights.resize(c, pstVFSrc->u32Height);
     } break;
     default: {
-      std::cerr << "Unsupported conversion type: " << pstVFSrc->enPixelFormat << std::endl;
+      LOGE("Unsupported conversion type: %u.\n", pstVFSrc->enPixelFormat);
       return CVI_FAILURE;
     } break;
   }
@@ -462,6 +468,7 @@ CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S 
   auto *cpp_img = new CviImg(pstVFSrc->u32Height, pstVFSrc->u32Width, strides, heights, u32_length,
                              pstVFSrc->pu8VirAddr[0], pstVFSrc->u64PhyAddr[0], img_type, fmt);
   if (!cpp_img->IsInit()) {
+    LOGE("Failed to init IVE_IMAGE_S.\n");
     return CVI_FAILURE;
   }
 
@@ -499,7 +506,7 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
       desiredNChannels = STBI_rgb;
       break;
     default:
-      std::cerr << "Not support channel " << imgEnTypeStr[enType] << std::endl;
+      LOGE("Not support channel %s.\n", imgEnTypeStr[enType]);
       break;
   }
   IVE_IMAGE_S img;
@@ -508,11 +515,11 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
     int width, height, nChannels;
     stbi_uc *stbi_data = stbi_load(filename, &width, &height, &nChannels, desiredNChannels);
     if (stbi_data == nullptr) {
-      std::cerr << "Image " << filename << " read failed." << std::endl;
+      LOGE("Image %s read failed.\n", filename);
       return img;
     }
     CVI_IVE_CreateImage(pIveHandle, &img, enType, width, height);
-    printf("desiredNChannels, width, height: %d %d %d\n", desiredNChannels, width, height);
+    LOGI("desiredNChannels, width, height: %d %d %d\n", desiredNChannels, width, height);
     if (enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
       for (size_t i = 0; i < (size_t)height; i++) {
         for (size_t j = 0; j < (size_t)width; j++) {
@@ -585,7 +592,7 @@ CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAG
       stride = 1;
       break;
     default:
-      std::cerr << "Not support channel " << imgEnTypeStr[pstImg->enType] << std::endl;
+      LOGE("Not supported channel %s.", imgEnTypeStr[pstImg->enType]);
       return CVI_FAILURE;
       break;
   }
@@ -759,12 +766,12 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
 
       IveTPUCopyDirect::run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
     } else {
-      std::cerr << "Unsupported input output image type ( " << cpp_src->m_tg.fmt << ", "
-                << cpp_dst->m_tg.fmt << ")." << std::endl;
+      LOGE("Unsupported input output image type ( %u, %u).\n", cpp_src->m_tg.fmt,
+           cpp_dst->m_tg.fmt);
       return CVI_FAILURE;
     }
   } else {
-    std::cerr << "Unsupported enType " << pstItcCtrl->enType << std::endl;
+    LOGE("Unsupported enType %u.\n", pstItcCtrl->enType);
     return CVI_FAILURE;
   }
   return CVI_SUCCESS;
@@ -863,14 +870,14 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   CVI_U32 u32CellSize = pstBlkCtrl->u32CellSize;
   if (pstDst->u16Width != (pstSrc->u16Width / u32CellSize) ||
       (pstSrc->u16Width % u32CellSize != 0)) {
-    std::cerr << "Dst block width not match! Src: " << pstSrc->u16Width
-              << ", dst: " << pstDst->u16Width << ", cell size: " << u32CellSize << std::endl;
+    LOGE("Dst block width not match! Src: %u, Dst: %u. Cell size :%u\n", pstSrc->u16Width,
+         pstDst->u16Width, u32CellSize);
     return CVI_FAILURE;
   }
   if (pstDst->u16Height != (pstSrc->u16Height / u32CellSize) ||
       (pstSrc->u16Height % u32CellSize != 0)) {
-    std::cerr << "Dst block height not match! Src: " << pstSrc->u16Height
-              << ", dst: " << pstDst->u16Height << ", cell size: " << u32CellSize << std::endl;
+    LOGE("Dst block height not match! Src: %u, Dst: %u. Cell size :%u\n", pstSrc->u16Height,
+         pstDst->u16Height, u32CellSize);
     return CVI_FAILURE;
   }
 
@@ -974,7 +981,7 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
     return CVI_FAILURE;
   }
   if (pstSrc->enType != pstDst->enType) {
-    std::cerr << "pstSrc & pstDst must have the same type." << std::endl;
+    LOGE("pstSrc & pstDst must have the same type.\n");
     return CVI_FAILURE;
   }
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
@@ -985,7 +992,7 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   std::vector<CviImg> outputs = {*cpp_dst};
 
   if (pstFltCtrl->u8MaskSize != 3 && pstFltCtrl->u8MaskSize != 5) {
-    std::cerr << "Currently Filter only supports filter size 3 or 5." << std::endl;
+    LOGE("Currently Filter only supports filter size 3 or 5.\n");
   }
   uint32_t npu_num = handle_ctx->t_h.t_filter.getNpuNum(handle_ctx->cvk_ctx);
   CviImg cimg(handle_ctx->rt_handle, npu_num, pstFltCtrl->u8MaskSize, pstFltCtrl->u8MaskSize,
@@ -1025,17 +1032,17 @@ CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U16 u16Width, CVI_U16 u16Height, CVI_U8 u8BinSi
                              CVI_U16 u16CellSize, CVI_U16 u16BlkSizeInCell, CVI_U16 u16BlkStepX,
                              CVI_U16 u16BlkStepY, CVI_U32 *u32HogSize) {
   if (u16BlkStepX == 0) {
-    std::cerr << "u16BlkStepX cannot be 0." << std::endl;
+    LOGE("u16BlkStepX cannot be 0.\n");
     return CVI_FAILURE;
   }
   if (u16BlkStepY == 0) {
-    std::cerr << "u16BlkStepX cannot be 0." << std::endl;
+    LOGE("u16BlkStepY cannot be 0.\n");
     return CVI_FAILURE;
   }
   uint32_t height_cell = 0, width_cell = 0, height_block = 0, width_block = 0;
   if (!get_hog_feature_info(u16Width, u16Height, u16CellSize, u16BlkSizeInCell, &width_cell,
                             &height_cell, &width_block, &height_block)) {
-    std::cerr << "Block size exceed cell block." << std::endl;
+    LOGE("Block size exceed cell block.\n");
     return CVI_FAILURE;
   }
   uint32_t block_length = u16BlkSizeInCell * u16BlkSizeInCell;
@@ -1053,28 +1060,26 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   ScopedTrace t(__PRETTY_FUNCTION__);
   // No need to check here. Will check later.
   if (pstDstAng->u16Width % pstHogCtrl->u32CellSize != 0) {
-    std::cerr << "Width " << pstDstAng->u16Width << " is not divisible by "
-              << pstHogCtrl->u32CellSize << std::endl;
+    LOGE("Width %u is not divisible by %u.\n", pstDstAng->u16Width, pstHogCtrl->u32CellSize);
     return CVI_FAILURE;
   }
   if (pstDstAng->u16Height % pstHogCtrl->u32CellSize != 0) {
-    std::cerr << "Height " << pstDstAng->u16Height << " is not divisible by "
-              << pstHogCtrl->u32CellSize << std::endl;
+    LOGE("Height %u is not divisible by %u.\n", pstDstAng->u16Height, pstHogCtrl->u32CellSize);
     return CVI_FAILURE;
   }
   if (pstHogCtrl->u16BlkStepX == 0) {
-    std::cerr << "u16BlkStepX cannot be 0." << std::endl;
+    LOGE("u16BlkStepX cannot be 0.\n");
     return CVI_FAILURE;
   }
   if (pstHogCtrl->u16BlkStepY == 0) {
-    std::cerr << "u16BlkStepX cannot be 0." << std::endl;
+    LOGE("u16BlkStepY cannot be 0.\n");
     return CVI_FAILURE;
   }
   uint32_t height_cell = 0, width_cell = 0, height_block = 0, width_block = 0;
   if (!get_hog_feature_info(pstDstAng->u16Width, pstDstAng->u16Height, pstHogCtrl->u32CellSize,
                             pstHogCtrl->u16BlkSizeInCell, &width_cell, &height_cell, &width_block,
                             &height_block)) {
-    std::cerr << "Block size exceed cell block." << std::endl;
+    LOGE("Block size exceed cell block.\n");
     return CVI_FAILURE;
   }
   // uint32_t &&cell_length = pstHogCtrl->u32CellSize * pstHogCtrl->u32CellSize;
@@ -1085,9 +1090,8 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   uint32_t &&hog_hist_length = num_of_block_data * (block_length * pstHogCtrl->u8BinSize);
   uint32_t &&hog_hist_size = hog_hist_length * sizeof(float);
   if (pstDstHist->u32ByteSize != hog_hist_size) {
-    std::cerr << "Histogram size not match! Given: " << pstDstHist->u32ByteSize
-              << ", required: " << hog_hist_size << " (" << hog_hist_length
-              << " * sizeof(uint32_t))" << std::endl;
+    LOGE("Histogram size mismatch! Given: %u, required: %u ( %u * sizeof(uint32_t)).\n",
+         pstDstHist->u32ByteSize, hog_hist_size, hog_hist_length);
     return CVI_FAILURE;
   }
 
@@ -1170,7 +1174,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   }
   delete[] cell_histogram;
   if (count != hog_hist_length) {
-    std::cerr << "Hog histogram not aligned." << count << " " << hog_hist_length << std::endl;
+    LOGE("Hog histogram not aligned. %u %u.\n", count, hog_hist_length);
     return CVI_FAILURE;
   }
   Tracer::TraceEnd();
@@ -1264,7 +1268,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
       outputs.emplace_back(*cpp_dst2);
     } break;
     default:
-      std::cerr << "Not supported Mag and Angle type." << std::endl;
+      LOGE("Not supported Mag and Angle type.\n");
       return CVI_FAILURE;
       break;
   }
@@ -1289,7 +1293,7 @@ CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO
   auto &shape = handle_ctx->t_h.t_tblmgr.getTblTLShape(CVK_FMT_U8);
   uint32_t tbl_sz = shape.h * shape.w;
   if (pstMap->u32ByteSize != tbl_sz) {
-    std::cerr << "Mapping table must be size " << tbl_sz << " in CVI_U8 format." << std::endl;
+    LOGE("Mapping table must be size %u in CVI_U8 format.\n", tbl_sz);
     return CVI_FAILURE;
   }
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -1327,7 +1331,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   }
   int kernel_size = pstNormGradCtrl->u8MaskSize;
   if (kernel_size != 1 && kernel_size != 3) {
-    std::cerr << "Kernel size currently only supports 1 and 3." << std::endl;
+    LOGE("Kernel size currently only supports 1 and 3.\n");
     return CVI_FAILURE;
   }
 
@@ -1504,8 +1508,8 @@ CVI_S32 CVI_IVE_OrdStatFilter(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
   const uint32_t pad_sz = kz - 1;
   if ((pstDst->u16Width + pad_sz != pstSrc->u16Width) ||
       (pstDst->u16Height + pad_sz != pstSrc->u16Height)) {
-    std::cerr << "Error, pstDst (width, height) should be pstSrc (width - " << pad_sz
-              << ", height - " << pad_sz << ")." << std::endl;
+    LOGE("Error, pstDst (width, height) should be pstSrc (width - %u, height - %u).\n", pad_sz,
+         pad_sz);
     return CVI_FAILURE;
   }
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
@@ -1563,7 +1567,7 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     return CVI_FAILURE;
   }
   if (pstSrc1->u16Width != pstSrc2->u16Width || pstSrc1->u16Height != pstSrc2->u16Height) {
-    std::cerr << "Two input size must be the same!" << std::endl;
+    LOGE("Two input size must be the same!\n");
     return CVI_FAILURE;
   }
   CVI_U32 window_size = 1;
@@ -1578,18 +1582,17 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
       window_size = 16;
       break;
     default:
-      std::cerr << "Unsupported SAD mode " << pstSadCtrl->enMode << std::endl;
+      LOGE("Unsupported SAD mode  %u.\n", pstSadCtrl->enMode);
       return CVI_FAILURE;
       break;
   }
   if (pstSad->u16Width != pstSrc1->u16Width) {
-    std::cerr << "Dst width not match with src! Src: " << pstSrc1->u16Width
-              << ", dst: " << pstSad->u16Width << std::endl;
+    LOGE("Dst width not match with src! Src: %u, dst: %u.\n", pstSrc1->u16Width, pstSad->u16Width);
     return CVI_FAILURE;
   }
   if (pstSad->u16Height != pstSrc1->u16Height) {
-    std::cerr << "Dst height not match with src! Src: " << pstSrc1->u16Height
-              << ", dst: " << pstSad->u16Height << std::endl;
+    LOGE("Dst height not match with src! Src: %u, dst: %u.\n", pstSrc1->u16Height,
+         pstSad->u16Height);
     return CVI_FAILURE;
   }
   int ret = CVI_SUCCESS;
@@ -1619,7 +1622,7 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   }
   if (do_threshold) {
     if (pstSad->u16Width != pstThr->u16Width || pstSad->u16Height != pstThr->u16Height) {
-      std::cerr << "Threshold output size must be the same as SAD output!" << std::endl;
+      LOGE("Threshold output size must be the same as SAD output!\n");
       return CVI_FAILURE;
     }
     CviImg *thresh_dst = reinterpret_cast<CviImg *>(pstThr->tpu_block);
@@ -1973,7 +1976,7 @@ inline int histogramEqualisation(int cols, int rows, uint8_t *image, int src_str
 CVI_S32 CVI_IVE_Integ(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_MEM_INFO_S *pstDst,
                       IVE_INTEG_CTRL_S *ctrl, bool bInstant) {
   if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
-    std::cerr << "Output only accepts U8C1 image format." << std::endl;
+    LOGE("Output only accepts U8C1 image format.\n");
     return CVI_FAILURE;
   }
 
@@ -1993,7 +1996,7 @@ CVI_S32 CVI_IVE_Integ(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_ME
 CVI_S32 CVI_IVE_Hist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_MEM_INFO_S *pstDst,
                      bool bInstant) {
   if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
-    std::cerr << "Output only accepts U8C1 image format." << std::endl;
+    LOGE("Output only accepts U8C1 image format.\n");
     return CVI_FAILURE;
   }
 
@@ -2007,7 +2010,7 @@ CVI_S32 CVI_IVE_EqualizeHist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                              IVE_DST_IMAGE_S *pstDst, IVE_EQUALIZE_HIST_CTRL_S *ctrl,
                              bool bInstant) {
   if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
-    std::cerr << "Output only accepts U8C1 image format." << std::endl;
+    LOGE("Output only accepts U8C1 image format.\n");
     return CVI_FAILURE;
   }
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
@@ -2059,11 +2062,11 @@ inline float cal_norm_cc(unsigned char *psrc1, unsigned char *psrc2, int srcw, i
 CVI_S32 CVI_IVE_NCC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_MEM_INFO_S *pstDst, bool bInstant) {
   if (pstSrc1->enType != IVE_IMAGE_TYPE_U8C1) {
-    std::cerr << "Output only accepts U8C1 image 1 format." << std::endl;
+    LOGE("Input 1 only accepts U8C1 image format.\n");
     return CVI_FAILURE;
   }
   if (pstSrc2->enType != IVE_IMAGE_TYPE_U8C1) {
-    std::cerr << "Output only accepts U8C1 image 2 format." << std::endl;
+    LOGE("Input 2 only accepts U8C1 image format.\n");
     return CVI_FAILURE;
   }
 
@@ -2095,11 +2098,11 @@ inline void uint16_8bit(uint16_t *in, uint8_t *out, int dim) {
 CVI_S32 CVI_IVE_16BitTo8Bit(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                             IVE_16BIT_TO_8BIT_CTRL_S *ctrl, bool bInstant) {
   if (pstSrc->enType != IVE_IMAGE_TYPE_U16C1) {
-    std::cerr << "Input only accepts U16C1 image format." << std::endl;
+    LOGE("Input only accepts U16C1 image format.\n");
     return CVI_FAILURE;
   }
   if (pstDst->enType != IVE_IMAGE_TYPE_U8C1) {
-    std::cerr << "Output only accepts U8C1 image format." << std::endl;
+    LOGE("Output only accepts U8C1 image format.\n");
     return CVI_FAILURE;
   }
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
@@ -2229,11 +2232,11 @@ void lbp_process(cvLbp *self, uint8_t *lbpimg, uint8_t *image, uint32_t stride, 
 CVI_S32 CVI_IVE_LBP(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                     IVE_LBP_CTRL_S *ctrl, bool bInstant) {
   if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
-    std::cerr << "Input only accepts U8C1 image format." << std::endl;
+    LOGE("Input only accepts U8C1 image format.\n");
     return CVI_FAILURE;
   }
   if (pstDst->enType != IVE_IMAGE_TYPE_U8C1) {
-    std::cerr << "Output only accepts U8C1 image format." << std::endl;
+    LOGE("Output only accepts U8C1 image format.\n");
     return CVI_FAILURE;
   }
 
@@ -2255,11 +2258,11 @@ CVI_S32 CVI_IVE_LBP(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
 CVI_S32 CVI_IVE_Resize(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_RESIZE_CTRL_S *ctrl, bool bInstant) {
   if (pstSrc->enType != IVE_IMAGE_TYPE_U8C1) {
-    std::cerr << "Input only accepts U8C1 image format." << std::endl;
+    LOGE("Input only accepts U8C1 image format.\n");
     return CVI_FAILURE;
   }
   if (pstDst->enType != IVE_IMAGE_TYPE_U8C1) {
-    std::cerr << "Output only accepts U8C1 image format." << std::endl;
+    LOGE("Output only accepts U8C1 image format.\n");
     return CVI_FAILURE;
   }
 
@@ -2502,7 +2505,7 @@ void rgbToGray(unsigned char *rgb, unsigned char *gray, int stride, int srcw, in
 CVI_S32 CVI_IVE_CSC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                     IVE_CSC_CTRL_S *ctrl, bool bInstant) {
   if (pstSrc->enType != IVE_IMAGE_TYPE_U8C3_PLANAR) {
-    std::cerr << "Input only accepts U8C3_PLANAR image format." << std::endl;
+    LOGE("Input only accepts U8C3_PLANAR image format.\n");
     return CVI_FAILURE;
   }
 
@@ -2542,7 +2545,7 @@ CVI_S32 CVI_IVE_FilterAndCSC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                              IVE_SRC_IMAGE_S *pstBuf, IVE_DST_IMAGE_S *pstDst,
                              IVE_FILTER_AND_CSC_CTRL_S *ctrl, bool bInstant) {
   if (pstBuf->enType != IVE_IMAGE_TYPE_U8C3_PLANAR) {
-    std::cerr << "Input only accepts U8C3_PLANAR image format." << std::endl;
+    LOGE("Input only accepts U8C3_PLANAR image format.\n");
     return CVI_FAILURE;
   }
 

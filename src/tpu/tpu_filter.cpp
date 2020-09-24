@@ -1,5 +1,6 @@
 #include "tpu/tpu_filter.hpp"
 #include <string.h>
+#include "ive_log.hpp"
 
 void IveTPUFilter::setKernel(IveKernel &kernel) {
   m_kernel = &kernel;
@@ -37,17 +38,17 @@ int IveTPUFilter::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
 
   // Kernel
   if (m_kernel == nullptr) {
-    std::cerr << "Error! kernel not set." << std::endl;
+    LOGE("Error! kernel not set.\n");
   }
   cvk_tl_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size, m_kernel_info.size};
   cvk_tl_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
   if (m_kernel->img.m_tg.fmt != CVK_FMT_U8 && m_kernel->img.m_tg.fmt != CVK_FMT_I8) {
-    std::cerr << "Kernel fmt type must be U8 or I8." << std::endl;
+    LOGE("Kernel fmt type must be U8 or I8.\n");
     return CVI_FAILURE;
   }
   auto *tl_kernel = allocTLMem(cvk_ctx, tl_kernel_s, m_kernel->img.m_tg.fmt, 1, IVETLType::KERNEL);
   if (m_kernel->img.m_tg.shape.c < tl_shape.c) {
-    std::cerr << "kernel size must larger than tl_shape.c" << std::endl;
+    LOGE("kernel size must larger than tl_shape.c\n");
     return CVI_FAILURE;
   }
   int tmp_c = m_kernel->img.m_tg.shape.c;
@@ -144,7 +145,7 @@ int IveTPUFilterBF16::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
 
   // Kernel
   if (m_kernel == nullptr) {
-    std::cerr << "Error! kernel not set." << std::endl;
+    LOGE("Error! kernel not set.\n");
   }
   cvk_tl_shape_t tl_kernel_s = {1, m_kernel->img.m_tg.shape.c, m_kernel_info.size,
                                 m_kernel_info.size};

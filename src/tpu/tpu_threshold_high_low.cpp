@@ -1,3 +1,4 @@
+#include "ive_log.hpp"
 #include "tpu/tpu_threshold.hpp"
 #include "utils.hpp"
 
@@ -32,7 +33,7 @@ int IveTPUThresholdHighLow::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk
   auto *tl_high_bit = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
 
   if (m_threshold == -1) {
-    std::cerr << "threshold not set." << std::endl;
+    LOGE("threshold not set.\n");
   }
 
   constantFillTL(rt_handle, cvk_ctx, m_threshold - 1, tl_threshold);

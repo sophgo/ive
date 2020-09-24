@@ -1,5 +1,6 @@
 #include "tpu/tpu_normalize.hpp"
 #include <string.h>
+#include "ive_log.hpp"
 
 void IveTPUNormalize::setMinMax(float min, float max) {
   m_min = min;
@@ -24,7 +25,7 @@ int IveTPUNormalize::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                               const bool enable_cext) {
   m_input.clear();
   if (m_fmt != CVK_FMT_U8 && m_fmt != CVK_FMT_I8) {
-    std::cerr << "TPUT normalize only supports U8/ I8." << std::endl;
+    LOGE("TPUT normalize only supports U8/ I8.\n");
   }
   cvk_tl_shape_t tl_shape;
   tl_shape.n = tg_in_slices[0].n;

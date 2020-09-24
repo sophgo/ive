@@ -1,4 +1,5 @@
 #include "tpu/tpu_threshold.hpp"
+#include "ive_log.hpp"
 #include "utils.hpp"
 
 #include <string.h>
@@ -28,7 +29,7 @@ int IveTPUThreshold::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   auto *tl_high_bit = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
 
   if (m_threshold == -1) {
-    std::cerr << "threshold not set." << std::endl;
+    LOGE("threshold not set.\n");
   }
   if (m_threshold == 0) {
     m_threshold = 1;

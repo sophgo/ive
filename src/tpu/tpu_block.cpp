@@ -1,5 +1,6 @@
 #include "tpu/tpu_block.hpp"
 #include <string.h>
+#include "ive_log.hpp"
 
 void IveTPUBlock::setScaleNum(const float scale_num) { m_scale_num = scale_num; }
 
@@ -44,7 +45,7 @@ int IveTPUBlock::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                           std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                           const bool enable_cext) {
   if (m_channel != tg_in_slices[0].c) {
-    std::cerr << "Channel changed, slicing result may not be suitable." << std::endl;
+    LOGE("Channel changed, slicing result may not be suitable.\n");
   }
   cvk_tl_shape_t tl_shape;
   tl_shape.n = tg_in_slices[0].n;

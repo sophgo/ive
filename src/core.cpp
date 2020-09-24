@@ -1,9 +1,9 @@
 #include "core.hpp"
+#include "ive_log.hpp"
 
 #include <cmath>
 #include <iostream>
 #include <memory>
-#include "debug.hpp"
 
 inline void GetSliceUnitProperty(const uint32_t length, const uint32_t slice, const int kernel_sz,
                                  const int default_stride, sliceUnit *unit) {
@@ -114,7 +114,7 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
     uint32_t total_addr = is_1d ? input[k].GetImgSize() : input[k].m_tg.stride.c;
 #endif
     if (jumped_value != total_addr) {
-      printf(
+      LOGE(
           "[%u] Error! Input %u jumped value %lu not align to image size %u, start addr "
           "%lu\n",
           (uint32_t)b, (uint32_t)k, (long unsigned int)jumped_value, total_addr,
@@ -139,7 +139,7 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
     uint32_t total_addr = (is_1d ? output[k].GetImgSize() : output[k].m_tg.stride.c) + pad_offset;
 #endif
     if (jumped_value != total_addr) {
-      printf(
+      LOGE(
           "[%u] Error! Output %u jumped value %lu not align to image size %u, start addr "
           "%lu\n",
           (uint32_t)b, (uint32_t)k, (long unsigned int)jumped_value, total_addr,
@@ -193,7 +193,7 @@ inline int channelExtension(cvk_context_t *cvk_ctx, const uint32_t in_img_w,
                                k_stride_w, &tsi->tl_load.shape, &tsi->tl_load.stride,
                                &tsi->tg_load.shape, &tsi->tg_load.stride, &tl_weight_shape,
                                &tl_bias_shape, &tsi->tl_store.shape, tl_fmt_type, 1) == -1) {
-    std::cerr << "Extend failed." << std::endl;
+    LOGE("Extend failed.\n");
     return CVI_FAILURE;
   }
   // FIXME: Temporarily solution for mix precision hack.
@@ -227,41 +227,40 @@ inline int channelExtension(cvk_context_t *cvk_ctx, const uint32_t in_img_w,
     tsi->tg_store.stride.n = l_n * tsi->tg_store.stride.c;
   }
   // clang-format off
-  IVE_DEBUG("[Summary]\n" \
-            " Original shape: n c h w %d %d %d %d\n" \
-            " Kernel size: h w %d %d\n" \
-            " Pad: left right %d %d\n" \
-            " Kernel stride: h w %d %d\n" \
-            " => tl load shape %d %d %d %d\n" \
-            " => tl load stride %d %d %d %d\n" \
-            " => tg load shape %d %d %d %d\n" \
-            " => tg load stride %d %d %d\n" \
-            " => tl store shape %d %d %d %d\n" \
-            " => tl store stride %d %d %d %d\n" \
-            " => tg store shape %d %d %d %d\n" \
-            " => tg store stride %d %d %d\n",
-            1, ic, ih, iw,
-            kh, kw,
-            pad_left, pad_right,
-            k_stride_h, k_stride_w,
-            tsi->tl_load.shape.n, tsi->tl_load.shape.c, tsi->tl_load.shape.h, tsi->tl_load.shape.w,
-            tsi->tl_load.stride.n, tsi->tl_load.stride.c, tsi->tl_load.stride.h, tsi->tl_load.stride.w,
-            tsi->tg_load.shape.n, tsi->tg_load.shape.c, tsi->tg_load.shape.h, tsi->tg_load.shape.w,
-            tsi->tg_load.stride.n, tsi->tg_load.stride.c, tsi->tg_load.stride.h,
-            tsi->tl_store.shape.n, tsi->tl_store.shape.c, tsi->tl_store.shape.h, tsi->tl_store.shape.w,
-            tsi->tl_store.stride.n, tsi->tl_store.stride.c, tsi->tl_store.stride.h, tsi->tl_store.stride.w,
-            tsi->tg_store.shape.n, tsi->tg_store.shape.c, tsi->tg_store.shape.h, tsi->tg_store.shape.w,
-            tsi->tg_store.stride.n, tsi->tg_store.stride.c, tsi->tg_store.stride.h);
+  LOGD("[Summary]\n" \
+       " Original shape: n c h w %d %d %d %d\n" \
+       " Kernel size: h w %d %d\n" \
+       " Pad: left right %d %d\n" \
+       " Kernel stride: h w %d %d\n" \
+       " => tl load shape %d %d %d %d\n" \
+       " => tl load stride %d %d %d %d\n" \
+       " => tg load shape %d %d %d %d\n" \
+       " => tg load stride %d %d %d\n" \
+       " => tl store shape %d %d %d %d\n" \
+       " => tl store stride %d %d %d %d\n" \
+       " => tg store shape %d %d %d %d\n" \
+       " => tg store stride %d %d %d\n",
+       1, ic, ih, iw,
+       kh, kw,
+       pad_left, pad_right,
+       k_stride_h, k_stride_w,
+       tsi->tl_load.shape.n, tsi->tl_load.shape.c, tsi->tl_load.shape.h, tsi->tl_load.shape.w,
+       tsi->tl_load.stride.n, tsi->tl_load.stride.c, tsi->tl_load.stride.h, tsi->tl_load.stride.w,
+       tsi->tg_load.shape.n, tsi->tg_load.shape.c, tsi->tg_load.shape.h, tsi->tg_load.shape.w,
+       tsi->tg_load.stride.n, tsi->tg_load.stride.c, tsi->tg_load.stride.h,
+       tsi->tl_store.shape.n, tsi->tl_store.shape.c, tsi->tl_store.shape.h, tsi->tl_store.shape.w,
+       tsi->tl_store.stride.n, tsi->tl_store.stride.c, tsi->tl_store.stride.h, tsi->tl_store.stride.w,
+       tsi->tg_store.shape.n, tsi->tg_store.shape.c, tsi->tg_store.shape.h, tsi->tg_store.shape.w,
+       tsi->tg_store.stride.n, tsi->tg_store.stride.c, tsi->tg_store.stride.h);
   // clang-format on
   uint32_t h_output_single_lane = (ih * ic / h_cext_multiplier);
   if (tsi->tg_store.shape.h != h_output_single_lane) {
-    std::cerr << "H extend c multiplier: " << h_cext_multiplier << std::endl;
-    std::cerr << "Predicted h_slice not match. " << tsi->tg_store.shape.h << ", "
-              << h_output_single_lane << std::endl;
+    LOGE("H extend c multiplier: %u. Predicted h_slice not match: %u, %u.\n", h_cext_multiplier,
+         tsi->tg_store.shape.h, h_output_single_lane);
     if ((uint32_t)(ic * ih) == tsi->tg_store.shape.c * tsi->tg_store.shape.h) {
-      std::cerr << "This is a dev warning only." << std::endl;
+      LOGW("[DEV] This is a dev warning only.\n");
     } else {
-      std::cerr << "Slice failed." << std::endl;
+      LOGE("Slice failed.\n");
       return CVI_FAILURE;
     }
   }
@@ -363,15 +362,15 @@ int IveCore::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, std::vector<Cv
   m_chip_info = cvk_ctx->info;
   for (const auto &img : input) {
     if (!img.IsStideCEQ()) {
-      std::cout << "Input image ( " << img.GetImgWidth() << ", " << img.GetImgHeight() << ") "
-                << "appears does not have equal strides in different channels." << std::endl;
+      LOGE("Input image ( %u, %u) appears does not have equal strides in different channels.\n",
+           img.GetImgWidth(), img.GetImgHeight());
       return CVI_FAILURE;
     }
   }
   for (const auto &img : (*output)) {
     if (!img.IsStideCEQ()) {
-      std::cout << "Output image ( " << img.GetImgWidth() << ", " << img.GetImgHeight() << ") "
-                << "appears does not have equal strides in different channels." << std::endl;
+      LOGE("Output image ( %u, %u) appears does not have equal strides in different channels.\n",
+           img.GetImgWidth(), img.GetImgHeight());
       return CVI_FAILURE;
     }
   }
@@ -417,7 +416,7 @@ int IveCore::getSlice(const uint32_t nums_of_lmem, const uint32_t nums_of_table,
                       const kernelInfo kernel_info, const int npu_num, sliceUnit *unit_h,
                       sliceUnit *unit_w, const bool enable_cext) {
   if (c > 32) {
-    std::cerr << "Channel exceed limitation." << std::endl;
+    LOGE("Channel exceed limitation.\n");
     return CVI_FAILURE;
   }
   // Calculate fixed kernel size
@@ -427,7 +426,7 @@ int IveCore::getSlice(const uint32_t nums_of_lmem, const uint32_t nums_of_table,
   int64_t result = m_chip_info.lmem_size - (int64_t)(kernel_sz + table_size * nums_of_table) -
                    (int64_t)fixed_lmem_size;
   if (result < 0) {
-    std::cerr << "Insufficient memory: " << result << std::endl;
+    LOGE("Insufficient memory: %u\n", (unsigned int)result);
     return CVI_FAILURE;
   }
   const uint32_t available_lmem_per_tl = (uint32_t)result / nums_of_lmem;
@@ -500,10 +499,10 @@ int IveCore::getSlice(const uint32_t nums_of_lmem, const uint32_t nums_of_table,
   // FIXME: Logic error
   GetSliceUnitProperty(h, h_tmp_slice, kernel_info.size, kernel_info.default_stride_y, unit_h);
   GetSliceUnitProperty(w, w_length, kernel_info.size, kernel_info.default_stride_x, unit_w);
-  IVE_DEBUG("H slice %d skip %d turn %d left %d\n", unit_h->slice, unit_h->skip, unit_h->turn,
-            unit_h->left);
-  IVE_DEBUG("W slice %d skip %d turn %d left %d\n", unit_w->slice, unit_w->skip, unit_w->turn,
-            unit_w->left);
+  LOGD("H slice %d skip %d turn %d left %d\n", unit_h->slice, unit_h->skip, unit_h->turn,
+       unit_h->left);
+  LOGD("W slice %d skip %d turn %d left %d\n", unit_w->slice, unit_w->skip, unit_w->turn,
+       unit_w->left);
   return CVI_SUCCESS;
 }
 
@@ -511,8 +510,8 @@ cvk_tl_t *IveCore::allocTLMem(cvk_context_t *cvk_ctx, cvk_tl_shape_t tl_shape, c
                               int eu_align, IVETLType tl_type) {
   cvk_tl_t *lmem = cvk_ctx->ops->lmem_alloc_tensor(cvk_ctx, tl_shape, fmt, eu_align);
   if (lmem == NULL) {
-    std::cerr << "Tensor allocate failed. Shape: " << tl_shape.n << ", " << tl_shape.c << ", "
-              << tl_shape.h << ", " << tl_shape.w << std::endl;
+    LOGE("Tensor allocate failed. ( n, c, h, w) = ( %u, %u, %u, %u).\n", tl_shape.n, tl_shape.c,
+         tl_shape.h, tl_shape.w);
     return nullptr;
   }
 
@@ -549,7 +548,7 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
                                  bool enable_min_max) {
   // FIXME: Support later
   if (m_slice_info.ping_pong_size != 1) {
-    std::cerr << "Currently runSingleSizeKernel does not support ping pong." << std::endl;
+    LOGI("Currently runSingleSizeKernel does not support ping pong.\n");
     m_slice_info.ping_pong_size = 1;
   }
   uint32_t batch = input[0].m_tg.shape.n;
@@ -588,12 +587,12 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
   SliceRes in_slice_res, out_slice_res;
   sliceSetup(slice_res, &in_slice_res, &out_slice_res);
   if (in_slice_res.h.turn != out_slice_res.h.turn) {
-    std::cerr << "Input/ output h slice turn are not the same " << in_slice_res.h.turn << ", "
-              << out_slice_res.h.turn << std::endl;
+    LOGE("Input/ output h slice turn are not the same %u, %u.\n", in_slice_res.h.turn,
+         out_slice_res.h.turn);
   }
   if (in_slice_res.w.turn != out_slice_res.w.turn) {
-    std::cerr << "Input/ output w slice turn are not the same " << in_slice_res.w.turn << ", "
-              << out_slice_res.w.turn << std::endl;
+    LOGE("Input/ output w slice turn are not the same %u, %u.\n", in_slice_res.w.turn,
+         out_slice_res.w.turn);
   }
 
   // Setup slice input/ output shapes and left shapes
@@ -618,12 +617,12 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
 
   // Dummy check, can be turned off in official release
   if (tl_in_idx.size() != input.size()) {
-    std::cerr << "Input tl size not match input image num " << tl_in_idx.size() << ", "
-              << input.size() << std::endl;
+    LOGE("Input tl size not match input image num %u, %u\n", (uint32_t)tl_in_idx.size(),
+         (uint32_t)input.size());
   }
   if (tl_out_idx.size() != output->size()) {
-    std::cerr << "Output tl size not match input image num " << tl_out_idx.size() << ", "
-              << output->size() << std::endl;
+    LOGE("Output tl size not match input image num %u, %u\n", (uint32_t)tl_out_idx.size(),
+         (uint32_t)output->size());
   }
   // Dummy check end
   // Category tl shapes
@@ -779,11 +778,11 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
       bm_dest_info.addr_vec[k] += 1 * (*output)[k].m_tg.stride.h * jump_val;
     }
   }
-  IVE_DEBUG("Slice info:\n");
-  IVE_DEBUG("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", in_slice_res.h.slice,
-            in_slice_res.h.turn, in_slice_res.h.skip, in_slice_res.h.left);
-  IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", in_slice_res.w.slice,
-            in_slice_res.w.turn, in_slice_res.w.skip, in_slice_res.w.left);
+  LOGD("Slice info:\n");
+  LOGD("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", in_slice_res.h.slice,
+       in_slice_res.h.turn, in_slice_res.h.skip, in_slice_res.h.left);
+  LOGD("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", in_slice_res.w.slice,
+       in_slice_res.w.turn, in_slice_res.w.skip, in_slice_res.w.left);
 
   // Dummy gaurd for buffer overflow
   ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
@@ -804,16 +803,16 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
                                     std::vector<CviImg> &input, std::vector<CviImg> *output,
                                     bool enable_min_max) {
   if (m_slice_info.io_fmt == CVK_FMT_INVALID) {
-    std::cerr << "Invalid fmt engine type." << std::endl;
+    LOGE("Invalid fmt engine type.\n");
     return CVI_FAILURE;
   }
   // FIXME: Support later
   if (m_slice_info.ping_pong_size != 1) {
-    std::cerr << "Currently runSingleSizeKernel does not support ping pong." << std::endl;
+    LOGI("Currently runSingleSizeKernel does not support ping pong.\n");
     m_slice_info.ping_pong_size = 1;
   }
   if (input[0].m_tg.shape.n != 1) {
-    std::cerr << "Currently ext only supports single batch." << std::endl;
+    LOGE("Currently ext only supports single batch.\n");
     return CVI_FAILURE;
   }
   // TODO: FIXME: Due to HW limitation. We have to split channels into individual images
@@ -999,12 +998,12 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
 
   // Dummy check, can be turned off in official release
   if (tl_in_idx.size() != input.size()) {
-    std::cerr << "Input tl size not match input image num " << tl_in_idx.size() << ", "
-              << input.size() << std::endl;
+    LOGE("Input tl size not match input image num %u, %u.\n", (uint32_t)tl_in_idx.size(),
+         (uint32_t)input.size());
   }
   if (tl_out_idx.size() != output->size()) {
-    std::cerr << "Output tl size not match input image num " << tl_out_idx.size() << ", "
-              << output->size() << std::endl;
+    LOGE("Output tl size not match input image num %u, %u.\n", (uint32_t)tl_out_idx.size(),
+         (uint32_t)output->size());
   }
   // Dummy check end
 
@@ -1109,18 +1108,18 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
           tg_in.fmt = bm_src_info.fns_vec[k].getFmt();
 
           // clang-format off
-          IVE_DEBUG("[%lu] In\n"
-                    " tg start address %lu\n"
-                    " tg shape %d %d %d %d\n"
-                    " tg stride %d %d %d\n"
-                    " tl shape %d %d %d %d\n"
-                    " tl stride %u %u %u %u\n",
-                    k,
-                    tg_in.start_address,
-                    tg_in.shape.n, tg_in.shape.c, tg_in.shape.h, tg_in.shape.w,
-                    tg_in.stride.n, tg_in.stride.c, tg_in.stride.h,
-                    tl_in[k]->shape.n, tl_in[k]->shape.c, tl_in[k]->shape.h, tl_in[k]->shape.w,
-                    tl_in[k]->stride.n, tl_in[k]->stride.c, tl_in[k]->stride.h, tl_in[k]->stride.w);
+          LOGD("[%lu] In\n"
+               " tg start address %lu\n"
+               " tg shape %d %d %d %d\n"
+               " tg stride %d %d %d\n"
+               " tl shape %d %d %d %d\n"
+               " tl stride %u %u %u %u\n",
+               k,
+               tg_in.start_address,
+               tg_in.shape.n, tg_in.shape.c, tg_in.shape.h, tg_in.shape.w,
+               tg_in.stride.n, tg_in.stride.c, tg_in.stride.h,
+               tl_in[k]->shape.n, tl_in[k]->shape.c, tl_in[k]->shape.h, tl_in[k]->shape.w,
+               tl_in[k]->stride.n, tl_in[k]->stride.c, tl_in[k]->stride.h, tl_in[k]->stride.w);
           // clang-format on
 
           cvk_tdma_g2l_tensor_copy_param_t p_copy_in;
@@ -1157,18 +1156,18 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
           out_shape.shape.w = tg_out.shape.w;
 
           // clang-format off
-          IVE_DEBUG("[%lu] Out\n"
-                    " tg start address %lu\n"
-                    " tg shape %d %d %d %d\n"
-                    " tg stride %d %d %d\n"
-                    " tl shape %d %d %d %d\n"
-                    " tl stride %u %u %u %u\n",
-                    k,
-                    tg_out.start_address,
-                    tg_out.shape.n, tg_out.shape.c, tg_out.shape.h, tg_out.shape.w,
-                    tg_out.stride.n, tg_out.stride.c, tg_out.stride.h,
-                    tl_out[k]->shape.n, tl_out[k]->shape.c, tl_out[k]->shape.h, tl_out[k]->shape.w,
-                    tl_out[k]->stride.n, tl_out[k]->stride.c, tl_out[k]->stride.h, tl_out[k]->stride.w);
+          LOGD("[%lu] Out\n"
+               " tg start address %lu\n"
+               " tg shape %d %d %d %d\n"
+               " tg stride %d %d %d\n"
+               " tl shape %d %d %d %d\n"
+               " tl stride %u %u %u %u\n",
+               k,
+               tg_out.start_address,
+               tg_out.shape.n, tg_out.shape.c, tg_out.shape.h, tg_out.shape.w,
+               tg_out.stride.n, tg_out.stride.c, tg_out.stride.h,
+               tl_out[k]->shape.n, tl_out[k]->shape.c, tl_out[k]->shape.h, tl_out[k]->shape.w,
+               tl_out[k]->stride.n, tl_out[k]->stride.c, tl_out[k]->stride.h, tl_out[k]->stride.w);
           // clang-format on
 
           cvk_tdma_l2g_tensor_copy_param_t p_copy_out;
@@ -1225,16 +1224,16 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
     ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                  m_kernel_info.pad[2], false, true, b);
   }
-  IVE_DEBUG("In slice info:\n");
-  IVE_DEBUG("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", in_slice_res.h.slice,
-            in_slice_res.h.turn, in_slice_res.h.skip, in_slice_res.h.left);
-  IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", in_slice_res.w.slice,
-            in_slice_res.w.turn, in_slice_res.w.skip, in_slice_res.w.left);
-  IVE_DEBUG("Out slice info:\n");
-  IVE_DEBUG("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", out_slice_res.h.slice,
-            out_slice_res.h.turn, out_slice_res.h.skip, out_slice_res.h.left);
-  IVE_DEBUG("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", out_slice_res.w.slice,
-            out_slice_res.w.turn, out_slice_res.w.skip, out_slice_res.w.left);
+  LOGD("In slice info:\n");
+  LOGD("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", in_slice_res.h.slice,
+       in_slice_res.h.turn, in_slice_res.h.skip, in_slice_res.h.left);
+  LOGD("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", in_slice_res.w.slice,
+       in_slice_res.w.turn, in_slice_res.w.skip, in_slice_res.w.left);
+  LOGD("Out slice info:\n");
+  LOGD("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", out_slice_res.h.slice,
+       out_slice_res.h.turn, out_slice_res.h.skip, out_slice_res.h.left);
+  LOGD("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", out_slice_res.w.slice,
+       out_slice_res.w.turn, out_slice_res.w.skip, out_slice_res.w.left);
 
   beforeSubmit(rt_handle, cvk_ctx, input, output);
 
@@ -1257,7 +1256,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   }
   uint32_t total_size = input[0].GetImgSize() / getFmtSize(input[0].m_tg.fmt);
   if (total_size % 16) {
-    std::cerr << "Image size " << total_size << " is not 16 aligned." << std::endl;
+    LOGE("Image size %u is not 16 aligned.\n", total_size);
     return CVI_FAILURE;
   }
   cvk_tl_shape_t tl_table_s;
@@ -1310,9 +1309,9 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
     shape.h = hw / w_val;
     shape.w = w_val;
   }
-  IVE_DEBUG("Total size %u\n", total_size);
-  IVE_DEBUG("turn %lu left %lu\n", loop_turn, left_pixels);
-  IVE_DEBUG("%u %u %u %u\n", shape.n, shape.c, shape.h, shape.w);
+  LOGD("Total size %u\n", total_size);
+  LOGD("turn %lu left %lu\n", loop_turn, left_pixels);
+  LOGD("%u %u %u %u\n", shape.n, shape.c, shape.h, shape.w);
 
   std::vector<cvk_tg_shape_t> s_in_vec, s_out_vec;
   for (size_t k = 0; k < input.size(); k++) {
@@ -1367,6 +1366,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
         p_copy_in.src = &tg_in;
         p_copy_in.dst = tl_in_info.lmem_vec[k + pp_skip];
         cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
+        LOGD("tg_in physical addr %lu\n", tg_in.start_address);
         // Change src head addr
         bm_src_info.addr_vec[k] += 1 * jump_src * bm_src_info.fns_vec[k].getSize();
       }
@@ -1392,7 +1392,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
         p_copy_out.src = tl_out_info.lmem_vec[k + pp_skip];
         p_copy_out.dst = &tg_out;
         cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
-
+        LOGD("tg_out physical addr %lu\n", tg_out.start_address);
         // Change dest head addr
         bm_dest_info.addr_vec[k] += 1 * jump_dst * bm_dest_info.fns_vec[k].getSize();
       }
@@ -1416,7 +1416,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
     left_shape.c = div;
     left_shape.h = hw / w_val;
     left_shape.w = w_val;
-    IVE_DEBUG("%u %u %u %u\n", left_shape.n, left_shape.c, left_shape.h, left_shape.w);
+    LOGD("%u %u %u %u\n", left_shape.n, left_shape.c, left_shape.h, left_shape.w);
 
     for (size_t i = 0; i < input_stride_vec.size(); i++) {
       input_stride_vec[i] = cvk_ctx->ops->tg_default_stride(cvk_ctx, left_shape, input[0].m_tg.fmt);
@@ -1469,7 +1469,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
       p_copy_in.src = &tg_in;
       p_copy_in.dst = tl_in_info.lmem_vec[k];
       cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
-
+      LOGD("tg_in physical addr %lu\n", tg_in.start_address);
       // Change src head addr
       bm_src_info.addr_vec[k] += 1 * jump_src * bm_src_info.fns_vec[k].getSize();
     }
@@ -1490,7 +1490,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
       p_copy_out.src = tl_out_info.lmem_vec[k];
       p_copy_out.dst = &tg_out;
       cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
-
+      LOGD("tg_out physical addr %lu\n", tg_out.start_address);
       // Change dest head addr
       bm_dest_info.addr_vec[k] += 1 * jump_dst * bm_dest_info.fns_vec[k].getSize();
     }

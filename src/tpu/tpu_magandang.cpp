@@ -1,4 +1,5 @@
 #include "tpu/tpu_magandang.hpp"
+#include "ive_log.hpp"
 
 #include <string.h>
 #ifdef MAGnANG_DEBUG
@@ -15,7 +16,7 @@ void IveTPUMagAndAng::exportOption(bool mag_value, bool ang_value, bool output_d
 
 void IveTPUMagAndAng::magDistMethod(int method) {
   if (method != 0 && method != 1) {
-    std::cerr << "Unsupported dist method." << std::endl;
+    LOGE("Unsupported dist method.\n");
   }
   m_dist_method = method;
 }

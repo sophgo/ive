@@ -1,4 +1,5 @@
 #include "tpu/tpu_table.hpp"
+#include "ive_log.hpp"
 #include "utils.hpp"
 
 #include <string.h>
@@ -30,7 +31,7 @@ int IveTPUTbl::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                         std::vector<uint32_t> *tl_in_idx, std::vector<uint32_t> *tl_out_idx,
                         const bool enable_cext) {
   if (mp_table == nullptr) {
-    std::cerr << "mp_table not set." << std::endl;
+    LOGE("mp_table not set.\n");
   }
   m_input.clear();
   cvk_tl_shape_t tl_shape;

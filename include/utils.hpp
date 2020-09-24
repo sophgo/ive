@@ -1,5 +1,5 @@
 #pragma once
-#include "debug.hpp"
+#include "ive_log.hpp"
 #include "tpu_data.hpp"
 
 #include <bmkernel/bm1880v2/1880v2_fp_convert.h>
@@ -28,7 +28,7 @@
 
 inline int createHandle(CVI_RT_HANDLE *rt_handle, cvk_context_t **cvk_ctx) {
   if (CVI_RT_Init(rt_handle) != CVI_SUCCESS) {
-    printf("Runtime init failed.\n");
+    LOGE("Runtime init failed.\n");
     return CVI_FAILURE;
   }
   struct sysinfo info;
@@ -38,10 +38,13 @@ inline int createHandle(CVI_RT_HANDLE *rt_handle, cvk_context_t **cvk_ctx) {
   auto available_mem = info.freeram * info.mem_unit;
   uint64_t mem = CMDBUF4k;
   if (available_mem < CMDBUF720) {
+    LOGI("Memory insufficient for 720p image, downgrade to 640p.\n");
     mem = CMDBUF640;
   } else if (available_mem < CMDBUF1080) {
+    LOGI("Memory insufficient for 1080p image, downgrade to 720p.\n");
     mem = CMDBUF720;
   } else if (available_mem < CMDBUF4k) {
+    LOGI("Memory insufficient for 4K image, downgrade to 1080p.\n");
     mem = CMDBUF1080;
   }
   *cvk_ctx = (cvk_context_t *)CVI_RT_RegisterKernel(*rt_handle, mem);
@@ -145,7 +148,7 @@ inline void bf16LookupTable(cvk_context_t *cvk_ctx, const cvm_tiu_mask_param_t *
 inline void QuantizeMultiplierSmallerThanOne(float real_multiplier, uint32_t *quantized_multiplier,
                                              int *right_shift) {
   if (real_multiplier <= 0.f || real_multiplier > 1.f) {
-    std::cerr << "Multiplier should be bigger than 0, smaller or euqal to 1." << std::endl;
+    LOGE("Multiplier should be bigger than 0, smaller or euqal to 1.\n");
     *quantized_multiplier = 0;
     *right_shift = 0;
     return;
@@ -234,8 +237,8 @@ inline void getPackedMultiplierArrayBuffer(const uint32_t c, const uint32_t &qua
     shift_data[i] = right_shift > 0 ? right_shift : 0;
 
 #ifdef ENABLE_DEBUG_MSG
-    printf("      [oc=%d] multiplier_data %d, shift_data %d\n", i, p_param->multiplier_data[i],
-           p_param->shift_data[i]);
+    LOGE("      [oc=%d] multiplier_data %d, shift_data %d\n", i, p_param->multiplier_data[i],
+         p_param->shift_data[i]);
 #endif
   }
 

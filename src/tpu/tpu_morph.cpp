@@ -1,5 +1,6 @@
 #include "tpu/tpu_morph.hpp"
 #include <string.h>
+#include "ive_log.hpp"
 
 void IveTPUErode::setKernel(IveKernel &kernel) {
   m_kernel = &kernel;
@@ -37,7 +38,7 @@ int IveTPUErode::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   auto *tl_conv_res = allocTLMem(cvk_ctx, tl_shape_out, CVK_FMT_U8, 1);
   // Kernel
   if (m_kernel == nullptr) {
-    std::cerr << "Error! kernel not set." << std::endl;
+    LOGE("Error! kernel not set.\n");
   }
   cvk_tl_shape_t tl_kernel_s = {1, tl_shape.c, m_kernel_info.size, m_kernel_info.size};
   cvk_tl_shape_t packed_s = {1, tl_shape.c, 1, MULTIPLIER_ONLY_PACKED_DATA_SIZE};
