@@ -1,4 +1,5 @@
 #pragma once
+#include <inttypes.h>
 #include <syslog.h>
 
 #define MODULE_NAME "ive"
