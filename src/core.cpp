@@ -1115,7 +1115,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
                " tl shape %d %d %d %d\n"
                " tl stride %u %u %u %u\n",
                (uint32_t)k,
-               tg_in.start_address,
+               (long unsigned int)tg_in.start_address,
                tg_in.shape.n, tg_in.shape.c, tg_in.shape.h, tg_in.shape.w,
                tg_in.stride.n, tg_in.stride.c, tg_in.stride.h,
                tl_in[k]->shape.n, tl_in[k]->shape.c, tl_in[k]->shape.h, tl_in[k]->shape.w,
@@ -1163,7 +1163,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
                " tl shape %d %d %d %d\n"
                " tl stride %u %u %u %u\n",
                (uint32_t)k,
-               tg_out.start_address,
+               (long unsigned int)tg_out.start_address,
                tg_out.shape.n, tg_out.shape.c, tg_out.shape.h, tg_out.shape.w,
                tg_out.stride.n, tg_out.stride.c, tg_out.stride.h,
                tl_out[k]->shape.n, tl_out[k]->shape.c, tl_out[k]->shape.h, tl_out[k]->shape.w,
@@ -1310,7 +1310,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
     shape.w = w_val;
   }
   LOGD("Total size %u\n", total_size);
-  LOGD("turn %lu left %lu\n", loop_turn, left_pixels);
+  LOGD("turn %u left %u\n", (uint32_t)loop_turn, (uint32_t)left_pixels);
   LOGD("%u %u %u %u\n", shape.n, shape.c, shape.h, shape.w);
 
   std::vector<cvk_tg_shape_t> s_in_vec, s_out_vec;
@@ -1366,7 +1366,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
         p_copy_in.src = &tg_in;
         p_copy_in.dst = tl_in_info.lmem_vec[k + pp_skip];
         cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
-        LOGD("tg_in physical addr %lu\n", tg_in.start_address);
+        LOGD("tg_in physical addr %lu\n", (long unsigned int)tg_in.start_address);
         // Change src head addr
         bm_src_info.addr_vec[k] += 1 * jump_src * bm_src_info.fns_vec[k].getSize();
       }
@@ -1392,7 +1392,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
         p_copy_out.src = tl_out_info.lmem_vec[k + pp_skip];
         p_copy_out.dst = &tg_out;
         cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
-        LOGD("tg_out physical addr %lu\n", tg_out.start_address);
+        LOGD("tg_out physical addr %lu\n", (long unsigned int)tg_out.start_address);
         // Change dest head addr
         bm_dest_info.addr_vec[k] += 1 * jump_dst * bm_dest_info.fns_vec[k].getSize();
       }
@@ -1469,7 +1469,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
       p_copy_in.src = &tg_in;
       p_copy_in.dst = tl_in_info.lmem_vec[k];
       cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
-      LOGD("tg_in physical addr %lu\n", tg_in.start_address);
+      LOGD("tg_in physical addr %lu\n", (long unsigned int)tg_in.start_address);
       // Change src head addr
       bm_src_info.addr_vec[k] += 1 * jump_src * bm_src_info.fns_vec[k].getSize();
     }
@@ -1490,7 +1490,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
       p_copy_out.src = tl_out_info.lmem_vec[k];
       p_copy_out.dst = &tg_out;
       cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
-      LOGD("tg_out physical addr %lu\n", tg_out.start_address);
+      LOGD("tg_out physical addr %lu\n", (long unsigned int)tg_out.start_address);
       // Change dest head addr
       bm_dest_info.addr_vec[k] += 1 * jump_dst * bm_dest_info.fns_vec[k].getSize();
     }

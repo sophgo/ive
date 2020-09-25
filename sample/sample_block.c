@@ -57,8 +57,8 @@ int main(int argc, char **argv) {
   CVI_IVE_BufFlush(handle, &src);
 
   // CVI_IVE_BLOCK is a function that average the numbers in a cell for you.
-  // You can also setup the additional f32BinSize to do additional division.
-  // Y = averageInACell(X1...Xn) / f32BinSize
+  // You can also setup the additional f32ScaleSize to do additional division.
+  // Y = averageInACell(X1...Xn) / f32ScaleSize
   IVE_BLOCK_CTRL_S iveBlkCtrl;
   iveBlkCtrl.f32ScaleSize = 2;
   iveBlkCtrl.u32CellSize = CELL_SZ;
