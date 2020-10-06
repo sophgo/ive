@@ -16,5 +16,7 @@ ExternalProject_Add(tracer
                     -DBUILD_SHARED_LIBS=ON
                     -DCMAKE_CXX_FLAGS="-fPIC")
 ExternalProject_Get_Property(tracer INSTALL_DIR)
+if (ENABLE_SYSTRACE)
 install(DIRECTORY ${INSTALL_DIR}/ DESTINATION . USE_SOURCE_PERMISSIONS)
 set(TRACER_LIB_DIR ${INSTALL_DIR}/lib)
+endif()
