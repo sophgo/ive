@@ -623,6 +623,14 @@ CVI_S32 CVI_SYS_FreeI(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
 CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                     IVE_DMA_CTRL_S *pstDmaCtrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
+  if (pstSrc->tpu_block == NULL) {
+    LOGE("Source cannot be empty.\n");
+    return CVI_FAILURE;
+  }
+  if (pstDst->tpu_block == NULL) {
+    LOGE("Destination cannot be empty.\n");
+    return CVI_FAILURE;
+  }
   int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   if (pstDmaCtrl->enMode == IVE_DMA_MODE_DIRECT_COPY) {
@@ -658,6 +666,14 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
 CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                                  IVE_DST_IMAGE_S *pstDst, IVE_ITC_CRTL_S *pstItcCtrl,
                                  bool bInstant) {
+  if (pstSrc->tpu_block == NULL) {
+    LOGE("Source cannot be empty.\n");
+    return CVI_FAILURE;
+  }
+  if (pstDst->tpu_block == NULL) {
+    LOGE("Destination cannot be empty.\n");
+    return CVI_FAILURE;
+  }
   ScopedTrace t(__PRETTY_FUNCTION__);
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
