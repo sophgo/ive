@@ -159,13 +159,19 @@ CviImg::CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
 
   this->m_paddr = paddr;
   this->m_vaddr = vaddr;
+  this->m_tg.start_address = this->m_paddr;
+  this->m_tg.base_reg_index = 0;
+  this->m_tg.fmt = this->m_fmt;
   if (m_is_stride_ceq) {
-    this->m_tg.start_address = this->m_paddr;
-    this->m_tg.base_reg_index = 0;
-    this->m_tg.fmt = this->m_fmt;
     this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
     this->m_tg.stride.h = this->m_strides[0];
     this->m_tg.stride.c = u32_lengths[0];
+    this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+  } else {
+    // TODO: Need verify
+    this->m_tg.shape = {1, 1, 1, (uint32_t)this->m_size};
+    this->m_tg.stride.h = this->m_tg.shape.w;
+    this->m_tg.stride.c = this->m_tg.shape.w;
     this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
   }
 }
@@ -241,13 +247,18 @@ int CviImg::AllocateDevice(CVI_RT_HANDLE rt_handle) {
   }
   m_vaddr = (uint8_t *)CVI_RT_MemGetVAddr(this->m_rtmem);
   m_paddr = CVI_RT_MemGetPAddr(this->m_rtmem);
+  this->m_tg.start_address = m_paddr;
+  this->m_tg.base_reg_index = 0;
+  this->m_tg.fmt = this->m_fmt;
   if (m_is_stride_ceq) {
-    this->m_tg.start_address = m_paddr;
-    this->m_tg.base_reg_index = 0;
-    this->m_tg.fmt = this->m_fmt;
     this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
     this->m_tg.stride.h = this->m_strides[0];
     this->m_tg.stride.c = m_tg.shape.h * this->m_tg.stride.h;
+    this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+  } else {
+    this->m_tg.shape = {1, 1, 1, (uint32_t)this->m_size};
+    this->m_tg.stride.h = this->m_tg.shape.w;
+    this->m_tg.stride.c = this->m_tg.shape.w;
     this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
   }
   return CVI_SUCCESS;
