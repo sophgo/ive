@@ -118,8 +118,8 @@ CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_h, uint32_t img_w,
   uint64_t offset = new_paddr - this->m_paddr;
   this->m_paddr = new_paddr;
   this->m_vaddr += offset;
+  this->m_tg.start_address = this->m_paddr;
   if (m_is_stride_ceq) {
-    this->m_tg.start_address = this->m_paddr;
     this->m_tg.stride.c = Align64(m_tg.shape.h * this->m_tg.stride.h, SCALAR_C_ALIGN);
     this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
   }
