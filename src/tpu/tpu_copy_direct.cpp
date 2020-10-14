@@ -18,7 +18,7 @@ int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
     uint32_t value = 4096;
 #else
-    uint32_t value = input[0].GetImgStrides()[0] > 4096 ? input[0].GetImgStrides()[0] : 4096;
+    uint32_t value = input[0].GetImgStrides()[0] > 4096 ? 4096 : input[0].GetImgStrides()[0];
 #endif
     uint32_t total_size = input[0].m_tg.shape.n * input[0].m_tg.shape.c * input[0].m_tg.shape.h *
                           input[0].m_tg.shape.w;
@@ -29,9 +29,7 @@ int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
       in_tg.shape.h = 4096;
       in_tg.shape.c = c_turns;
       in_tg.shape.n = 1;
-      in_tg.stride.h = in_tg.shape.w;
-      in_tg.stride.c = in_tg.shape.h * in_tg.stride.h;
-      in_tg.stride.n = in_tg.shape.h * in_tg.stride.c;
+      in_tg.stride = cvk_ctx->ops->tg_default_stride(cvk_ctx, in_tg.shape, in_tg.fmt);
       out_tg.shape = in_tg.shape;
       out_tg.stride = in_tg.stride;
       cvk_ctx->ops->tdma_g2g_bf16_tensor_copy(cvk_ctx, &copy_param);
@@ -40,12 +38,11 @@ int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
     }
     uint32_t h_left = h_turns - c_turns * 4096;
     if (h_left > 0) {
+      in_tg.shape.w = value;
       in_tg.shape.h = h_left;
       in_tg.shape.c = 1;
       in_tg.shape.n = 1;
-      in_tg.stride.h = in_tg.shape.w;
-      in_tg.stride.c = in_tg.shape.h * in_tg.stride.h;
-      in_tg.stride.n = in_tg.shape.h * in_tg.stride.c;
+      in_tg.stride = cvk_ctx->ops->tg_default_stride(cvk_ctx, in_tg.shape, in_tg.fmt);
       out_tg.shape = in_tg.shape;
       out_tg.stride = in_tg.stride;
       cvk_ctx->ops->tdma_g2g_bf16_tensor_copy(cvk_ctx, &copy_param);
@@ -54,13 +51,11 @@ int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
     }
     uint32_t w_left = total_size - h_turns * value;
     if (w_left > 0) {
-      in_tg.shape.h = w_left;
+      in_tg.shape.w = w_left;
       in_tg.shape.h = 1;
       in_tg.shape.c = 1;
       in_tg.shape.n = 1;
-      in_tg.stride.h = in_tg.shape.w;
-      in_tg.stride.c = in_tg.shape.h * in_tg.stride.h;
-      in_tg.stride.n = in_tg.shape.h * in_tg.stride.c;
+      in_tg.stride = cvk_ctx->ops->tg_default_stride(cvk_ctx, in_tg.shape, in_tg.fmt);
       out_tg.shape = in_tg.shape;
       out_tg.stride = in_tg.stride;
       cvk_ctx->ops->tdma_g2g_bf16_tensor_copy(cvk_ctx, &copy_param);

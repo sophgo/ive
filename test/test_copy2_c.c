@@ -53,9 +53,26 @@ int main(int argc, char **argv) {
     }
   }
 
+  printf("Multi-run test\n");
+  for (uint32_t i = 0; i < 10; i++) {
+    printf("No. %u\n", i);
+    CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_YUV420P, width, height);
+    CVI_IVE_DMA(handle, &src, &dst, &iveDmaCtrl, 0);
+    for (uint32_t i = 0; i < 3; i++) {
+      uint32_t length = i == 0 ? lumaSize : chromaSize;
+      for (uint32_t j = 0; j < length; j++) {
+        if (src.pu8VirAddr[i][j] != dst.pu8VirAddr[i][j]) {
+          printf("Not the same @ (%u, %u) = (%u, %u)\n", i, j, (uint32_t)src.pu8VirAddr[i][j],
+                 (uint32_t)dst.pu8VirAddr[i][j]);
+          break;
+        }
+      }
+    }
+    CVI_SYS_FreeI(handle, &dst);
+  }
+
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src);
-  CVI_SYS_FreeI(handle, &dst);
   CVI_IVE_DestroyHandle(handle);
 
   return CVI_SUCCESS;
