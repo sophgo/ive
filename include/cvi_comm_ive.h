@@ -294,6 +294,13 @@ typedef struct IVE_THRESH_U16_CTRL {
 } IVE_THRESH_U16_CTRL_S;
 
 // for cpu version
+
+typedef enum IVE_CC_DIR { DIRECTION_4 = 0x0, DIRECTION_8 = 0x1 } IVE_CC_DIR_E;
+
+typedef struct IVE_CC_CTRL {
+  IVE_CC_DIR_E enMode;
+} IVE_CC_CTRL_S;
+
 // integral image
 typedef enum cviIVE_INTEG_OUT_CTRL_E {
   IVE_INTEG_OUT_CTRL_COMBINE = 0x0,

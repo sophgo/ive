@@ -1918,8 +1918,8 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 // cpu functions
 // ---------------------------------
 
-CVI_S32 CVI_IVE_Island(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
-                       int *numsofIsland, bool bInstant) {
+CVI_S32 CVI_IVE_CC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                   int *numsofIsland, IVE_CC_CTRL_S *pstCCCtrl, bool bInstant) {
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
@@ -1943,6 +1943,7 @@ CVI_S32 CVI_IVE_Island(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
     int32_t i;
     int32_t j;
   };
+  bool do_eight = pstCCCtrl->enMode == DIRECTION_8 ? true : false;
   std::deque<coord> bb;
   memset(dstPtr, 0, stride * height);
   for (int32_t i = 0; i < height; i++) {
@@ -1959,27 +1960,55 @@ CVI_S32 CVI_IVE_Island(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
           srcPtr[cell.j + cell.i * stride] = 0;
           dstPtr[cell.j + cell.i * stride] = count;
           auto &&ip1 = cell.i + 1;
+          bool is_ip1 = false;
           if (ip1 < height) {
             if (srcPtr[cell.j + ip1 * stride] == 255) {
               bb.push_back({ip1, cell.j});
             }
+            is_ip1 = true;
           }
           auto &&jp1 = cell.j + 1;
+          bool is_jp1 = false;
           if (jp1 < width) {
             if (srcPtr[jp1 + cell.i * stride] == 255) {
               bb.push_back({cell.i, jp1});
             }
+            if (do_eight && is_ip1) {
+              if (srcPtr[jp1 + ip1 * stride] == 255) {
+                bb.push_back({ip1, jp1});
+              }
+            }
+            is_jp1 = true;
           }
           auto &&im1 = cell.i - 1;
+          bool is_im1 = false;
           if (im1 >= 0) {
             if (srcPtr[cell.j + im1 * stride] == 255) {
               bb.push_back({im1, cell.j});
             }
+            if (do_eight && is_jp1) {
+              if (srcPtr[jp1 + im1 * stride] == 255) {
+                bb.push_back({im1, jp1});
+              }
+            }
+            is_im1 = true;
           }
           auto &&jm1 = cell.j - 1;
           if (jm1 >= 0) {
             if (srcPtr[jm1 + cell.i * stride] == 255) {
               bb.push_back({cell.i, jm1});
+            }
+            if (do_eight) {
+              if (is_ip1) {
+                if (srcPtr[jm1 + ip1 * stride] == 255) {
+                  bb.push_back({ip1, jm1});
+                }
+              }
+              if (is_im1) {
+                if (srcPtr[jm1 + im1 * stride] == 255) {
+                  bb.push_back({im1, jm1});
+                }
+              }
             }
           }
         }  // while loop
