@@ -508,6 +508,20 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 // for cpu version
 
 /**
+ * @brief Calculate number of island and label them. Input must be a binary image. Note that for
+ * speed the source file will be modified.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc THe input binary image.
+ * @param pstDst The labeled image.
+ * @param numsofIsland Output number of island found.
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Island(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                       int *numsofIsland, bool bInstant);
+
+/**
  * @brief INTEG make a integral image with one gray image
  *
  * @param pIveHandle Ive instance handler.

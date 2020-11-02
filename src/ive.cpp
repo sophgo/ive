@@ -34,6 +34,7 @@
 
 #include <stdarg.h>
 #include <cmath>
+#include <deque>
 #include <limits>
 
 /**
@@ -1917,6 +1918,79 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 // cpu functions
 // ---------------------------------
 
+CVI_S32 CVI_IVE_Island(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                       int *numsofIsland, bool bInstant) {
+  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
+    return CVI_FAILURE;
+  }
+  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
+    return CVI_FAILURE;
+  }
+  if (pstSrc->u16Width != pstDst->u16Width || pstSrc->u16Height != pstDst->u16Height) {
+    LOGE("Src and dst size are not the same.\n");
+    return CVI_FAILURE;
+  }
+  CVI_IVE_BufRequest(pIveHandle, pstSrc);
+  CVI_IVE_BufRequest(pIveHandle, pstDst);
+  uint8_t *srcPtr = pstSrc->pu8VirAddr[0];
+  uint8_t *dstPtr = pstDst->pu8VirAddr[0];
+  int32_t width = pstSrc->u16Width;
+  int32_t stride = pstSrc->u16Stride[0];
+  int32_t height = pstSrc->u16Height;
+  uint32_t count = 0;
+
+  struct coord {
+    int32_t i;
+    int32_t j;
+  };
+  std::deque<coord> bb;
+  memset(dstPtr, 0, stride * height);
+  for (int32_t i = 0; i < height; i++) {
+    for (int32_t j = 0; j < width; j++) {
+      if (srcPtr[j + i * stride] == 255) {
+        count++;
+        bb.push_back({i, j});
+        while (!bb.empty()) {
+          coord cell = bb.front();
+          bb.pop_front();
+          if (cell.i < 0 || cell.j < 0 || cell.i >= height || cell.j >= width) {
+            continue;
+          }
+          srcPtr[cell.j + cell.i * stride] = 0;
+          dstPtr[cell.j + cell.i * stride] = count;
+          auto &&ip1 = cell.i + 1;
+          if (ip1 < height) {
+            if (srcPtr[cell.j + ip1 * stride] == 255) {
+              bb.push_back({ip1, cell.j});
+            }
+          }
+          auto &&jp1 = cell.j + 1;
+          if (jp1 < width) {
+            if (srcPtr[jp1 + cell.i * stride] == 255) {
+              bb.push_back({cell.i, jp1});
+            }
+          }
+          auto &&im1 = cell.i - 1;
+          if (im1 >= 0) {
+            if (srcPtr[cell.j + im1 * stride] == 255) {
+              bb.push_back({im1, cell.j});
+            }
+          }
+          auto &&jm1 = cell.j - 1;
+          if (jm1 >= 0) {
+            if (srcPtr[jm1 + cell.i * stride] == 255) {
+              bb.push_back({cell.i, jm1});
+            }
+          }
+        }  // while loop
+      }    // if == 255
+    }      // for j
+  }        // for i
+  *numsofIsland = count;
+  CVI_IVE_BufFlush(pIveHandle, pstSrc);
+  CVI_IVE_BufFlush(pIveHandle, pstDst);
+  return CVI_SUCCESS;
+}
 /**
  * @Param Src gray image (size: wxh)
  * @Param Integral integral image (size: (w+1)x(h+1))
