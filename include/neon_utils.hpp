@@ -374,6 +374,7 @@ inline void neonBF162S16(uint16_t *src_ptr, int16_t *dst_ptr, const uint64_t arr
   }
 }
 
+// Broken due to unequal stride. Temporarily disable.
 inline void neonBF162F32(uint16_t *src_ptr, float *dst_ptr, const uint64_t arr_size) {
   uint64_t neon_turn = arr_size / 8;
   uint16x8_t zeros = vdupq_n_u16(0);

@@ -682,10 +682,25 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
     if (cpp_src->m_tg.fmt == CVK_FMT_BF16 && cpp_dst->m_tg.fmt == CVK_FMT_F32) {
       cpp_src->Invld(handle_ctx->rt_handle);
       cpp_dst->Invld(handle_ctx->rt_handle);
-      uint16_t *src_ptr = (uint16_t *)cpp_src->GetVAddr();
-      float *dst_ptr = (float *)cpp_dst->GetVAddr();
-      uint64_t img_size = cpp_src->GetImgSize() / 2;
-      neonBF162F32(src_ptr, dst_ptr, img_size);
+      // uint16_t *src_ptr = (uint16_t *)cpp_src->GetVAddr();
+      // float *dst_ptr = (float *)cpp_dst->GetVAddr();
+      // uint64_t img_size = cpp_src->GetImgSize() / 2;
+      // neonBF162F32(src_ptr, dst_ptr, img_size);
+      union {
+        short a[2];
+        float b;
+      } aaa;
+      uint16_t stride = cpp_src->GetImgStrides()[0];
+      uint16_t stride2 = cpp_dst->GetImgStrides()[0];
+      for (size_t i = 0; i < cpp_src->GetImgHeight(); i++) {
+        uint16_t *line16 = (uint16_t *)(cpp_src->GetVAddr() + i * stride);
+        float *linef = (float *)(cpp_dst->GetVAddr() + i * stride2);
+        for (size_t j = 0; j < cpp_src->GetImgWidth(); j++) {
+          aaa.a[0] = 0;
+          aaa.a[1] = line16[j];
+          linef[j] = aaa.b;
+        }
+      }
       cpp_src->Flush(handle_ctx->rt_handle);
       cpp_dst->Flush(handle_ctx->rt_handle);
     } else if (cpp_src->m_tg.fmt == CVK_FMT_BF16 && cpp_dst->m_tg.fmt == CVK_FMT_U16) {
@@ -747,10 +762,25 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
     if (cpp_src->m_tg.fmt == CVK_FMT_BF16 && cpp_dst->m_tg.fmt == CVK_FMT_F32) {
       cpp_src->Invld(handle_ctx->rt_handle);
       cpp_dst->Invld(handle_ctx->rt_handle);
-      uint16_t *src_ptr = (uint16_t *)cpp_src->GetVAddr();
-      float *dst_ptr = (float *)cpp_dst->GetVAddr();
-      uint64_t img_size = cpp_src->GetImgSize() / 2;
-      neonBF162F32(src_ptr, dst_ptr, img_size);
+      // uint16_t *src_ptr = (uint16_t *)cpp_src->GetVAddr();
+      // float *dst_ptr = (float *)cpp_dst->GetVAddr();
+      // uint64_t img_size = cpp_src->GetImgSize() / 2;
+      // neonBF162F32(src_ptr, dst_ptr, img_size);
+      union {
+        short a[2];
+        float b;
+      } aaa;
+      uint16_t stride = cpp_src->GetImgStrides()[0];
+      uint16_t stride2 = cpp_dst->GetImgStrides()[0];
+      for (size_t i = 0; i < cpp_src->GetImgHeight(); i++) {
+        uint16_t *line16 = (uint16_t *)(cpp_src->GetVAddr() + i * stride);
+        float *linef = (float *)(cpp_dst->GetVAddr() + i * stride2);
+        for (size_t j = 0; j < cpp_src->GetImgWidth(); j++) {
+          aaa.a[0] = 0;
+          aaa.a[1] = line16[j];
+          linef[j] = aaa.b;
+        }
+      }
       cpp_src->Flush(handle_ctx->rt_handle);
       cpp_dst->Flush(handle_ctx->rt_handle);
     } else if (cpp_src->m_tg.fmt == CVK_FMT_BF16 && cpp_dst->m_tg.fmt == CVK_FMT_U16) {

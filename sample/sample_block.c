@@ -45,11 +45,12 @@ int main(int argc, char **argv) {
   // Get test matrix.
   IVE_SRC_IMAGE_S src;
   CVI_IVE_CreateImage(handle, &src, IVE_IMAGE_TYPE_U8C1, TEST_W, TEST_H);
-  memcpy(src.pu8VirAddr[0], test_array, TEST_W * TEST_H);
   // Print the array.
+  uint16_t stride = src.u16Stride[0];
   for (size_t i = 0; i < TEST_H; i++) {
     for (size_t j = 0; j < TEST_W; j++) {
-      printf("%3u ", src.pu8VirAddr[0][i * TEST_W + j]);
+      src.pu8VirAddr[0][i * stride + j] = test_array[i * TEST_W + j];
+      printf("%3u ", src.pu8VirAddr[0][i * stride + j]);
     }
     printf("\n");
   }
@@ -89,14 +90,16 @@ int main(int argc, char **argv) {
   printf("U8 result:\n");
   for (size_t i = 0; i < res_h; i++) {
     for (size_t j = 0; j < res_w; j++) {
-      printf("%3u ", dst.pu8VirAddr[0][i * res_w + j]);
+      printf("%3u ", dst.pu8VirAddr[0][i * stride + j]);
     }
     printf("\n");
   }
   printf("BF16 result:\n");
+  uint16_t stride2 = dst_fp32.u16Stride[0];
   for (size_t i = 0; i < res_h; i++) {
+    float *line = (float *)(dst_fp32.pu8VirAddr[0] + i * stride2);
     for (size_t j = 0; j < res_w; j++) {
-      printf("%.3f ", ((float*)dst_fp32.pu8VirAddr[0])[i * res_w + j]);
+      printf("%.3f ", line[j]);
     }
     printf("\n");
   }
