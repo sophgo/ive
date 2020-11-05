@@ -60,10 +60,10 @@ int main(int argc, char **argv) {
   CVI_IVE_BufFlush(handle, &src);
 
   printf("Run CPU CC.\n");
-  int numsofIsland = 0;
+  int numOfComponents = 0;
   IVE_CC_CTRL_S ccCtrl;
   ccCtrl.enMode = DIRECTION_8;
-  int ret = CVI_IVE_CC(handle, &src, &dst, &numsofIsland, &ccCtrl, false);
+  int ret = CVI_IVE_CC(handle, &src, &dst, &numOfComponents, &ccCtrl, false);
 
   // Refresh CPU cache before CPU use.
   CVI_IVE_BufRequest(handle, &dst);
@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
     }
     printf("\n");
   }
-  printf("Nums of island %d. Dst:\n", numsofIsland);
+  printf("Num of components %d. Dst:\n", numOfComponents);
   for (size_t i = 0; i < TEST_H; i++) {
     for (size_t j = 0; j < TEST_W; j++) {
       printf("%3u ", dst.pu8VirAddr[0][i * stride + j]);

@@ -514,13 +514,13 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
  * @param pIveHandle Ive instance handler.
  * @param pstSrc THe input binary image.
  * @param pstDst The labeled image.
- * @param numsofIsland Output number of island found.
+ * @param numOfComponents Number of components found.
  * @param pstCCCtrl Connect component control parameter.
  * @param bInstant Dummy variable.
  * @return CVI_S32 Return CVI_SUCCESS if succeed.
  */
 CVI_S32 CVI_IVE_CC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
-                   int *numsofIsland, IVE_CC_CTRL_S *pstCCCtrl, bool bInstant);
+                   int *numOfComponents, IVE_CC_CTRL_S *pstCCCtrl, bool bInstant);
 
 /**
  * @brief INTEG make a integral image with one gray image

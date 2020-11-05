@@ -1919,7 +1919,7 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 // ---------------------------------
 
 CVI_S32 CVI_IVE_CC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
-                   int *numsofIsland, IVE_CC_CTRL_S *pstCCCtrl, bool bInstant) {
+                   int *numOfComponents, IVE_CC_CTRL_S *pstCCCtrl, bool bInstant) {
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
@@ -2015,7 +2015,7 @@ CVI_S32 CVI_IVE_CC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE
       }    // if == 255
     }      // for j
   }        // for i
-  *numsofIsland = count;
+  *numOfComponents = count;
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
   CVI_IVE_BufFlush(pIveHandle, pstDst);
   return CVI_SUCCESS;
