@@ -1951,6 +1951,8 @@ CVI_S32 CVI_IVE_CC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE
       if (srcPtr[j + i * stride] == 255) {
         count++;
         bb.push_back({i, j});
+        srcPtr[j + i * stride] = 0;
+        dstPtr[j + i * stride] = count;
         while (!bb.empty()) {
           coord cell = bb.front();
           bb.pop_front();
@@ -1964,6 +1966,8 @@ CVI_S32 CVI_IVE_CC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE
           if (ip1 < height) {
             if (srcPtr[cell.j + ip1 * stride] == 255) {
               bb.push_back({ip1, cell.j});
+              srcPtr[cell.j + ip1 * stride] = 0;
+              dstPtr[cell.j + ip1 * stride] = count;
             }
             is_ip1 = true;
           }
@@ -1972,10 +1976,14 @@ CVI_S32 CVI_IVE_CC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE
           if (jp1 < width) {
             if (srcPtr[jp1 + cell.i * stride] == 255) {
               bb.push_back({cell.i, jp1});
+              srcPtr[jp1 + cell.i * stride] = 0;
+              dstPtr[jp1 + cell.i * stride] = count;
             }
             if (do_eight && is_ip1) {
               if (srcPtr[jp1 + ip1 * stride] == 255) {
                 bb.push_back({ip1, jp1});
+                srcPtr[jp1 + ip1 * stride] = 0;
+                dstPtr[jp1 + ip1 * stride] = count;
               }
             }
             is_jp1 = true;
@@ -1985,10 +1993,14 @@ CVI_S32 CVI_IVE_CC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE
           if (im1 >= 0) {
             if (srcPtr[cell.j + im1 * stride] == 255) {
               bb.push_back({im1, cell.j});
+              srcPtr[cell.j + im1 * stride] = 0;
+              dstPtr[cell.j + im1 * stride] = count;
             }
             if (do_eight && is_jp1) {
               if (srcPtr[jp1 + im1 * stride] == 255) {
                 bb.push_back({im1, jp1});
+                srcPtr[jp1 + im1 * stride] = 0;
+                dstPtr[jp1 + im1 * stride] = count;
               }
             }
             is_im1 = true;
@@ -1997,16 +2009,22 @@ CVI_S32 CVI_IVE_CC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE
           if (jm1 >= 0) {
             if (srcPtr[jm1 + cell.i * stride] == 255) {
               bb.push_back({cell.i, jm1});
+              srcPtr[jm1 + cell.i * stride] = 0;
+              dstPtr[jm1 + cell.i * stride] = count;
             }
             if (do_eight) {
               if (is_ip1) {
                 if (srcPtr[jm1 + ip1 * stride] == 255) {
                   bb.push_back({ip1, jm1});
+                  srcPtr[jm1 + ip1 * stride] = 0;
+                  dstPtr[jm1 + ip1 * stride] = count;
                 }
               }
               if (is_im1) {
                 if (srcPtr[jm1 + im1 * stride] == 255) {
                   bb.push_back({im1, jm1});
+                  srcPtr[jm1 + im1 * stride] = 0;
+                  dstPtr[jm1 + im1 * stride] = count;
                 }
               }
             }
