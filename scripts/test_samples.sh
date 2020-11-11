@@ -32,6 +32,7 @@ FUNC_NAME_TWO_IMGS=("sample_ncc"
 
 FUNC_NAME_WO_IMGS=("sample_map"
 "sample_block"
+"sample_island"
 )
 
 

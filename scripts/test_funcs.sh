@@ -17,6 +17,7 @@ FUNC_NAME=("test_sobel_grad_c"
 "test_16bitTo8bit_c"
 "test_integral_image_c"
 "test_lbp_c"
+"test_island_c"
 #"test_ncc_c"
 )
 
