@@ -134,6 +134,22 @@ inline bool IsImgPlanar(CVIIMGTYPE img_type) {
   return is_planar;
 }
 
+inline bool Is4096Workaound(CVIIMGTYPE img_type) {
+#ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
+  switch (img_type) {
+    case CVI_YUV420:
+    case CVI_YUV422:
+      return true;
+      break;
+    default:
+      break;
+  }
+  return false;
+#else
+  return false;
+#endif
+}
+
 inline uint32_t WidthAlign(const uint32_t width, const uint32_t align) {
   uint32_t stride = (uint32_t)(width / align) * align;
   if (stride < width) {
@@ -301,6 +317,13 @@ class CviImg {
    * @return const uint64_t image size
    */
   const uint64_t GetImgSize() const;
+
+  /**
+   * @brief Get the Img's CVIIMGTYPE.
+   *
+   * @return const CVIIMGTYPE image type.
+   */
+  const CVIIMGTYPE GetImgType() const;
 
   /**
    * @brief Tells if this image instance is a sub-image of an image.

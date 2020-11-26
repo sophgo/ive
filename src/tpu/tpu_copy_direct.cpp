@@ -15,11 +15,10 @@ int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
     cvk_tg_t out_tg = (*output)[0].m_tg;
     copy_param.src = &in_tg;
     copy_param.dst = &out_tg;
-#ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
-    uint32_t value = 4096;
-#else
-    uint32_t value = input[0].GetImgStrides()[0] > 4096 ? 4096 : input[0].GetImgStrides()[0];
-#endif
+    uint32_t value =
+        Is4096Workaound(input[0].GetImgType())
+            ? 4096
+            : (input[0].GetImgStrides()[0] > 4096 ? 4096 : input[0].GetImgStrides()[0]);
     uint32_t total_size = input[0].m_tg.shape.n * input[0].m_tg.shape.c * input[0].m_tg.shape.h *
                           input[0].m_tg.shape.w;
     uint32_t h_turns = total_size / value;
