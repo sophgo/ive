@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.2.2)
 
 # Options
 option(ENABLE_SYSTRACE "Use systrace" OFF)
-
-set(CVI_IVE_SO_VERSION 0)
-set(CVI_IVE_MAJOR_VERSION "${CVI_IVE_SO_VERSION}.0.5")
+execute_process(COMMAND git describe OUTPUT_VARIABLE LATEST_TAG)
+string(REGEX MATCH "([0-9]+)\.([0-9]+)\.([0-9]+)[^(\\\n).]+" LATEST_TAG ${LATEST_TAG})
+string(REGEX MATCH "([0-9]+)\\.([0-9]+)\\.([0-9]+)" MAJOR_VERSION ${LATEST_TAG})
+string(REGEX MATCH "^([^.]+)" SO_VERSION ${MAJOR_VERSION})
 
 if (CMAKE_C_COMPILER STREQUAL "/usr/bin/cc")
   message(FATAL_ERROR "Please use clang compiler. Please export C and CXX compiler to clang.")
@@ -119,6 +120,7 @@ endif()
 execute_process(COMMAND git show --oneline -s OUTPUT_VARIABLE CURRENT_COMMIT)
 
 message("==================================================")
+message("Latest tag       ${LATEST_TAG}")
 message("Commit           ${CURRENT_COMMIT}")
 message("[Summary]")
 message("Platform         ${CVI_PLATFORM}")

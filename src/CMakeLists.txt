@@ -1,6 +1,10 @@
 project(ive)
+set(CVIIVE_TAG ${LATEST_TAG})
+set(CVIIVE_VERSION ${MAJOR_VERSION})
+configure_file(version.hpp.in version.hpp @ONLY)
 
 include_directories(
+    ${CMAKE_CURRENT_BINARY_DIR}
     ${MLIR_INCLUDES}
     ${CVIMATH_INCLUDES}
     ${MIDDLEWARE_INCLUDES}
@@ -52,13 +56,13 @@ add_dependencies(cvi_ive_tpu tracer)
 target_link_libraries(cvi_ive_tpu ${TRACER_LIB_DIR}/libcvitracer.so ${MLIR_LIBS})
 set_target_properties(cvi_ive_tpu PROPERTIES
                      IMPORTED_LOCATION ${TRACER_LIB_DIR}/libcvitracer.so
-                     VERSION ${CVI_IVE_MAJOR_VERSION}
-                     SOVERSION ${CVI_IVE_SO_VERSION})
+                     VERSION ${MAJOR_VERSION}
+                     SOVERSION ${SO_VERSION})
 else()
 target_link_libraries(cvi_ive_tpu ${MLIR_LIBS})
 set_target_properties(cvi_ive_tpu PROPERTIES
-                     VERSION ${CVI_IVE_MAJOR_VERSION}
-                     SOVERSION ${CVI_IVE_SO_VERSION})
+                     VERSION ${MAJOR_VERSION}
+                     SOVERSION ${SO_VERSION})
 endif()
 
 

@@ -1,3 +1,5 @@
+#include "version.hpp"
+
 #include "ive.h"
 #include "ive_experimental.h"
 #include "ive_log.hpp"
@@ -150,7 +152,8 @@ IVE_HANDLE CVI_IVE_CreateHandle() {
     delete handle_ctx;
     return NULL;
   }
-  LOGI("Create handle.\n");
+  const char timestamp[] = __DATE__ " " __TIME__;
+  LOGI("IVE_HANDLE created, version %s-%s", CVIIVE_TAG, timestamp);
   return (void *)handle_ctx;
 }
 
