@@ -252,7 +252,15 @@ int CviImg::AllocateDevice(CVI_RT_HANDLE rt_handle) {
   this->m_tg.base_reg_index = 0;
   this->m_tg.fmt = this->m_fmt;
   if (m_is_stride_ceq) {
-    this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
+    if (!this->m_is_planar) {
+      if (this->m_channel != 1) {
+        LOGE("Internal data flow error. Channel != 1.");
+        return CVI_FAILURE;
+      }
+      this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_strides[0]};
+    } else {
+      this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
+    }
     this->m_tg.stride.h = this->m_strides[0];
     this->m_tg.stride.c = m_tg.shape.h * this->m_tg.stride.h;
     this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
