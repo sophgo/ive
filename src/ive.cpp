@@ -1711,8 +1711,6 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_sobel.setTblMgr(&handle_ctx->t_h.t_tblmgr);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
-  CviImg *cpp_dsth = reinterpret_cast<CviImg *>(pstDstH->tpu_block);
-  CviImg *cpp_dstv = reinterpret_cast<CviImg *>(pstDstV->tpu_block);
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs;
   uint8_t mask_sz = pstSobelCtrl->u8MaskSize;
@@ -1725,6 +1723,8 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
       return CVI_FAILURE;
     }
     int npu_num = handle_ctx->t_h.t_sobel_gradonly.getNpuNum(handle_ctx->cvk_ctx);
+    CviImg *cpp_dsth = reinterpret_cast<CviImg *>(pstDstH->tpu_block);
+    CviImg *cpp_dstv = reinterpret_cast<CviImg *>(pstDstV->tpu_block);
     outputs.emplace_back(*cpp_dstv);
     outputs.emplace_back(*cpp_dsth);
     IveKernel kernel_w =
@@ -1741,6 +1741,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     if (!IsValidImageType(pstDstH, STRFY(pstDstH), IVE_IMAGE_TYPE_BF16C1)) {
       return CVI_FAILURE;
     }
+    CviImg *cpp_dsth = reinterpret_cast<CviImg *>(pstDstH->tpu_block);
     outputs.emplace_back(*cpp_dsth);
     IveKernel kernel_h = createKernel(handle_ctx->rt_handle, cpp_src->m_tg.shape.c, mask_sz,
                                       mask_sz, IVE_KERNEL::SOBEL_Y);
@@ -1753,6 +1754,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     if (!IsValidImageType(pstDstV, STRFY(pstDstV), IVE_IMAGE_TYPE_BF16C1)) {
       return CVI_FAILURE;
     }
+    CviImg *cpp_dstv = reinterpret_cast<CviImg *>(pstDstV->tpu_block);
     outputs.emplace_back(*cpp_dstv);
     IveKernel kernel_w = createKernel(handle_ctx->rt_handle, cpp_src->m_tg.shape.c, mask_sz,
                                       mask_sz, IVE_KERNEL::SOBEL_X);
