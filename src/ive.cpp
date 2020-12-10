@@ -1743,8 +1743,9 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     }
     CviImg *cpp_dsth = reinterpret_cast<CviImg *>(pstDstH->tpu_block);
     outputs.emplace_back(*cpp_dsth);
-    IveKernel kernel_h = createKernel(handle_ctx->rt_handle, cpp_src->m_tg.shape.c, mask_sz,
-                                      mask_sz, IVE_KERNEL::SOBEL_Y);
+    int npu_num = handle_ctx->t_h.t_filter_bf16.getNpuNum(handle_ctx->cvk_ctx);
+    IveKernel kernel_h =
+        createKernel(handle_ctx->rt_handle, npu_num, mask_sz, mask_sz, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_filter_bf16.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_h);
     ret = handle_ctx->t_h.t_filter_bf16.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
@@ -1756,8 +1757,9 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     }
     CviImg *cpp_dstv = reinterpret_cast<CviImg *>(pstDstV->tpu_block);
     outputs.emplace_back(*cpp_dstv);
-    IveKernel kernel_w = createKernel(handle_ctx->rt_handle, cpp_src->m_tg.shape.c, mask_sz,
-                                      mask_sz, IVE_KERNEL::SOBEL_X);
+    int npu_num = handle_ctx->t_h.t_filter_bf16.getNpuNum(handle_ctx->cvk_ctx);
+    IveKernel kernel_w =
+        createKernel(handle_ctx->rt_handle, npu_num, mask_sz, mask_sz, IVE_KERNEL::SOBEL_X);
     handle_ctx->t_h.t_filter_bf16.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_w);
     ret = handle_ctx->t_h.t_filter_bf16.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,

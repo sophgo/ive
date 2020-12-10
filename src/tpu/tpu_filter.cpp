@@ -109,7 +109,7 @@ int IveTPUFilter::postProcess(CVI_RT_HANDLE rt_handle) {
   return CVI_SUCCESS;
 }
 
-void IveTPUFilterBF16::setKernel(const IveKernel &kernel) {
+void IveTPUFilterBF16::setKernel(IveKernel &kernel) {
   m_kernel = &kernel;
   m_kernel_info.size = m_kernel->img.m_tg.shape.h;
   int pad = (m_kernel_info.size - 1) / 2;
@@ -120,9 +120,10 @@ void IveTPUFilterBF16::setKernel(const IveKernel &kernel) {
 }
 
 int IveTPUFilterBF16::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
+  m_slice_info.io_fmt = CVK_FMT_BF16;
   m_cmdbuf_subfix = "filter";
   m_slice_info.nums_of_tl = 2 * 2;
-  m_kernel_info.nums_of_kernel = 1;
+  m_kernel_info.nums_of_kernel = 1 * 2;
   return CVI_SUCCESS;
 }
 
@@ -150,12 +151,7 @@ int IveTPUFilterBF16::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   cvk_tl_shape_t tl_kernel_s = {1, m_kernel->img.m_tg.shape.c, m_kernel_info.size,
                                 m_kernel_info.size};
   auto *tl_kernel = allocTLMem(cvk_ctx, tl_kernel_s, CVK_FMT_BF16, 1, IVETLType::KERNEL);
-  {
-    cvk_tdma_g2l_tensor_copy_param_t p;
-    p.src = &m_kernel->img.m_tg;
-    p.dst = tl_kernel;
-    cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p);
-  }
+  cviImgFlush2TL(rt_handle, cvk_ctx, m_kernel->img, tl_kernel);
 
   if (enable_cext) {
     m_p_conv.pad_top = 0;

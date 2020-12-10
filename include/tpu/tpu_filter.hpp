@@ -24,7 +24,7 @@ class IveTPUFilter : public IveCore {
 
 class IveTPUFilterBF16 : public IveCore {
  public:
-  void setKernel(const IveKernel &kernel);
+  void setKernel(IveKernel &kernel);
   virtual int init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) override;
   virtual int runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                        const std::vector<cvk_tg_shape_t> &tg_in_slices,
@@ -35,6 +35,6 @@ class IveTPUFilterBF16 : public IveCore {
                          uint32_t ping_idx) override;
 
  private:
-  const IveKernel *m_kernel = nullptr;
+  IveKernel *m_kernel = nullptr;
   cvk_tiu_depthwise_pt_convolution_param_t m_p_conv;
 };
