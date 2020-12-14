@@ -162,7 +162,17 @@ CviImg::CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
   this->m_tg.base_reg_index = 0;
   this->m_tg.fmt = this->m_fmt;
   if (m_is_stride_ceq) {
-    this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
+    if (!this->m_is_planar) {
+      if (this->m_channel != 1) {
+        LOGE("Internal data flow error. Channel != 1.");
+      }
+      if (this->m_strides[0] * this->m_height != u32_lengths) {
+        LOGE("Length shape != stride * height\n");
+      }
+      this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_strides[0]};
+    } else {
+      this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
+    }
     this->m_tg.stride.h = this->m_strides[0];
     this->m_tg.stride.c = u32_lengths[0];
     this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
