@@ -355,6 +355,20 @@ CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO
                     IVE_DST_IMAGE_S *pstDst, bool bInstant);
 
 /**
+ * @brief Merge two image with given mask.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc1 Input image 1.
+ * @param pstSrc2 Input image 2.
+ * @param pstMask Mask, can be single channel. Pixels set to zero will mask the pixel in image 1.
+ * @param pstDst Output image.
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Mask(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
+                     IVE_SRC_IMAGE_S *pstMask, IVE_DST_IMAGE_S *pstDst, bool bInstant);
+
+/**
  * @brief Calculate the normalized gradient of an image.
  *
  * @param pIveHandle Ive instance handler.

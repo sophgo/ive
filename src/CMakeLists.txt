@@ -30,6 +30,7 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_copy_interval.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_filter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_magandang.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_mask.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_max.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_min.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_morph.cpp

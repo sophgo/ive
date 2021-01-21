@@ -1002,15 +1002,41 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
   getBMAddrInfo(input, *output, m_kernel_info.pad[0], m_kernel_info.pad[2], &bm_src_info,
                 &bm_dest_info);
 
+  // Experimental feature
+  std::vector<bool> extend_channel(input.size(), false);
+  uint32_t max_channel = 1;
+  bool extend_error = false;
+  for (uint32_t i = 0; i < input.size(); i++) {
+    if (input[i].m_tg.shape.c != 1) {
+      if (max_channel != 1 && input[i].m_tg.shape.c != max_channel) {
+        extend_error = true;
+        break;
+      }
+      max_channel = input[i].m_tg.shape.c;
+    } else {
+      extend_channel[i] = true;
+    }
+  }
+  if (extend_error) {
+    LOGE("Failed to extend layer.\n");
+    return CVI_FAILURE;
+  }
+
   // Create tg block
   cvk_tg_t tg_in;
   tg_in.base_reg_index = 0;
   cvk_tg_t tg_out;
   tg_out.base_reg_index = 0;
 
+  std::vector<uint64_t> bm_src_addr_bk = bm_src_info.addr_vec;
   // Main for loop
   for (uint32_t b = 0; b < batch; b++) {
     TensorSliceInfo *tsi = &out_info;
+    for (size_t k = 0; k < bm_src_info.addr_vec.size(); k++) {
+      if (extend_channel[k]) {
+        bm_src_info.addr_vec[k] = bm_src_addr_bk[k];
+      }
+    }
     for (uint32_t i = 0; i < slice_res.h.turn; i++) {
       // Re-assign head address to w.
       std::vector<uint64_t> bm_src_addr_w = bm_src_info.addr_vec;

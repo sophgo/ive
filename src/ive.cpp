@@ -22,6 +22,7 @@
 #include "tpu/tpu_fill.hpp"
 #include "tpu/tpu_filter.hpp"
 #include "tpu/tpu_magandang.hpp"
+#include "tpu/tpu_mask.hpp"
 #include "tpu/tpu_morph.hpp"
 #include "tpu/tpu_mulsum.hpp"
 #include "tpu/tpu_normalize.hpp"
@@ -115,6 +116,7 @@ struct TPU_HANDLE {
   IveTPUFilter t_filter;
   IveTPUFilterBF16 t_filter_bf16;
   IveTPUMagAndAng t_magandang;
+  IveTPUMask t_mask;
   IveTPUMax t_max;
   IveTPUMulSum t_mulsum;
   IveTPUMin t_min;
@@ -1354,6 +1356,36 @@ CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO
                                  pstMap->pu8VirAddr);
   handle_ctx->t_h.t_tbl.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   return handle_ctx->t_h.t_tbl.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
+}
+
+CVI_S32 CVI_IVE_Mask(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
+                     IVE_SRC_IMAGE_S *pstMask, IVE_DST_IMAGE_S *pstDst, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
+  if (!IsValidImageType(pstSrc1, STRFY(pstSrc1), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+    return CVI_FAILURE;
+  }
+  if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+    return CVI_FAILURE;
+  }
+  if (!IsValidImageType(pstMask, STRFY(pstMask), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+    return CVI_FAILURE;
+  }
+  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+    return CVI_FAILURE;
+  }
+  int ret = CVI_FAILURE;
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
+  CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
+  CviImg *cpp_mask = reinterpret_cast<CviImg *>(pstMask->tpu_block);
+  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2, *cpp_mask};
+  std::vector<CviImg> outputs = {*cpp_dst};
+
+  handle_ctx->t_h.t_mask.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+  ret = handle_ctx->t_h.t_mask.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
+
+  return ret;
 }
 
 CVI_S32 CVI_IVE_MulSum(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, double *sum, bool bInstant) {
