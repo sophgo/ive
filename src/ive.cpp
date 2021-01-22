@@ -2461,6 +2461,8 @@ CVI_S32 CVI_IVE_LBP(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   }
 
   cvLbp self;
+  // FIXME: Undefined behavior, give it an initial value first.
+  self.transposed = true;
   lbp_init_uniform(&self);
 
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
