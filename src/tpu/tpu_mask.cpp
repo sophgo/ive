@@ -19,6 +19,7 @@ int IveTPUMask::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                          const bool enable_cext) {
   m_input1.clear();
   m_input2.clear();
+  m_mask.clear();
   cvk_tl_shape_t tl_shape;
   tl_shape.n = tg_in_slices[0].n;
   tl_shape.c = tg_in_slices[0].c;
