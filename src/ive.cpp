@@ -1868,6 +1868,11 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
       ret = handle_ctx->t_h.t_thresh_hl.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
                                             &outputs);
     }
+  } else if (ctrl->enMode == IVE_THRESH_MODE_SLOPE) {
+    handle_ctx->t_h.t_thresh_s.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+    handle_ctx->t_h.t_thresh_s.setThreshold(ctrl->u8LowThr, ctrl->u8MaxVal);
+    ret = handle_ctx->t_h.t_thresh_s.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
+                                         &outputs);
   }
   return ret;
 }
