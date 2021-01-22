@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.2.2)
+project(ive)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Options
 option(ENABLE_SYSTRACE "Use systrace" OFF)
-execute_process(COMMAND git describe OUTPUT_VARIABLE LATEST_TAG)
+execute_process(COMMAND git describe WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE LATEST_TAG)
 if ("${LATEST_TAG}" STREQUAL "")
   message(WARNING "Cannot fetch latest tag from git.")
   set(LATEST_TAG "v0.0.0")
@@ -41,9 +43,6 @@ if("${CVI_TARGET}" STREQUAL "soc")
   # Find toolchain cmake file and toolchain folder
   if("${CMAKE_TOOLCHAIN_FILE}" STREQUAL "")
     message(FATAL_ERROR "CMAKE_TOOLCHAIN_FILE is not set. Aborting.")
-  endif()
-  if(NOT DEFINED TOOLCHAIN_ROOT_DIR)
-    message(FATAL_ERROR "TOOLCHAIN_ROOT_DIR is not set. Aborting.")
   endif()
   set(USE_TOOLCHAIN "true")
   set(SSE_FLAGS "")
@@ -121,7 +120,7 @@ else()
 endif()
 
 # Get current commit
-execute_process(COMMAND git show --oneline -s OUTPUT_VARIABLE CURRENT_COMMIT)
+execute_process(COMMAND git show --oneline -s WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE CURRENT_COMMIT)
 
 message("==================================================")
 message("Latest tag       ${LATEST_TAG}")
