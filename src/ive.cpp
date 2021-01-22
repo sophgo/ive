@@ -39,6 +39,7 @@
 #include <cmath>
 #include <deque>
 #include <limits>
+#include <regex>
 
 /**
  * @brief stringfy #define
@@ -49,6 +50,15 @@
  */
 #define STRFY(s) #s
 #define VSTRFY(s) STRFY(s)
+
+/**
+ * @brief IVE version info
+ *
+ */
+const std::string g_ive_version = std::string(
+    std::string(CVIIVE_TAG) + "_" +
+    std::regex_replace(std::string(__DATE__), std::regex{" "}, std::string{"-"}) + "-" + __TIME__);
+#define IVE_VERSION g_ive_version.c_str()
 
 /**
  * @brief String array of IVE_IMAGE_S enType.
@@ -136,8 +146,8 @@ struct TPU_HANDLE {
 };
 
 struct IVE_HANDLE_CTX {
-  CVI_RT_HANDLE rt_handle;
-  cvk_context_t *cvk_ctx;
+  CVI_RT_HANDLE rt_handle = NULL;
+  cvk_context_t *cvk_ctx = NULL;
   TPU_HANDLE t_h;
   // VIP
 };
@@ -154,8 +164,7 @@ IVE_HANDLE CVI_IVE_CreateHandle() {
     delete handle_ctx;
     return NULL;
   }
-  const char timestamp[] = __DATE__ " " __TIME__;
-  LOGI("IVE_HANDLE created, version %s-%s", CVIIVE_TAG, timestamp);
+  LOGI("IVE_HANDLE created, version %s", IVE_VERSION);
   return (void *)handle_ctx;
 }
 
