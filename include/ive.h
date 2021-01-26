@@ -7,6 +7,14 @@
 #include <stdbool.h>
 #endif
 
+CVI_U16 CVI_CalcStride(CVI_U16 width, CVI_U16 align) {
+  CVI_U16 stride = (CVI_U16)(width / align) * align;
+  if (stride < width) {
+    stride += align;
+  }
+  return stride;
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
