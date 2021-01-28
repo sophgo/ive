@@ -107,10 +107,19 @@ inline bool IsValidImageType(IVE_IMAGE_S *pstImg, std::string pstImgStr,
 }
 }  // namespace detail
 
+CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc);
+
 // The variadic function.
 template <typename... Types>
 inline bool IsValidImageType(IVE_IMAGE_S *pstImg, std::string pstImgStr, const Types... enType) {
-  return detail::IsValidImageType(pstImg, pstImgStr, {enType...});
+  bool ret = detail::IsValidImageType(pstImg, pstImgStr, {enType...});
+  if (ret) {
+    if (CVI_IVE_ImageInit(pstImg) != CVI_SUCCESS) {
+      LOGE("%s cannot be inited.\n", pstImgStr.c_str());
+      return false;
+    }
+  }
+  return ret;
 }
 
 struct TPU_HANDLE {
@@ -903,10 +912,7 @@ CVI_S32 CVI_IVE_ConstFill(IVE_HANDLE pIveHandle, const CVI_FLOAT value, IVE_DST_
                         IVE_IMAGE_TYPE_BF16C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
   std::vector<CviImg> outputs = {*cpp_dst};
@@ -929,18 +935,7 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
                         IVE_IMAGE_TYPE_BF16C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc1) != CVI_SUCCESS) {
-    LOGE("Source 1 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstSrc2) != CVI_SUCCESS) {
-    LOGE("Source 2 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
@@ -980,18 +975,7 @@ CVI_S32 CVI_IVE_And(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc1) != CVI_SUCCESS) {
-    LOGE("Source 1 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstSrc2) != CVI_SUCCESS) {
-    LOGE("Source 2 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_and.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
@@ -1014,14 +998,7 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
                         IVE_IMAGE_TYPE_BF16C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   CVI_U32 u32CellSize = pstBlkCtrl->u32CellSize;
   if (pstDst->u16Width != (pstSrc->u16Width / u32CellSize) ||
       (pstSrc->u16Width % u32CellSize != 0)) {
@@ -1067,14 +1044,7 @@ CVI_S32 CVI_IVE_Dilate(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_filter.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -1109,14 +1079,7 @@ CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_erode.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -1145,24 +1108,17 @@ CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
 CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_FILTER_CTRL_S *pstFltCtrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
+  if (pstSrc->enType != pstDst->enType) {
+    LOGE("pstSrc & pstDst must have the same type.\n");
+    return CVI_FAILURE;
+  }
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
     return CVI_FAILURE;
   }
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
     return CVI_FAILURE;
   }
-  if (pstSrc->enType != pstDst->enType) {
-    LOGE("pstSrc & pstDst must have the same type.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_filter.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -1410,22 +1366,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
   if (!IsValidImageType(pstSrcV, STRFY(pstSrcV), IVE_IMAGE_TYPE_BF16C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrcH) != CVI_SUCCESS) {
-    LOGE("Source horizontal cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstSrcV) != CVI_SUCCESS) {
-    LOGE("Source vertical cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDstMag) != CVI_SUCCESS) {
-    LOGE("Destination magnitude cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDstAng) != CVI_SUCCESS) {
-    LOGE("Destination angle cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_magandang.setTblMgr(&handle_ctx->t_h.t_tblmgr);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrcH->tpu_block);
@@ -1484,14 +1425,7 @@ CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   auto &shape = handle_ctx->t_h.t_tblmgr.getTblTLShape(CVK_FMT_U8);
   uint32_t tbl_sz = shape.h * shape.w;
@@ -1524,22 +1458,7 @@ CVI_S32 CVI_IVE_Mask(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IM
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc1) != CVI_SUCCESS) {
-    LOGE("Source 1 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstSrc2) != CVI_SUCCESS) {
-    LOGE("Source 2 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstMask) != CVI_SUCCESS) {
-    LOGE("Mask cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
@@ -1560,10 +1479,7 @@ CVI_S32 CVI_IVE_MulSum(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, double *sum, 
   if (!IsValidImageType(pstImg, STRFY(pstImg), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_BF16C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstImg) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstImg->tpu_block);
   std::vector<CviImg> inputs = {*cpp_src};
@@ -1579,28 +1495,12 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
                          IVE_DST_IMAGE_S *pstDstV, IVE_DST_IMAGE_S *pstDstHV,
                          IVE_NORM_GRAD_CTRL_S *pstNormGradCtrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
-  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDstH) != CVI_SUCCESS) {
-    LOGE("Destination horizontal cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDstV) != CVI_SUCCESS) {
-    LOGE("Destination vertical cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDstHV) != CVI_SUCCESS) {
-    LOGE("Destination both cannot be inited.\n");
-    return CVI_FAILURE;
-  }
   int kernel_size = pstNormGradCtrl->u8MaskSize;
   if (kernel_size != 1 && kernel_size != 3) {
     LOGE("Kernel size currently only supports 1 and 3.\n");
+    return CVI_FAILURE;
+  }
+  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
 
@@ -1618,6 +1518,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
     if (!IsValidImageType(pstDstV, STRFY(pstDstV), IVE_IMAGE_TYPE_S16C1, IVE_IMAGE_TYPE_U8C1)) {
       return CVI_FAILURE;
     }
+
     IVE_IMAGE_S dstH_BF16, dstV_BF16;
     CVI_IVE_CreateImage(pIveHandle, &dstH_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
                         pstSrc->u16Height);
@@ -1647,6 +1548,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
     if (!IsValidImageType(pstDstH, STRFY(pstDstH), IVE_IMAGE_TYPE_S16C1, IVE_IMAGE_TYPE_U8C1)) {
       return CVI_FAILURE;
     }
+
     IVE_IMAGE_S dst_BF16;
     if (pstDstH->enType == IVE_IMAGE_TYPE_U16C1 ||
         pstNormGradCtrl->enITCType == IVE_ITC_NORMALIZE) {
@@ -1676,6 +1578,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
     if (!IsValidImageType(pstDstV, STRFY(pstDstV), IVE_IMAGE_TYPE_S16C1, IVE_IMAGE_TYPE_U8C1)) {
       return CVI_FAILURE;
     }
+
     IVE_IMAGE_S dst_BF16;
     if (pstDstV->enType == IVE_IMAGE_TYPE_U16C1 ||
         pstNormGradCtrl->enITCType == IVE_ITC_NORMALIZE) {
@@ -1705,6 +1608,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
     if (!IsValidImageType(pstDstHV, STRFY(pstDstHV), IVE_IMAGE_TYPE_U16C1, IVE_IMAGE_TYPE_U8C1)) {
       return CVI_FAILURE;
     }
+
     IVE_IMAGE_S dst_BF16;
     if (pstDstHV->enType == IVE_IMAGE_TYPE_U16C1 ||
         pstNormGradCtrl->enITCType == IVE_ITC_NORMALIZE) {
@@ -1753,18 +1657,6 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc1) != CVI_SUCCESS) {
-    LOGE("Source 1 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstSrc2) != CVI_SUCCESS) {
-    LOGE("Source 2 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
 
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_or.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
@@ -1786,14 +1678,7 @@ CVI_S32 CVI_IVE_OrdStatFilter(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   const uint32_t kz = 3;
   const uint32_t pad_sz = kz - 1;
   if ((pstDst->u16Width + pad_sz != pstSrc->u16Width) ||
@@ -1829,14 +1714,7 @@ CVI_S32 CVI_IVE_Sigmoid(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_BF16C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_add.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -1851,6 +1729,10 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
                     IVE_DST_IMAGE_S *pstSad, IVE_DST_IMAGE_S *pstThr, IVE_SAD_CTRL_S *pstSadCtrl,
                     bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
+  if (pstSrc1->u16Width != pstSrc2->u16Width || pstSrc1->u16Height != pstSrc2->u16Height) {
+    LOGE("Two input size must be the same!\n");
+    return CVI_FAILURE;
+  }
   if (!IsValidImageType(pstSrc1, STRFY(pstSrc1), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
@@ -1864,26 +1746,7 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   if (!IsValidImageType(pstThr, STRFY(pstThr), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
-  if (pstSrc1->u16Width != pstSrc2->u16Width || pstSrc1->u16Height != pstSrc2->u16Height) {
-    LOGE("Two input size must be the same!\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstSrc1) != CVI_SUCCESS) {
-    LOGE("Source 1 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstSrc2) != CVI_SUCCESS) {
-    LOGE("Source 2 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstSad) != CVI_SUCCESS) {
-    LOGE("Destination sad cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstThr) != CVI_SUCCESS) {
-    LOGE("Destination threshold cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   CVI_U32 window_size = 1;
   switch (pstSadCtrl->enMode) {
     case IVE_SAD_MODE_MB_4X4:
@@ -1972,18 +1835,6 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDstH) != CVI_SUCCESS) {
-    LOGE("Destination horizontal cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDstV) != CVI_SUCCESS) {
-    LOGE("Destination vertical cannot be inited.\n");
-    return CVI_FAILURE;
-  }
 
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_sobel.setTblMgr(&handle_ctx->t_h.t_tblmgr);
@@ -1999,6 +1850,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     if (!IsValidImageType(pstDstV, STRFY(pstDstV), IVE_IMAGE_TYPE_BF16C1)) {
       return CVI_FAILURE;
     }
+
     int npu_num = handle_ctx->t_h.t_sobel_gradonly.getNpuNum(handle_ctx->cvk_ctx);
     CviImg *cpp_dsth = reinterpret_cast<CviImg *>(pstDstH->tpu_block);
     CviImg *cpp_dstv = reinterpret_cast<CviImg *>(pstDstV->tpu_block);
@@ -2018,6 +1870,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     if (!IsValidImageType(pstDstH, STRFY(pstDstH), IVE_IMAGE_TYPE_BF16C1)) {
       return CVI_FAILURE;
     }
+
     CviImg *cpp_dsth = reinterpret_cast<CviImg *>(pstDstH->tpu_block);
     outputs.emplace_back(*cpp_dsth);
     int npu_num = handle_ctx->t_h.t_filter_bf16.getNpuNum(handle_ctx->cvk_ctx);
@@ -2032,6 +1885,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     if (!IsValidImageType(pstDstV, STRFY(pstDstV), IVE_IMAGE_TYPE_BF16C1)) {
       return CVI_FAILURE;
     }
+
     CviImg *cpp_dstv = reinterpret_cast<CviImg *>(pstDstV->tpu_block);
     outputs.emplace_back(*cpp_dstv);
     int npu_num = handle_ctx->t_h.t_filter_bf16.getNpuNum(handle_ctx->cvk_ctx);
@@ -2060,18 +1914,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc1) != CVI_SUCCESS) {
-    LOGE("Source 1 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstSrc2) != CVI_SUCCESS) {
-    LOGE("Source 2 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   if (ctrl->enMode == IVE_SUB_MODE_NORMAL) {
@@ -2106,14 +1949,7 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -2147,14 +1983,7 @@ CVI_S32 CVI_IVE_Thresh_S16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_D
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_S16C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
   CVI_IVE_BufRequest(pIveHandle, pstDst);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -2194,14 +2023,7 @@ CVI_S32 CVI_IVE_Thresh_U16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_D
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
-    LOGE("Source cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
   CVI_IVE_BufRequest(pIveHandle, pstDst);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
@@ -2228,18 +2050,7 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
     return CVI_FAILURE;
   }
-  if (CVI_IVE_ImageInit(pstSrc1) != CVI_SUCCESS) {
-    LOGE("Source 1 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstSrc2) != CVI_SUCCESS) {
-    LOGE("Source 2 cannot be inited.\n");
-    return CVI_FAILURE;
-  }
-  if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
-    LOGE("Destination cannot be inited.\n");
-    return CVI_FAILURE;
-  }
+
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_xor.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
