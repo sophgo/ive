@@ -238,22 +238,22 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
   switch (enType) {
     case IVE_IMAGE_TYPE_S8C1: {
       img_type = CVI_SINGLE;
-      const uint32_t stride = WidthAlign(u16Width, CVI_IVE2_STRIDE_ALIGN);
+      const uint32_t stride = WidthAlign(u16Width, DEFAULT_ALIGN);
       strides.push_back(stride);
       heights.push_back(u16Height);
       fmt = CVK_FMT_I8;
     } break;
     case IVE_IMAGE_TYPE_U8C1: {
-      const uint32_t stride = WidthAlign(u16Width, CVI_IVE2_STRIDE_ALIGN);
+      const uint32_t stride = WidthAlign(u16Width, DEFAULT_ALIGN);
       strides.push_back(stride);
       heights.push_back(u16Height);
       img_type = CVI_GRAY;
     } break;
     case IVE_IMAGE_TYPE_YUV420P: {
       img_type = CVI_YUV420;
-      const uint32_t stride = WidthAlign(u16Width, CVI_IVE2_STRIDE_ALIGN);
+      const uint32_t stride = WidthAlign(u16Width, DEFAULT_ALIGN);
       strides.push_back(stride);
-      const uint32_t stride2 = WidthAlign(u16Width >> 1, CVI_IVE2_STRIDE_ALIGN);
+      const uint32_t stride2 = WidthAlign(u16Width >> 1, DEFAULT_ALIGN);
       strides.push_back(stride2);
       strides.push_back(stride2);
       heights.push_back(u16Height);
@@ -262,27 +262,27 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
     } break;
     case IVE_IMAGE_TYPE_YUV422P: {
       img_type = CVI_YUV422;
-      const uint32_t stride = WidthAlign(u16Width, CVI_IVE2_STRIDE_ALIGN);
-      const uint32_t stride2 = WidthAlign(u16Width >> 1, CVI_IVE2_STRIDE_ALIGN);
+      const uint32_t stride = WidthAlign(u16Width, DEFAULT_ALIGN);
+      const uint32_t stride2 = WidthAlign(u16Width >> 1, DEFAULT_ALIGN);
       strides.resize(1, stride);
       strides.resize(2, stride2);
       heights.resize(3, u16Height);
     } break;
     case IVE_IMAGE_TYPE_U8C3_PACKAGE: {
       img_type = CVI_RGB_PACKED;
-      const uint32_t stride = WidthAlign(u16Width * 3, CVI_IVE2_STRIDE_ALIGN);
+      const uint32_t stride = WidthAlign(u16Width * 3, DEFAULT_ALIGN);
       strides.push_back(stride);
       heights.push_back(u16Height);
     } break;
     case IVE_IMAGE_TYPE_U8C3_PLANAR: {
       img_type = CVI_RGB_PLANAR;
-      const uint32_t stride = WidthAlign(u16Width, CVI_IVE2_STRIDE_ALIGN);
+      const uint32_t stride = WidthAlign(u16Width, DEFAULT_ALIGN);
       strides.resize(3, stride);
       heights.resize(3, u16Height);
     } break;
     case IVE_IMAGE_TYPE_BF16C1: {
       img_type = CVI_SINGLE;
-      const uint32_t stride = WidthAlign(u16Width * sizeof(int16_t), CVI_IVE2_STRIDE_ALIGN);
+      const uint32_t stride = WidthAlign(u16Width * sizeof(int16_t), DEFAULT_ALIGN);
       strides.push_back(stride);
       heights.push_back(u16Height);
       fmt_size = 2;
@@ -290,7 +290,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
     } break;
     case IVE_IMAGE_TYPE_U16C1: {
       img_type = CVI_SINGLE;
-      const uint32_t stride = WidthAlign(u16Width * sizeof(uint16_t), CVI_IVE2_STRIDE_ALIGN);
+      const uint32_t stride = WidthAlign(u16Width * sizeof(uint16_t), DEFAULT_ALIGN);
       strides.push_back(stride);
       heights.push_back(u16Height);
       fmt_size = 2;
@@ -298,7 +298,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
     } break;
     case IVE_IMAGE_TYPE_S16C1: {
       img_type = CVI_SINGLE;
-      const uint32_t stride = WidthAlign(u16Width * sizeof(int16_t), CVI_IVE2_STRIDE_ALIGN);
+      const uint32_t stride = WidthAlign(u16Width * sizeof(int16_t), DEFAULT_ALIGN);
       strides.push_back(stride);
       heights.push_back(u16Height);
       fmt_size = 2;
@@ -306,7 +306,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
     } break;
     case IVE_IMAGE_TYPE_U32C1: {
       img_type = CVI_SINGLE;
-      const uint32_t stride = WidthAlign(u16Width * sizeof(uint32_t), CVI_IVE2_STRIDE_ALIGN);
+      const uint32_t stride = WidthAlign(u16Width * sizeof(uint32_t), DEFAULT_ALIGN);
       strides.push_back(stride);
       heights.push_back(u16Height);
       fmt_size = 4;
@@ -314,7 +314,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
     } break;
     case IVE_IMAGE_TYPE_FP32C1: {
       img_type = CVI_SINGLE;
-      const uint32_t stride = WidthAlign(u16Width * sizeof(float), CVI_IVE2_STRIDE_ALIGN);
+      const uint32_t stride = WidthAlign(u16Width * sizeof(float), DEFAULT_ALIGN);
       strides.push_back(stride);
       heights.push_back(u16Height);
       fmt_size = 4;

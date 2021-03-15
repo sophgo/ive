@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
   IVE_IMAGE_S src1 = CVI_IVE_ReadImage(handle, file_name, IVE_IMAGE_TYPE_U8C1);
 
   IVE_IMAGE_S mSrc;
-  mSrc.u16Stride[0] = CVI_CalcStride(src1.u16Stride[0], CVI_IVE2_STRIDE_ALIGN);
+  mSrc.u16Stride[0] = CVI_CalcStride(src1.u16Stride[0], DEFAULT_ALIGN);
   mSrc.u16Stride[1] = 0;  // If not use, fill 0 is recommended.
   mSrc.u16Stride[2] = 0;  // If not use, fill 0 is recommended.
   mSrc.u16Width = CVI_CalcStride(src1.u16Width, CVI_IVE2_LENGTH_ALIGN);

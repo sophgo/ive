@@ -2,7 +2,6 @@
 #define _CVI_COMM_IVE_H_
 #include "cvi_type.h"
 
-#define CVI_IVE2_STRIDE_ALIGN 32
 #define CVI_IVE2_LENGTH_ALIGN 1
 
 typedef void *IVE_HANDLE;
