@@ -1271,25 +1271,26 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
       std::floor(result / ((m_slice_info.nums_of_tl - m_slice_info.ping_pong_share_tl) *
                                m_slice_info.ping_pong_size +
                            m_slice_info.ping_pong_share_tl));
-  uint32_t idiv_32 = (uint32_t)(total_size / 32);
+  uint32_t npu_num = m_chip_info.npu_num;
+  uint32_t idiv_n = (uint32_t)(total_size / npu_num);
   uint32_t div = max_hxw;
   // Find div value that idiv % div == 0 while div < max_hxw
-  while (idiv_32 % div != 0) {
-    uint32_t val = std::ceil(float(idiv_32) / div);
-    div = std::floor(float(idiv_32) / val);
+  while (idiv_n % div != 0) {
+    uint32_t val = std::ceil(float(idiv_n) / div);
+    div = std::floor(float(idiv_n) / val);
   }
   // Make w 16 align.
   uint32_t div_16 = div / 16;
   div = div_16 * 16;
   // FIXME: We assumed that h never exceeds 1024.
-  cvk_tg_shape_t shape = {1, 32, div_16, 16};
-  size_t loop_turn = (div == 0) ? 0 : (total_size / (32 * div)) / m_slice_info.ping_pong_size;
+  cvk_tg_shape_t shape = {1, npu_num, div_16, 16};
+  size_t loop_turn = (div == 0) ? 0 : (total_size / (npu_num * div)) / m_slice_info.ping_pong_size;
   // Check if any pixel left.
-  size_t left_pixels = total_size - ((loop_turn * (32 * div)) * m_slice_info.ping_pong_size);
+  size_t left_pixels = total_size - ((loop_turn * (npu_num * div)) * m_slice_info.ping_pong_size);
 
   if (loop_turn == 0 && left_pixels != 0) {
     // FIXME: Duplicate code below.
-    uint32_t div = 32;
+    uint32_t div = npu_num;
     while (left_pixels % div != 0) {
       uint32_t val = std::ceil(float(left_pixels) / div);
       div = std::floor(float(left_pixels) / val);
@@ -1397,7 +1398,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   }
   if (left_pixels != 0) {
     cvk_tg_shape_t left_shape = {0, 0, 0, 0};
-    uint32_t div = 32;
+    uint32_t div = npu_num;
     while (left_pixels % div != 0) {
       uint32_t val = std::ceil(float(left_pixels) / div);
       div = std::floor(float(left_pixels) / val);
