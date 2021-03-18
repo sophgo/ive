@@ -698,6 +698,7 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
         tg_in.fmt = bm_src_info.fns_vec[k].getFmt();
         tg_in.stride = input[k].m_tg.stride;
         cvk_tdma_g2l_tensor_copy_param_t p_copy_in;
+        memset(&p_copy_in, 0, sizeof(cvk_tdma_g2l_tensor_copy_param_t));
         p_copy_in.src = &tg_in;
         p_copy_in.dst = tl_in_info.lmem_vec[k];
         cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
@@ -732,6 +733,7 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
         out_shape.shape.w = tg_out.shape.w;
         out_shape.stride = tl_out[k]->stride;
         cvk_tdma_l2g_tensor_copy_param_t p_copy_out;
+        memset(&p_copy_out, 0, sizeof(cvk_tdma_l2g_tensor_copy_param_t));
         p_copy_out.src = &out_shape;
         p_copy_out.dst = &tg_out;
         cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
@@ -1120,6 +1122,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
           // clang-format on
 
           cvk_tdma_g2l_tensor_copy_param_t p_copy_in;
+          memset(&p_copy_in, 0, sizeof(cvk_tdma_g2l_tensor_copy_param_t));
           p_copy_in.src = &tg_in;
           p_copy_in.dst = tl_in[k];
           cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
@@ -1168,6 +1171,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
           // clang-format on
 
           cvk_tdma_l2g_tensor_copy_param_t p_copy_out;
+          memset(&p_copy_out, 0, sizeof(cvk_tdma_l2g_tensor_copy_param_t));
           p_copy_out.src = &out_shape;
           p_copy_out.dst = &tg_out;
           cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
@@ -1361,6 +1365,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
         tg_in.fmt = bm_src_info.fns_vec[k].getFmt();
         tg_in.stride = input_stride_vec[k];
         cvk_tdma_g2l_tensor_copy_param_t p_copy_in;
+        memset(&p_copy_in, 0, sizeof(cvk_tdma_g2l_tensor_copy_param_t));
         p_copy_in.src = &tg_in;
         p_copy_in.dst = tl_in_info.lmem_vec[k + pp_skip];
         cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
@@ -1387,10 +1392,28 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
         tg_out.fmt = bm_dest_info.fns_vec[k].getFmt();
         tg_out.stride = output_stride_vec[k];
         cvk_tdma_l2g_tensor_copy_param_t p_copy_out;
+        memset(&p_copy_out, 0, sizeof(cvk_tdma_l2g_tensor_copy_param_t));
         p_copy_out.src = tl_out_info.lmem_vec[k + pp_skip];
         p_copy_out.dst = &tg_out;
         cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
-        LOGD("tg_out physical addr %" PRIu64 "\n", tg_out.start_address);
+        //clang-format off
+        printf(
+            "[%zu] Out\n"
+            " tg start address %" PRIu64
+            "\n"
+            " tg shape %d %d %d %d\n"
+            " tg stride %d %d %d\n"
+            " tl shape %d %d %d %d\n"
+            " tl stride %u %u %u %u\n",
+            k, tg_out.start_address, tg_out.shape.n, tg_out.shape.c, tg_out.shape.h, tg_out.shape.w,
+            tg_out.stride.n, tg_out.stride.c, tg_out.stride.h,
+            tl_out_info.lmem_vec[k + pp_skip]->shape.n, tl_out_info.lmem_vec[k + pp_skip]->shape.c,
+            tl_out_info.lmem_vec[k + pp_skip]->shape.h, tl_out_info.lmem_vec[k + pp_skip]->shape.w,
+            tl_out_info.lmem_vec[k + pp_skip]->stride.n,
+            tl_out_info.lmem_vec[k + pp_skip]->stride.c,
+            tl_out_info.lmem_vec[k + pp_skip]->stride.h,
+            tl_out_info.lmem_vec[k + pp_skip]->stride.w);
+        // clang-format on
         // Change dest head addr
         bm_dest_info.addr_vec[k] += 1 * jump_dst * bm_dest_info.fns_vec[k].getSize();
       }
@@ -1464,6 +1487,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
       tg_in.fmt = bm_src_info.fns_vec[k].getFmt();
       tg_in.stride = input_stride_vec[k];
       cvk_tdma_g2l_tensor_copy_param_t p_copy_in;
+      memset(&p_copy_in, 0, sizeof(cvk_tdma_g2l_tensor_copy_param_t));
       p_copy_in.src = &tg_in;
       p_copy_in.dst = tl_in_info.lmem_vec[k];
       cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
@@ -1485,6 +1509,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
       tg_out.shape.w = tl_out_info.lmem_vec[k]->shape.w;
       tg_out.stride = output_stride_vec[k];
       cvk_tdma_l2g_tensor_copy_param_t p_copy_out;
+      memset(&p_copy_out, 0, sizeof(cvk_tdma_l2g_tensor_copy_param_t));
       p_copy_out.src = tl_out_info.lmem_vec[k];
       p_copy_out.dst = &tg_out;
       cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
