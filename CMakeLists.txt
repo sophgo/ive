@@ -21,16 +21,15 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
   set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-if("${CVI_PLATFORM}" STREQUAL "")
-  set(CVI_PLATFORM "cv1835")
-  message(AUTHOR_WARNING "Platform not provided, set to ${CVI_PLATFORM}.")
+if("${CONFIG_CHIP}" STREQUAL "")
+  message(FATAL_ERROR "Platform not provided.")
 endif()
 
 # Reset flag string
 set(WORKAROUND_FLAGS_STR "")
 
 # platform specific settings
-if("${CVI_PLATFORM}" STREQUAL "cv1835")
+if("${CONFIG_CHIP}" MATCHES "cv183[0-9]")
   add_definitions(-DWORKAROUND_SCALAR_4096_ALIGN_BUG)
   set(WORKAROUND_FLAGS_STR "${WORKAROUND_FLAGS_STR} WORKAROUND_SCALAR_4096_ALIGN_BUG")
 endif()
@@ -126,7 +125,7 @@ message("==================================================")
 message("Latest tag       ${LATEST_TAG}")
 message("Commit           ${CURRENT_COMMIT}")
 message("[Summary]")
-message("Platform         ${CVI_PLATFORM}")
+message("Platform         ${CONFIG_CHIP}")
 message("Target           ${CVI_TARGET}")
 message("Build type       ${CMAKE_BUILD_TYPE}")
 message("C   compiler     ${CMAKE_C_COMPILER}")
