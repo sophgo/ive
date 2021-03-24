@@ -22,8 +22,7 @@ Tracer lib can be get from GitLab at ``http://10.34.33.3:8480/sys_app/tracer``. 
 $ mkdir build
 $ cd build
 $ CC=clang CXX=clang++ \
-  cmake -G Ninja .. -DCONFIG_CHIP=cv1835 \
-                    -DMLIR_SDK_ROOT=${PWD}/../../cvitek_mlir \
+  cmake -G Ninja .. -DMLIR_SDK_ROOT=${PWD}/../../cvitek_mlir \
                     -DMIDDLEWARE_SDK_ROOT=${PWD}/../../middleware \
                     -DCMAKE_BUILD_TYPE=Release
 $ ninja -j8
@@ -36,8 +35,7 @@ SOC mode
 ```
 $ mkdir build_soc
 $ cd build
-$ cmake -G Ninja .. -DCONFIG_CHIP=cv1835 \
-                    -DENABLE_SYSTRACE=ON \
+$ cmake -G Ninja .. -DENABLE_SYSTRACE=ON \
                     -DCVI_TARGET=soc \
                     -DTOOLCHAIN_ROOT_DIR=${PWD}/../../gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu \
                     -DCMAKE_TOOLCHAIN_FILE=${PWD}/../toolchain/toolchain-aarch64-linux.cmake \
@@ -52,8 +50,7 @@ $ ninja -j8
 ```
 $ mkdir build_soc
 $ cd build
-$ cmake -G Ninja .. -DCONFIG_CHIP=cv1835 \
-                    -DCVI_TARGET=soc \
+$ cmake -G Ninja .. -DCVI_TARGET=soc \
                     -DTOOLCHAIN_ROOT_DIR=${PWD}/../../gcc-linaro-6.3.1-2017.05-x86_64_arm-linux-gnueabihf \
                     -DCMAKE_TOOLCHAIN_FILE=${PWD}/../toolchain/toolchain-gnueabihf-linux.cmake \
                     -DMLIR_SDK_ROOT=${PWD}/../../cvitek_tpu_sdk \
