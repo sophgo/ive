@@ -105,7 +105,7 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
     u64 jumped_value = bm_src_info.addr_vec[k] - bm_start_addr;
     u32 total_addr = is_1d ? input[k].m_tg.stride.n : input[k].m_tg.stride.c;
     if (jumped_value != total_addr) {
-      printf(
+      LOGE(
           "Error! Input %u jumped value %lu not align to image size %u, start addr "
           "%lu\n",
           (u32)k, (long unsigned int)jumped_value, total_addr, (long unsigned int)bm_start_addr);
@@ -122,7 +122,7 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
     u32 total_addr =
         is_1d ? (output[k].m_tg.stride.n + pad_offset) : (output[k].m_tg.stride.c + pad_offset);
     if (jumped_value != total_addr) {
-      printf(
+      LOGE(
           "Error! Output %u jumped value %lu not align to image size %u, start addr "
           "%lu\n",
           (u32)k, (long unsigned int)jumped_value, total_addr, (long unsigned int)bm_des_addr);
@@ -1397,7 +1397,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
         p_copy_out.dst = &tg_out;
         cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
         //clang-format off
-        printf(
+        LOGD(
             "[%zu] Out\n"
             " tg start address %" PRIu64
             "\n"
