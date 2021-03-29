@@ -34,7 +34,7 @@ int IveTPUSigmoid::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   int range_end = 8;
   float scale = cvm_sigmoid_scale(range_start, range_end);
 
-  cvk_tl_shape_t tl_table_s = {1, 32, 32, 8};
+  cvk_tl_shape_t tl_table_s = {1, cvk_ctx->info.npu_num, 32, 8};
   auto *tl_table_answer = allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
   auto *tl_table_answer_slope = allocTLMem(cvk_ctx, tl_table_s, CVK_FMT_BF16, 1, IVETLType::TABLE);
   table = new CviImg(rt_handle, tl_table_s.c, tl_table_s.h, tl_table_s.w, CVK_FMT_BF16);

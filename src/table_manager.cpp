@@ -5,7 +5,7 @@ TblMgr::TblMgr() {}
 TblMgr::~TblMgr() {}
 
 int TblMgr::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
-  m_table_s_u8 = {1, 32, 16, 16};  // Kernel does not support U8 table info.
+  m_table_s_u8 = {1, cvk_ctx->info.npu_num, 16, 16};  // Kernel does not support U8 table info.
   // cvm_lut_tbl_bytesize(cvk_ctx, &m_table_s_u8, CVK_FMT_U8);  // 16 * 16
   cvm_lut_tbl_bytesize(cvk_ctx, &m_table_s, CVK_FMT_BF16);  // 32 * 8
   if (mp_atan_y0_degree == nullptr) {

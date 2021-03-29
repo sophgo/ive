@@ -32,8 +32,8 @@ int IveTPUMask::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   }
   auto *high_bit_zeros = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
   constantFillTL(rt_handle, cvk_ctx, 0, high_bit_zeros);
-  cvk_tl_shape_t tl_kernel_s = {1, 32, 1, 1};
-  cvk_tl_shape_t tl_kernel_s_2 = {2, 32, 1, 1};
+  cvk_tl_shape_t tl_kernel_s = {1, cvk_ctx->info.npu_num, 1, 1};
+  cvk_tl_shape_t tl_kernel_s_2 = {2, cvk_ctx->info.npu_num, 1, 1};
   auto *tl_weight = allocTLMem(cvk_ctx, tl_kernel_s, CVK_FMT_I8, 1, IVETLType::KERNEL);
   auto *tl_bias = allocTLMem(cvk_ctx, tl_kernel_s_2, CVK_FMT_I8, 0, IVETLType::KERNEL);
   constantFillTL(rt_handle, cvk_ctx, -1, tl_weight);

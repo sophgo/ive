@@ -397,7 +397,7 @@ int IveCore::getSlice(const uint32_t nums_of_lmem, const uint32_t nums_of_table,
                       const uint32_t h, const uint32_t w, const uint32_t table_size,
                       const kernelInfo kernel_info, const int npu_num, sliceUnit *unit_h,
                       sliceUnit *unit_w, const bool enable_cext) {
-  if (c > 32) {
+  if (c > (uint32_t)npu_num) {
     LOGE("Channel exceed limitation.\n");
     return CVI_FAILURE;
   }
