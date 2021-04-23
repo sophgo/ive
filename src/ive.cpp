@@ -1371,10 +1371,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
   handle_ctx->t_h.t_magandang.setTblMgr(&handle_ctx->t_h.t_tblmgr);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrcH->tpu_block);
   CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrcV->tpu_block);
-  CviImg *cpp_dst =
-      (pstDstMag != NULL) ? reinterpret_cast<CviImg *>(pstDstMag->tpu_block) : nullptr;
-  CviImg *cpp_dst2 =
-      (pstDstAng != NULL) ? reinterpret_cast<CviImg *>(pstDstAng->tpu_block) : nullptr;
+  CviImg *cpp_dst = nullptr, *cpp_dst2 = nullptr;
   std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
   std::vector<CviImg> outputs;
   switch (pstMaaCtrl->enOutCtrl) {
@@ -1382,6 +1379,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
       if (!IsValidImageType(pstDstMag, STRFY(pstDstMag), IVE_IMAGE_TYPE_BF16C1)) {
         return CVI_FAILURE;
       }
+      cpp_dst = reinterpret_cast<CviImg *>(pstDstMag->tpu_block);
       handle_ctx->t_h.t_magandang.exportOption(true, false);
       outputs.emplace_back(*cpp_dst);
     } break;
@@ -1389,8 +1387,9 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
       if (!IsValidImageType(pstDstAng, STRFY(pstDstAng), IVE_IMAGE_TYPE_BF16C1)) {
         return CVI_FAILURE;
       }
+      cpp_dst = reinterpret_cast<CviImg *>(pstDstAng->tpu_block);
       handle_ctx->t_h.t_magandang.exportOption(false, true);
-      outputs.emplace_back(*cpp_dst2);
+      outputs.emplace_back(*cpp_dst);
     } break;
     case IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG: {
       if (!IsValidImageType(pstDstMag, STRFY(pstDstMag), IVE_IMAGE_TYPE_BF16C1)) {
@@ -1400,6 +1399,8 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
         return CVI_FAILURE;
       }
       handle_ctx->t_h.t_magandang.exportOption(true, true);
+      cpp_dst = reinterpret_cast<CviImg *>(pstDstMag->tpu_block);
+      cpp_dst2 = reinterpret_cast<CviImg *>(pstDstAng->tpu_block);
       outputs.emplace_back(*cpp_dst);
       outputs.emplace_back(*cpp_dst2);
     } break;
