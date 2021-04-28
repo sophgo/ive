@@ -249,8 +249,16 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
       heights.push_back(u16Height);
       img_type = CVI_GRAY;
     } break;
+    case IVE_IMAGE_TYPE_YUV420SP: {
+      img_type = CVI_YUV420SP;
+      const uint32_t stride = WidthAlign(u16Width, DEFAULT_ALIGN);
+      strides.push_back(stride);
+      strides.push_back(stride);
+      heights.push_back(u16Height);
+      heights.push_back(u16Height >> 1);
+    } break;
     case IVE_IMAGE_TYPE_YUV420P: {
-      img_type = CVI_YUV420;
+      img_type = CVI_YUV420P;
       const uint32_t stride = WidthAlign(u16Width, DEFAULT_ALIGN);
       strides.push_back(stride);
       const uint32_t stride2 = WidthAlign(u16Width >> 1, DEFAULT_ALIGN);
@@ -261,7 +269,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
       heights.push_back(u16Height >> 1);
     } break;
     case IVE_IMAGE_TYPE_YUV422P: {
-      img_type = CVI_YUV422;
+      img_type = CVI_YUV422P;
       const uint32_t stride = WidthAlign(u16Width, DEFAULT_ALIGN);
       const uint32_t stride2 = WidthAlign(u16Width >> 1, DEFAULT_ALIGN);
       strides.resize(1, stride);
@@ -377,16 +385,22 @@ CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc) {
     case IVE_IMAGE_TYPE_U8C1: {
       heights.push_back(pstSrc->u16Height);
     } break;
+    case IVE_IMAGE_TYPE_YUV420SP: {
+      c = 2;
+      img_type = CVIIMGTYPE::CVI_YUV420SP;
+      heights.push_back(pstSrc->u16Height);
+      heights.push_back(pstSrc->u16Height >> 1);
+    } break;
     case IVE_IMAGE_TYPE_YUV420P: {
       c = 3;
-      img_type = CVIIMGTYPE::CVI_YUV420;
+      img_type = CVIIMGTYPE::CVI_YUV420P;
       heights.push_back(pstSrc->u16Height);
       heights.push_back(pstSrc->u16Height >> 1);
       heights.push_back(pstSrc->u16Height >> 1);
     } break;
     case IVE_IMAGE_TYPE_YUV422P: {
       c = 3;
-      img_type = CVIIMGTYPE::CVI_YUV422;
+      img_type = CVIIMGTYPE::CVI_YUV422P;
       heights.resize(3, pstSrc->u16Height);
     } break;
     case IVE_IMAGE_TYPE_U8C3_PACKAGE: {
@@ -422,8 +436,26 @@ CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc) {
 
 CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                          CVI_U16 u16X1, CVI_U16 u16Y1, CVI_U16 u16X2, CVI_U16 u16Y2) {
+  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_BF16C1, IVE_IMAGE_TYPE_YUV422P, IVE_IMAGE_TYPE_YUV420P,
+                        IVE_IMAGE_TYPE_YUV420SP)) {
+    return CVI_FAILURE;
+  }
   if (u16X1 >= u16X2 || u16Y1 >= u16Y2) {
     LOGE("(X1, Y1) must smaller than (X2, Y2).\n");
+    return CVI_FAILURE;
+  }
+  if ((u16X1 % 2 != 0 || u16X2 % 2 != 0) && pstSrc->enType == IVE_IMAGE_TYPE_YUV422P) {
+    LOGE("(X1, X2) must all not be odd.\n");
+    return CVI_FAILURE;
+  }
+  if ((u16X1 % 2 != 0 || u16X2 % 2 != 0) && (u16Y1 % 2 != 0 || u16Y2 % 2 != 0) &&
+      (pstSrc->enType == IVE_IMAGE_TYPE_YUV420P || pstSrc->enType == IVE_IMAGE_TYPE_YUV420SP)) {
+    LOGE("(X1, X2, Y1, Y2) must all not be odd.\n");
+    return CVI_FAILURE;
+  }
+  if (pstDst->tpu_block != NULL) {
+    LOGE("pstDst must be empty.\n");
     return CVI_FAILURE;
   }
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
@@ -462,6 +494,9 @@ CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *
   switch (pstIISrc->enType) {
     case IVE_IMAGE_TYPE_U8C1: {
       pstVFDst->enPixelFormat = PIXEL_FORMAT_YUV_400;
+    } break;
+    case IVE_IMAGE_TYPE_YUV420SP: {
+      pstVFDst->enPixelFormat = PIXEL_FORMAT_NV12;
     } break;
     case IVE_IMAGE_TYPE_YUV420P: {
       pstVFDst->enPixelFormat = PIXEL_FORMAT_YUV_PLANAR_420;
@@ -506,9 +541,17 @@ CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S 
       pstIIDst->enType = IVE_IMAGE_TYPE_U8C1;
       heights.push_back(pstVFSrc->u32Height);
     } break;
+    case PIXEL_FORMAT_NV21:
+    case PIXEL_FORMAT_NV12: {
+      c = 2;
+      img_type = CVIIMGTYPE::CVI_YUV420SP;
+      pstIIDst->enType = IVE_IMAGE_TYPE_YUV420SP;
+      heights.push_back(pstVFSrc->u32Height);
+      heights.push_back(pstVFSrc->u32Height >> 1);
+    } break;
     case PIXEL_FORMAT_YUV_PLANAR_420: {
       c = 3;
-      img_type = CVIIMGTYPE::CVI_YUV420;
+      img_type = CVIIMGTYPE::CVI_YUV420P;
       pstIIDst->enType = IVE_IMAGE_TYPE_YUV420P;
       heights.push_back(pstVFSrc->u32Height);
       heights.push_back(pstVFSrc->u32Height >> 1);
@@ -516,7 +559,7 @@ CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S 
     } break;
     case PIXEL_FORMAT_YUV_PLANAR_422: {
       c = 3;
-      img_type = CVIIMGTYPE::CVI_YUV422;
+      img_type = CVIIMGTYPE::CVI_YUV422P;
       pstIIDst->enType = IVE_IMAGE_TYPE_YUV422P;
       heights.resize(3, pstVFSrc->u32Height);
     } break;
@@ -711,6 +754,13 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   }
   if (CVI_IVE_ImageInit(pstDst) != CVI_SUCCESS) {
     LOGE("Destination cannot be inited.\n");
+    return CVI_FAILURE;
+  }
+  // Special check with YUV 420 and 422, for copy only
+  if ((pstSrc->enType == IVE_IMAGE_TYPE_YUV420P || pstSrc->enType == IVE_IMAGE_TYPE_YUV420SP ||
+       pstSrc->enType == IVE_IMAGE_TYPE_YUV422P) &&
+      pstDmaCtrl->enMode != IVE_DMA_MODE_DIRECT_COPY) {
+    LOGE("Currently only supports IVE_DMA_MODE_DIRECT_COPY for YUV 420 and 422 images.");
     return CVI_FAILURE;
   }
   int ret = CVI_FAILURE;

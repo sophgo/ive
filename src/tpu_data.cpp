@@ -13,14 +13,6 @@ CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_c, uint32_t img_h, uint32_t
 
 CviImg::CviImg(CVI_RT_HANDLE rt_handle, const CviImg &img, uint32_t x1, uint32_t y1, uint32_t x2,
                uint32_t y2) {
-  if (!this->m_is_stride_ceq) {
-    LOGE("Sub-image does not support non-equal stride in different channels.\n");
-    return;
-  }
-  if (!this->m_is_planar) {
-    LOGE("Sub-image only supports planar images.\n");
-    return;
-  }
   if (x1 > x2) {
     uint32_t tmp = x1;
     x1 = x2;
@@ -51,19 +43,64 @@ CviImg::CviImg(CVI_RT_HANDLE rt_handle, const CviImg &img, uint32_t x1, uint32_t
   this->m_height = new_height;
   this->m_strides = img.m_strides;
   this->m_heights = img.m_heights;
-  this->m_coffsets = img.m_coffsets;
   this->m_img_type = img.m_img_type;
   this->m_is_planar = img.m_is_planar;
   this->m_is_stride_ceq = img.m_is_stride_ceq;
-
-  this->m_tg = img.m_tg;
-  this->m_tg.shape.h = new_height;
-  this->m_tg.shape.w = new_width;
-  uint32_t start_offset = y1_new * img.m_tg.stride.h + x1_new * getFmtSize(img.m_tg.fmt);
-  this->m_tg.start_address = img.m_tg.start_address + start_offset;
-  this->m_paddr = img.m_paddr + start_offset;
-  this->m_vaddr = img.m_vaddr + start_offset;
   this->m_is_sub_img = true;
+  if (img.m_is_stride_ceq && img.m_is_planar) {
+    this->m_tg = img.m_tg;
+    this->m_tg.shape.h = new_height;
+    this->m_tg.shape.w = new_width;
+    uint32_t start_offset = y1_new * img.m_tg.stride.h + x1_new * getFmtSize(img.m_tg.fmt);
+    this->m_tg.start_address = img.m_tg.start_address + start_offset;
+    this->m_paddr = img.m_paddr + start_offset;
+    this->m_vaddr = img.m_vaddr + start_offset;
+    this->m_coffsets = img.m_coffsets;
+  } else {
+    if (img.m_img_type == CVI_YUV420P) {
+      this->m_tg = img.m_tg;
+      this->m_tg.shape.h = new_height;
+      this->m_tg.shape.w = new_width;
+      uint32_t start_offset = y1_new * img.m_strides[0] + x1_new * getFmtSize(img.m_tg.fmt);
+      this->m_tg.start_address = img.m_tg.start_address + start_offset;
+      this->m_paddr = img.m_paddr + start_offset;
+      this->m_vaddr = img.m_vaddr + start_offset;
+      this->m_coffsets.push_back(img.m_coffsets[0]);
+      for (size_t i = 1; i < img.m_coffsets.size(); i++) {
+        uint32_t start_offset2 =
+            y1_new / 2 * img.m_strides[i] + x1_new / 2 * getFmtSize(img.m_tg.fmt);
+        this->m_coffsets.push_back(img.m_coffsets[i] - start_offset + start_offset2);
+      }
+    } else if (img.m_img_type == CVI_YUV422P) {
+      this->m_tg = img.m_tg;
+      this->m_tg.shape.h = new_height;
+      this->m_tg.shape.w = new_width;
+      uint32_t start_offset = y1_new * img.m_strides[0] + x1_new * getFmtSize(img.m_tg.fmt);
+      this->m_tg.start_address = img.m_tg.start_address + start_offset;
+      this->m_paddr = img.m_paddr + start_offset;
+      this->m_vaddr = img.m_vaddr + start_offset;
+      this->m_coffsets.push_back(img.m_coffsets[0]);
+      for (size_t i = 1; i < img.m_coffsets.size(); i++) {
+        uint32_t start_offset2 = y1_new * img.m_strides[i] + x1_new / 2 * getFmtSize(img.m_tg.fmt);
+        this->m_coffsets.push_back(img.m_coffsets[i] - start_offset + start_offset2);
+      }
+    } else if (img.m_img_type == CVI_YUV420SP) {
+      this->m_tg = img.m_tg;
+      this->m_tg.shape.h = new_height;
+      this->m_tg.shape.w = new_width;
+      uint32_t start_offset = y1_new * img.m_strides[0] + x1_new * getFmtSize(img.m_tg.fmt);
+      this->m_tg.start_address = img.m_tg.start_address + start_offset;
+      this->m_paddr = img.m_paddr + start_offset;
+      this->m_vaddr = img.m_vaddr + start_offset;
+      this->m_coffsets.push_back(img.m_coffsets[0]);
+      for (size_t i = 1; i < img.m_coffsets.size(); i++) {
+        uint32_t start_offset2 = y1_new / 2 * img.m_strides[i] + x1_new * getFmtSize(img.m_tg.fmt);
+        this->m_coffsets.push_back(img.m_coffsets[i] - start_offset + start_offset2);
+      }
+    } else {
+      LOGE("Unsupported sub-image type.\n");
+    }
+  }
 }
 
 CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_h, uint32_t img_w,
@@ -161,28 +198,20 @@ CviImg::CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
   this->m_tg.start_address = this->m_paddr;
   this->m_tg.base_reg_index = 0;
   this->m_tg.fmt = this->m_fmt;
-  if (m_is_stride_ceq) {
-    if (!this->m_is_planar) {
-      if (this->m_channel != 1) {
-        LOGE("Internal data flow error. Channel != 1.");
-      }
-      if (this->m_strides[0] * this->m_height != u32_lengths[0]) {
-        LOGE("Length shape != stride * height\n");
-      }
-      this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_strides[0]};
-    } else {
-      this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
+  // Note: If m_is_stride_ceq == false, m_tg only presents the first layer info.
+  // TODO: The old tpu_data structure needs to be redesigned to support yuv images.
+  uint32_t tg_channel = m_is_stride_ceq ? this->m_channel : 1;
+  if (!this->m_is_planar && this->m_channel == 1) {
+    if (this->m_strides[0] * this->m_height != u32_lengths[0]) {
+      LOGE("Length shape != stride * height\n");
     }
-    this->m_tg.stride.h = this->m_strides[0];
-    this->m_tg.stride.c = u32_lengths[0];
-    this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+    this->m_tg.shape = {1, tg_channel, this->m_height, this->m_strides[0]};
   } else {
-    // TODO: Need verify
-    this->m_tg.shape = {1, 1, 1, (uint32_t)this->m_size};
-    this->m_tg.stride.h = this->m_tg.shape.w;
-    this->m_tg.stride.c = this->m_tg.shape.w;
-    this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+    this->m_tg.shape = {1, tg_channel, this->m_height, this->m_width};
   }
+  this->m_tg.stride.h = this->m_strides[0];
+  this->m_tg.stride.c = u32_lengths[0];
+  this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
 }
 
 void CviImg::SetupImageInfo(uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt) {
@@ -252,6 +281,8 @@ const bool CviImg::IsSubImg() const { return m_is_sub_img; }
 
 const bool CviImg::IsStideCEQ() const { return m_is_stride_ceq; }
 
+const bool CviImg::IsPlanar() const { return m_is_planar; }
+
 int CviImg::AllocateDevice(CVI_RT_HANDLE rt_handle) {
   if (this->m_rtmem == NULL) {
     this->m_rtmem = CVI_RT_MemAlloc(rt_handle, this->m_size);
@@ -261,25 +292,15 @@ int CviImg::AllocateDevice(CVI_RT_HANDLE rt_handle) {
   this->m_tg.start_address = m_paddr;
   this->m_tg.base_reg_index = 0;
   this->m_tg.fmt = this->m_fmt;
-  if (m_is_stride_ceq) {
-    if (!this->m_is_planar) {
-      if (this->m_channel != 1) {
-        LOGE("Internal data flow error. Channel != 1.");
-        return CVI_FAILURE;
-      }
-      this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_strides[0]};
-    } else {
-      this->m_tg.shape = {1, this->m_channel, this->m_height, this->m_width};
-    }
-    this->m_tg.stride.h = this->m_strides[0];
-    this->m_tg.stride.c = m_tg.shape.h * this->m_tg.stride.h;
-    this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+  uint32_t tg_channel = m_is_stride_ceq ? this->m_channel : 1;
+  if (!this->m_is_planar && this->m_channel == 1) {
+    this->m_tg.shape = {1, 1, this->m_height, this->m_strides[0]};
   } else {
-    this->m_tg.shape = {1, 1, 1, (uint32_t)this->m_size};
-    this->m_tg.stride.h = this->m_tg.shape.w;
-    this->m_tg.stride.c = this->m_tg.shape.w;
-    this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+    this->m_tg.shape = {1, tg_channel, this->m_height, this->m_width};
   }
+  this->m_tg.stride.h = this->m_strides[0];
+  this->m_tg.stride.c = m_tg.shape.h * this->m_tg.stride.h;
+  this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
   return CVI_SUCCESS;
 }
 

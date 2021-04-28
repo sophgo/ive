@@ -115,8 +115,10 @@ enum CVIIMGTYPE {
   CVI_RGB_PACKED,
   CVI_RGBA_PLANAR,
   CVI_GRAY,
-  CVI_YUV420,
-  CVI_YUV422,
+  CVI_YUV420SP,
+  CVI_YUV420P,
+  CVI_YUV422SP,
+  CVI_YUV422P,
   CVI_SINGLE,
   CVI_MULTI
 };
@@ -125,7 +127,8 @@ inline bool IsImgPlanar(CVIIMGTYPE img_type) {
   bool is_planar = true;
   switch (img_type) {
     case CVI_RGB_PACKED:
-    case CVI_YUV422:
+    case CVI_YUV420SP:
+    case CVI_YUV422SP:
       is_planar = false;
       break;
     default:
@@ -137,8 +140,8 @@ inline bool IsImgPlanar(CVIIMGTYPE img_type) {
 inline bool Is4096Workaound(CVIIMGTYPE img_type) {
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
   switch (img_type) {
-    case CVI_YUV420:
-    case CVI_YUV422:
+    case CVI_YUV420P:
+    case CVI_YUV422P:
       return true;
       break;
     default:
@@ -341,6 +344,13 @@ class CviImg {
    */
   const bool IsStideCEQ() const;
 
+  /**
+   * @brief Tells if the image bwtween channels is planar.
+   *
+   * @return true Is planar.
+   * @return false Not planar.
+   */
+  const bool IsPlanar() const;
   /**
    * @brief Release allocated device memory.
    *
