@@ -44,6 +44,7 @@ int main(int argc, char **argv) {
   const CVI_U16 x2 = src.u16Width - x1;
   const CVI_U16 y2 = src.u16Height - y1;
   IVE_DST_IMAGE_S src_crop;
+  memset(&src_crop, 0, sizeof(IVE_DST_IMAGE_S));
   CVI_IVE_SubImage(handle, &src, &src_crop, x1, y1, x2, y2);
   IVE_DST_IMAGE_S dst3;
   CVI_IVE_CreateImage(handle, &dst3, IVE_IMAGE_TYPE_U8C1, src_crop.u16Width, src_crop.u16Height);
