@@ -50,7 +50,10 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_xor.cpp
 )
 
-add_library(cvi_ive_tpu SHARED ${SRC})
+set(DRAWSRC ${CMAKE_CURRENT_SOURCE_DIR}/ive_draw.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/2ddraw/tpu_draw_rect.cpp)
+
+add_library(cvi_ive_tpu SHARED ${SRC} ${DRAWSRC})
 
 if (ENABLE_SYSTRACE)
 add_dependencies(cvi_ive_tpu tracer)

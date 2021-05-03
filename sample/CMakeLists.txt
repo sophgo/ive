@@ -35,6 +35,8 @@ buildninstall_test(sample_threshold)
 buildninstall_test(sample_thresh16)
 buildninstall_test(sample_xor)
 
+buildninstall_test(sample_draw_rect)
+
 
 buildninstall_test(sample_16bitTo8bit)
 buildninstall_test(sample_histEq)

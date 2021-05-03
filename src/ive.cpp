@@ -1,55 +1,34 @@
-#include "version.hpp"
-
-#include "ive.h"
-#include "ive_experimental.h"
-#include "ive_log.hpp"
+#include "ive_internal.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb/stb_image_write.h"
-#include "tracer/tracer.h"
-
-#include "kernel_generator.hpp"
-#include "table_manager.hpp"
-#include "tpu_data.hpp"
-
-#include "tpu/tpu_add.hpp"
-#include "tpu/tpu_and.hpp"
-#include "tpu/tpu_block.hpp"
-#include "tpu/tpu_cmp.hpp"
-#include "tpu/tpu_copy.hpp"
-#include "tpu/tpu_fill.hpp"
-#include "tpu/tpu_filter.hpp"
-#include "tpu/tpu_magandang.hpp"
-#include "tpu/tpu_mask.hpp"
-#include "tpu/tpu_morph.hpp"
-#include "tpu/tpu_mulsum.hpp"
-#include "tpu/tpu_normalize.hpp"
-#include "tpu/tpu_or.hpp"
-#include "tpu/tpu_sad.hpp"
-#include "tpu/tpu_sigmoid.hpp"
-#include "tpu/tpu_sobel.hpp"
-#include "tpu/tpu_sub.hpp"
-#include "tpu/tpu_table.hpp"
-#include "tpu/tpu_threshold.hpp"
-#include "tpu/tpu_xor.hpp"
-
-#include <stdarg.h>
-#include <cmath>
-#include <deque>
-#include <limits>
-#include <regex>
 
 /**
- * @brief stringfy #define
- *
- * STRFY stringfy the variable itself.
- * VSTRFY stringfy the value saved in the variable.
+ * @brief String array of IVE_IMAGE_S enType.
  *
  */
-#define STRFY(s) #s
-#define VSTRFY(s) STRFY(s)
+// clang-format off
+const char *cviIveImgEnTypeStr[] = {STRFY(IVE_IMAGE_TYPE_U8C1),
+                                    STRFY(IVE_IMAGE_TYPE_S8C1),
+                                    STRFY(IVE_IMAGE_TYPE_YUV420SP),
+                                    STRFY(IVE_IMAGE_TYPE_YUV422SP),
+                                    STRFY(IVE_IMAGE_TYPE_YUV420P),
+                                    STRFY(IVE_IMAGE_TYPE_YUV422P),
+                                    STRFY(IVE_IMAGE_TYPE_S8C2_PACKAGE),
+                                    STRFY(IVE_IMAGE_TYPE_S8C2_PLANAR),
+                                    STRFY(IVE_IMAGE_TYPE_S16C1),
+                                    STRFY(IVE_IMAGE_TYPE_U16C1),
+                                    STRFY(IVE_IMAGE_TYPE_U8C3_PACKAGE),
+                                    STRFY(IVE_IMAGE_TYPE_U8C3_PLANAR),
+                                    STRFY(IVE_IMAGE_TYPE_S32C1),
+                                    STRFY(IVE_IMAGE_TYPE_U32C1),
+                                    STRFY(IVE_IMAGE_TYPE_S64C1),
+                                    STRFY(IVE_IMAGE_TYPE_U64C1),
+                                    STRFY(IVE_IMAGE_TYPE_BF16C1),
+                                    STRFY(IVE_IMAGE_TYPE_FP32C1)};
+// clang-format on
 
 /**
  * @brief IVE version info
@@ -59,107 +38,6 @@ const std::string g_ive_version = std::string(
     std::string(CVIIVE_TAG) + "_" +
     std::regex_replace(std::string(__DATE__), std::regex{" "}, std::string{"-"}) + "-" + __TIME__);
 #define IVE_VERSION g_ive_version.c_str()
-
-/**
- * @brief String array of IVE_IMAGE_S enType.
- *
- */
-// clang-format off
-const char *imgEnTypeStr[] = {STRFY(IVE_IMAGE_TYPE_U8C1),
-                              STRFY(IVE_IMAGE_TYPE_S8C1),
-                              STRFY(IVE_IMAGE_TYPE_YUV420SP),
-                              STRFY(IVE_IMAGE_TYPE_YUV422SP),
-                              STRFY(IVE_IMAGE_TYPE_YUV420P),
-                              STRFY(IVE_IMAGE_TYPE_YUV422P),
-                              STRFY(IVE_IMAGE_TYPE_S8C2_PACKAGE),
-                              STRFY(IVE_IMAGE_TYPE_S8C2_PLANAR),
-                              STRFY(IVE_IMAGE_TYPE_S16C1),
-                              STRFY(IVE_IMAGE_TYPE_U16C1),
-                              STRFY(IVE_IMAGE_TYPE_U8C3_PACKAGE),
-                              STRFY(IVE_IMAGE_TYPE_U8C3_PLANAR),
-                              STRFY(IVE_IMAGE_TYPE_S32C1),
-                              STRFY(IVE_IMAGE_TYPE_U32C1),
-                              STRFY(IVE_IMAGE_TYPE_S64C1),
-                              STRFY(IVE_IMAGE_TYPE_U64C1),
-                              STRFY(IVE_IMAGE_TYPE_BF16C1),
-                              STRFY(IVE_IMAGE_TYPE_FP32C1)};
-// clang-format on
-// We use initializer_list to make sure the variadic input are correct.
-namespace detail {
-inline bool IsValidImageType(IVE_IMAGE_S *pstImg, std::string pstImgStr,
-                             std::initializer_list<const IVE_IMAGE_TYPE_E> enType) {
-  if (pstImg == NULL) {
-    LOGE("%s cannot be NULL.\n", pstImgStr.c_str());
-    return false;
-  }
-  for (auto it : enType) {
-    if (pstImg->enType == it) {
-      return true;
-    }
-  }
-
-  std::string msg = pstImgStr + " only supports ";
-  for (auto it : enType) {
-    msg += (std::string(imgEnTypeStr[it]) + std::string(" "));
-  }
-  LOGE("%s.\n", msg.c_str());
-  return false;
-}
-}  // namespace detail
-
-CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc);
-
-// The variadic function.
-template <typename... Types>
-inline bool IsValidImageType(IVE_IMAGE_S *pstImg, std::string pstImgStr, const Types... enType) {
-  bool ret = detail::IsValidImageType(pstImg, pstImgStr, {enType...});
-  if (ret) {
-    if (CVI_IVE_ImageInit(pstImg) != CVI_SUCCESS) {
-      LOGE("%s cannot be inited.\n", pstImgStr.c_str());
-      return false;
-    }
-  }
-  return ret;
-}
-
-struct TPU_HANDLE {
-  TblMgr t_tblmgr;
-  IveTPUAdd t_add;
-  IveTPUAddBF16 t_add_bf16;
-  IveTPUAnd t_and;
-  IveTPUBlock t_block;
-  IveTPUBlockBF16 t_block_bf16;
-  IveTPUConstFill t_const_fill;
-  IveTPUCopyInterval t_copy_int;
-  IveTPUErode t_erode;
-  IveTPUFilter t_filter;
-  IveTPUFilterBF16 t_filter_bf16;
-  IveTPUMagAndAng t_magandang;
-  IveTPUMask t_mask;
-  IveTPUMax t_max;
-  IveTPUMulSum t_mulsum;
-  IveTPUMin t_min;
-  IveTPUNormalize t_norm;
-  IveTPUOr t_or;
-  IveTPUSAD t_sad;
-  IveTPUSigmoid t_sig;
-  IveTPUSobelGradOnly t_sobel_gradonly;
-  IveTPUSobel t_sobel;
-  IveTPUSubAbs t_sub_abs;
-  IveTPUSub t_sub;
-  IveTPUTbl t_tbl;
-  IveTPUThreshold t_thresh;
-  IveTPUThresholdHighLow t_thresh_hl;
-  IveTPUThresholdSlope t_thresh_s;
-  IveTPUXOr t_xor;
-};
-
-struct IVE_HANDLE_CTX {
-  CVI_RT_HANDLE rt_handle = NULL;
-  cvk_context_t *cvk_ctx = NULL;
-  TPU_HANDLE t_h;
-  // VIP
-};
 
 IVE_HANDLE CVI_IVE_CreateHandle() {
   IVE_HANDLE_CTX *handle_ctx = new IVE_HANDLE_CTX;
@@ -329,7 +207,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
       fmt = CVK_FMT_F32;
     } break;
     default:
-      LOGE("Not supported enType %s.\n", imgEnTypeStr[enType]);
+      LOGE("Not supported enType %s.\n", cviIveImgEnTypeStr[enType]);
       return CVI_FAILURE;
       break;
   }
@@ -511,7 +389,7 @@ CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *
       pstVFDst->enPixelFormat = PIXEL_FORMAT_RGB_888_PLANAR;
     } break;
     default: {
-      LOGE("Unsupported conversion type: %s.\n", imgEnTypeStr[pstIISrc->enType]);
+      LOGE("Unsupported conversion type: %s.\n", cviIveImgEnTypeStr[pstIISrc->enType]);
       return CVI_FAILURE;
     } break;
   }
@@ -627,7 +505,7 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
       desiredNChannels = STBI_rgb;
       break;
     default:
-      LOGE("Not support channel %s.\n", imgEnTypeStr[enType]);
+      LOGE("Not support channel %s.\n", cviIveImgEnTypeStr[enType]);
       break;
   }
   IVE_IMAGE_S img;
@@ -713,7 +591,7 @@ CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAG
       stride = 1;
       break;
     default:
-      LOGE("Not supported channel %s.", imgEnTypeStr[pstImg->enType]);
+      LOGE("Not supported channel %s.", cviIveImgEnTypeStr[pstImg->enType]);
       return CVI_FAILURE;
       break;
   }
