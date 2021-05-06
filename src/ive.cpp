@@ -150,8 +150,9 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
       img_type = CVI_YUV422P;
       const uint32_t stride = WidthAlign(u16Width, DEFAULT_ALIGN);
       const uint32_t stride2 = WidthAlign(u16Width >> 1, DEFAULT_ALIGN);
-      strides.resize(1, stride);
-      strides.resize(2, stride2);
+      strides.push_back(stride);
+      strides.push_back(stride2);
+      strides.push_back(stride2);
       heights.resize(3, u16Height);
     } break;
     case IVE_IMAGE_TYPE_U8C3_PACKAGE: {
