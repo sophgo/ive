@@ -26,12 +26,12 @@ inline void DrawPairLine(cvk_context_t *cvk_ctx, const uint8_t value, const cvk_
 
 int IveTPUDrawHollowRect::addCmd(cvk_context_t *cvk_ctx, uint16_t x1, uint16_t y1, uint16_t x2,
                                  uint16_t y2, uint8_t *color, CviImg &output) {
+  if (x2 >= output.GetImgWidth()) x2 = output.GetImgWidth() - 1;
+  if (y2 >= output.GetImgHeight()) y2 = output.GetImgHeight() - 1;
   if (((int)x2 - x1) < 4 || ((int)y2 - y1) < 4) {
     LOGE("Invalid rect area\n");
     return CVI_FAILURE;
   }
-  if (x2 >= output.GetImgWidth()) x2 = output.GetImgWidth() - 1;
-  if (y2 >= output.GetImgHeight()) y2 = output.GetImgHeight() - 1;
   if (output.IsPlanar()) {
     uint16_t rect_width[3] = {0};
     uint16_t rect_height[3] = {0};
