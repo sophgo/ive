@@ -51,12 +51,12 @@ int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
       memset(&out, 0, sizeof(cvk_tg_t));
       for (uint8_t i = 0; i < 3; i++) {
         in.start_address = input[0].GetPAddr() + input[0].GetImgCOffsets()[i];
-        in.shape = {1, 1, input[0].m_tg.shape.h / div[i], input[0].m_tg.shape.w};
+        in.shape = {1, 1, input[0].m_tg.shape.h, input[0].m_tg.shape.w / div[i]};
         in.stride.h = input[0].GetImgStrides()[i];
         in.stride.c = input[0].m_tg.shape.h * in.stride.h;
         in.stride.n = in.stride.c;
         out.start_address = (*output)[0].GetPAddr() + (*output)[0].GetImgCOffsets()[i];
-        out.shape = {1, 1, (*output)[0].m_tg.shape.h / div[i], (*output)[0].m_tg.shape.w};
+        out.shape = {1, 1, (*output)[0].m_tg.shape.h, (*output)[0].m_tg.shape.w / div[i]};
         out.stride.h = (*output)[0].GetImgStrides()[i];
         out.stride.c = (*output)[0].m_tg.shape.h * out.stride.h;
         out.stride.n = out.stride.c;
