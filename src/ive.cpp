@@ -404,7 +404,7 @@ CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *
   }
 
   for (size_t i = 0; i < src_img->GetImgHeights().size(); i++) {
-    pstVFDst->u32Length[i] = src_img->GetImgCOffsets()[i + 1] - src_img->GetImgCOffsets()[i];
+    pstVFDst->u32Length[i] = src_img->GetImgHeights()[i] * src_img->GetImgStrides()[i];
   }
   return CVI_SUCCESS;
 }

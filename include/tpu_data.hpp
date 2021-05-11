@@ -142,6 +142,7 @@ inline bool Is4096Workaound(CVIIMGTYPE img_type) {
   switch (img_type) {
     case CVI_YUV420P:
     case CVI_YUV422P:
+    case CVI_RGB_PLANAR:
       return true;
       break;
     default:

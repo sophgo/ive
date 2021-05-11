@@ -184,13 +184,22 @@ CviImg::CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
   this->m_coffsets.clear();
   this->m_size = 0;
   this->m_coffsets.push_back(this->m_size);
-  this->m_size += u32_lengths[0];
-  for (size_t i = 1; i < strides.size(); i++) {
-    if (strides[i] != strides[0]) {
-      m_is_stride_ceq = false;
+  if (Is4096Workaound(img_type)) {
+    for (size_t i = 0; i < strides.size(); i++) {
+      this->m_size += Align64(u32_lengths[i], SCALAR_C_ALIGN);
+      if (strides[i] != strides[0]) {
+        m_is_stride_ceq = false;
+      }
+      this->m_coffsets.push_back(this->m_size);
     }
-    this->m_coffsets.push_back(this->m_size);
-    this->m_size += u32_lengths[i];
+  } else {
+    for (size_t i = 0; i < strides.size(); i++) {
+      this->m_size += u32_lengths[i];
+      if (strides[i] != strides[0]) {
+        m_is_stride_ceq = false;
+      }
+      this->m_coffsets.push_back(this->m_size);
+    }
   }
 
   this->m_paddr = paddr;
