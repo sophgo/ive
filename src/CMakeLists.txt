@@ -1,6 +1,5 @@
 project(ive)
 set(CVIIVE_TAG ${LATEST_TAG})
-set(CVIIVE_VERSION ${MAJOR_VERSION})
 configure_file(version.hpp.in version.hpp @ONLY)
 
 include_directories(
@@ -59,14 +58,9 @@ if (ENABLE_SYSTRACE)
 add_dependencies(cvi_ive_tpu tracer)
 target_link_libraries(cvi_ive_tpu ${TRACER_LIB_DIR}/libcvitracer.so ${MLIR_LIBS})
 set_target_properties(cvi_ive_tpu PROPERTIES
-                     IMPORTED_LOCATION ${TRACER_LIB_DIR}/libcvitracer.so
-                     VERSION ${MAJOR_VERSION}
-                     SOVERSION ${SO_VERSION})
+                     IMPORTED_LOCATION ${TRACER_LIB_DIR}/libcvitracer.so)
 else()
 target_link_libraries(cvi_ive_tpu ${MLIR_LIBS})
-set_target_properties(cvi_ive_tpu PROPERTIES
-                     VERSION ${MAJOR_VERSION}
-                     SOVERSION ${SO_VERSION})
 endif()
 
 
