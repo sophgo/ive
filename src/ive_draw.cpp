@@ -6,16 +6,20 @@ CVI_S32 CVI_IVE_DrawRect(IVE_HANDLE pIveHandle, IVE_DST_IMAGE_S *pstDst,
     LOGE("Destination cannot be empty.\n");
     return CVI_FAILURE;
   }
-  if (pstDst->enType != IVE_IMAGE_TYPE_U8C3_PLANAR && pstDst->enType != IVE_IMAGE_TYPE_YUV420P) {
-    LOGE("Currently only supports YUV420P and RGB planar.\n");
+  if (pstDst->enType != IVE_IMAGE_TYPE_U8C3_PLANAR && pstDst->enType != IVE_IMAGE_TYPE_YUV420P &&
+      pstDst->enType != IVE_IMAGE_TYPE_YUV420SP) {
+    LOGE(
+        "Currently only supports IVE_IMAGE_TYPE_YUV420P, IVE_IMAGE_TYPE_YUV420SP and "
+        "IVE_IMAGE_TYPE_U8C3_PLANAR format.\n");
     return CVI_FAILURE;
   }
   if (pstDrawCtrl->rect == NULL) {
     LOGE("pstDrawCtrl->rect is an empty array.\n");
     return CVI_FAILURE;
   }
+
   CVI_U8 pColorConverted[3] = {0};
-  if (pstDst->enType == IVE_IMAGE_TYPE_YUV420P) {
+  if (pstDst->enType == IVE_IMAGE_TYPE_YUV420P || pstDst->enType == IVE_IMAGE_TYPE_YUV420SP) {
     getYUVColorLimitedUV(pstDrawCtrl->color, pColorConverted);
   } else if (pstDst->enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
     pColorConverted[0] = pstDrawCtrl->color.r;

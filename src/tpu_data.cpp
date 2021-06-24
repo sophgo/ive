@@ -1,4 +1,6 @@
 #include "tpu_data.hpp"
+#include "cvi_defines.h"
+#include "cvi_math.h"
 #include "ive_log.hpp"
 
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
@@ -186,7 +188,7 @@ CviImg::CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
   this->m_coffsets.push_back(this->m_size);
   if (Is4096Workaound(img_type)) {
     for (size_t i = 0; i < strides.size(); i++) {
-      this->m_size += Align64(u32_lengths[i], SCALAR_C_ALIGN);
+      this->m_size += ALIGN(u32_lengths[i], DEFAULT_ALIGN);
       if (strides[i] != strides[0]) {
         m_is_stride_ceq = false;
       }

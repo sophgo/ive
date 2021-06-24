@@ -24,6 +24,86 @@ inline void DrawPairLine(cvk_context_t *cvk_ctx, const uint8_t value, const cvk_
   }
 }
 
+CVI_S32 generateCMD_YUV420SP(cvk_context_t *cvk_ctx, uint16_t x1, uint16_t y1, uint16_t x2,
+                             uint16_t y2, uint8_t *color, CviImg &output) {
+  if (output.m_tg.shape.w % 2 != 0 && output.m_tg.shape.h % 2 != 0) {
+    LOGE("Currently does not support odd width or height for YUV CVI_YUV420SP\n");
+    return CVI_FAILURE;
+  }
+  uint16_t rect_width[2] = {0};
+  uint16_t rect_height[2] = {0};
+  uint8_t shift[2] = {0};
+  shift[1] = 1;
+  x1 = (x1 >> 1) << 1;
+  y1 = (y1 >> 1) << 1;
+  x2 = (x2 >> 1) << 1;
+  y2 = (y2 >> 1) << 1;
+  rect_width[0] = x2 - x1;
+  rect_width[1] = (x2 - x1) >> 1;
+  rect_height[0] = y2 - y1;
+  rect_height[1] = (y2 - y1) >> 1;
+
+  // Y plane
+  cvk_tg_t out;
+  memset(&out, 0, sizeof(cvk_tg_t));
+  {
+    out.fmt = output.m_tg.fmt;
+    out.start_address = output.GetPAddr() + output.GetImgCOffsets()[0] +
+                        output.GetImgStrides()[0] * (y1 >> shift[0]) + (x1 >> shift[0]);
+    out.shape = {1, 2, (uint32_t)(2 >> shift[0]), rect_width[0]};
+    out.stride.h = output.GetImgStrides()[0];
+    out.stride.c = output.GetImgStrides()[0] * rect_height[0];
+    out.stride.n = 2 * out.stride.c;
+    DrawPairLine(cvk_ctx, color[0], out);
+    out.shape = {1, rect_height[0], 2, (uint32_t)(2 >> shift[0])};
+    out.stride.h = rect_width[0];
+    out.stride.c = output.GetImgStrides()[0];
+    out.stride.n = out.stride.c;
+    DrawPairLine(cvk_ctx, color[0], out);
+  }
+
+  // v plane
+  memset(&out, 0, sizeof(cvk_tg_t));
+  {
+    out.fmt = output.m_tg.fmt;
+    out.start_address = output.GetPAddr() + output.GetImgCOffsets()[1] +
+                        output.GetImgStrides()[1] * (y1 >> shift[1]) + (x1);
+
+    out.shape = {1, 2, (uint32_t)(rect_width[0] >> 1), (uint32_t)(2 >> shift[1])};
+    out.stride.h = 2;
+    out.stride.c = output.GetImgStrides()[1] * rect_height[1];
+    out.stride.n = out.stride.c;
+    DrawPairLine(cvk_ctx, color[2], out);
+
+    out.shape = {1, rect_height[1], 2, (uint32_t)(2 >> shift[1])};
+    out.stride.h = rect_width[0];
+    out.stride.c = output.GetImgStrides()[1];
+    out.stride.n = out.stride.c;
+    DrawPairLine(cvk_ctx, color[2], out);
+  }
+
+  // u plane
+  memset(&out, 0, sizeof(cvk_tg_t));
+  {
+    out.fmt = output.m_tg.fmt;
+    out.start_address = output.GetPAddr() + output.GetImgCOffsets()[1] +
+                        output.GetImgStrides()[1] * (y1 >> shift[1]) + (x1 + 1);
+
+    out.shape = {1, 2, (uint32_t)(rect_width[0] >> 1), (uint32_t)(2 >> shift[1])};
+    out.stride.h = 2;
+    out.stride.c = output.GetImgStrides()[1] * rect_height[1];
+    out.stride.n = out.stride.c;
+    DrawPairLine(cvk_ctx, color[1], out);
+
+    out.shape = {1, rect_height[1], 2, (uint32_t)(2 >> shift[1])};
+    out.stride.h = rect_width[0];
+    out.stride.c = output.GetImgStrides()[1];
+    out.stride.n = out.stride.c;
+    DrawPairLine(cvk_ctx, color[1], out);
+  }
+  return CVI_SUCCESS;
+}
+
 int IveTPUDrawHollowRect::addCmd(cvk_context_t *cvk_ctx, uint16_t x1, uint16_t y1, uint16_t x2,
                                  uint16_t y2, uint8_t *color, CviImg &output) {
   if (x2 >= output.GetImgWidth()) x2 = output.GetImgWidth() - 1;
@@ -76,8 +156,12 @@ int IveTPUDrawHollowRect::addCmd(cvk_context_t *cvk_ctx, uint16_t x1, uint16_t y
       DrawPairLine(cvk_ctx, color[i], out);
     }
   } else {
-    LOGE("Currently not support non^planar images.\n");
-    return CVI_FAILURE;
+    if (output.GetImgType() == CVI_YUV420SP) {
+      return generateCMD_YUV420SP(cvk_ctx, x1, y1, x2, y2, color, output);
+    } else {
+      LOGE("Unsupported images type: %d.\n", output.GetImgType());
+      return CVI_FAILURE;
+    }
   }
   return CVI_SUCCESS;
 }
