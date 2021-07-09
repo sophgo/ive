@@ -42,6 +42,12 @@ elif [[ "$1" == "soc" ]]; then
 elif [[ "$1" == "soc32" ]]; then
     mkdir -p $TMP_WORKING_DIR/build_sdk
     pushd $TMP_WORKING_DIR/build_sdk
+    echo "TOOLCHAIN_FILE=$TOOLCHAIN_FILE"
+    if [[ "$SDK_VER" == "uclibc" ]]; then
+	TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-uclibc-linux.cmake
+    else
+	TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-gnueabihf-linux.cmake
+    fi
     cmake -G Ninja $IVE_ROOT -DCVI_TARGET=soc \
                              -DENABLE_SYSTRACE=OFF \
                              -DCMAKE_BUILD_TYPE=SDKRelease \
@@ -49,7 +55,7 @@ elif [[ "$1" == "soc32" ]]; then
                              -DMIDDLEWARE_SDK_ROOT=$MW_PATH \
                              -DCMAKE_INSTALL_PREFIX=$IVE_SDK_INSTALL_PATH \
                              -DTOOLCHAIN_ROOT_DIR=$HOST_TOOL_PATH \
-                             -DCMAKE_TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-gnueabihf-linux.cmake
+                             -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE
     ninja -j8 && ninja install
     popd
 else
