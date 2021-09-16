@@ -64,7 +64,7 @@ target_link_libraries(cvi_ive_tpu ${MLIR_LIBS})
 endif()
 
 
-add_library(cvi_ive_tpu-static ${SRC})
+add_library(cvi_ive_tpu-static ${SRC} ${DRAWSRC})
 
 if (ENABLE_SYSTRACE)
 add_dependencies(cvi_ive_tpu-static tracer)
