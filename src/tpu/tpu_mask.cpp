@@ -59,8 +59,8 @@ int IveTPUMask::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   m_p_dconv.ins_w = 0;
   m_p_dconv.ins_last_w = 0;
   m_p_dconv.ins_last_h = 0;
-  m_p_dconv.dilation_h = 0;
-  m_p_dconv.dilation_w = 0;
+  m_p_dconv.dilation_h = 1;
+  m_p_dconv.dilation_w = 1;
   m_p_dconv.pad_top = m_p_dconv.pad_bottom = m_p_dconv.pad_left = m_p_dconv.pad_right = 0;
   m_p_dconv.stride_h = 1;
   m_p_dconv.stride_w = 1;
