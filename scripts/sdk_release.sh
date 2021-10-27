@@ -19,7 +19,8 @@ else
     exit 1
 fi
 
-cmake -G Ninja $IVE_ROOT -DCVI_TARGET=soc \
+cmake -G Ninja $IVE_ROOT -DCVI_PLATFORM=$CHIP_ARCH \
+                            -DCVI_TARGET=soc \
                             -DENABLE_SYSTRACE=OFF \
                             -DCMAKE_BUILD_TYPE=SDKRelease \
                             -DKERNEL_HEADERS_ROOT=$KERNEL_HEADER_PATH \
