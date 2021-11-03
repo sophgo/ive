@@ -285,6 +285,20 @@ CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
                       IVE_ERODE_CTRL_S *pstErodeCtrl, bool bInstant);
 
 /**
+ * @brief Blend pstSrc1 and pstSrc2 image and store result to pstDst.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc1 Input image. Only accepts U8C3.
+ * @param pstSrc2 Input image. Only accepts U8C3.
+ * @param pstDst Output result.
+ * @param IVE_BLEND_CTRL_S blend control variable.
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Blend(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
+                      IVE_DST_IMAGE_S *pstDst, IVE_BLEND_CTRL_S *pstBlendCtrl, bool bInstant);
+
+/**
  * @brief Apply a filter to an image.
  *
  * @param pIveHandle Ive instance handler.

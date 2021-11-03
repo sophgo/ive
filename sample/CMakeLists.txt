@@ -34,6 +34,7 @@ buildninstall_test(sample_sub)
 buildninstall_test(sample_threshold)
 buildninstall_test(sample_thresh16)
 buildninstall_test(sample_xor)
+buildninstall_test(sample_alpha_blend)
 
 buildninstall_test(sample_draw_rect)
 

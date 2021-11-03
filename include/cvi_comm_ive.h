@@ -122,6 +122,10 @@ typedef struct IVE_BLOCK_CTRL {
   CVI_U32 u32CellSize;
 } IVE_BLOCK_CTRL_S;
 
+typedef struct IVE_BLEND_CTRL_S {
+  CVI_U8 u8Weight;
+} IVE_BLEND_CTRL_S;
+
 typedef struct IVE_ELEMENT_STRUCTURE_CTRL {
   CVI_U8 au8Mask[25];
 } IVE_ELEMENT_STRUCTURE_CTRL_S;

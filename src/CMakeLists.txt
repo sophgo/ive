@@ -47,6 +47,7 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_threshold_slope.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_threshold.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_xor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_alpha_blend.cpp
 )
 
 set(DRAWSRC ${CMAKE_CURRENT_SOURCE_DIR}/ive_draw.cpp

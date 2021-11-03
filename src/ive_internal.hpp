@@ -11,6 +11,7 @@
 #include "tpu_data.hpp"
 
 #include "tpu/tpu_add.hpp"
+#include "tpu/tpu_alpha_blend.hpp"
 #include "tpu/tpu_and.hpp"
 #include "tpu/tpu_block.hpp"
 #include "tpu/tpu_cmp.hpp"
@@ -121,6 +122,7 @@ struct TPU_HANDLE {
   IveTPUThresholdHighLow t_thresh_hl;
   IveTPUThresholdSlope t_thresh_s;
   IveTPUXOr t_xor;
+  IveTPUBlend t_blend;
 };
 
 struct IVE_HANDLE_CTX {
