@@ -12,6 +12,7 @@
 
 #include "tpu/tpu_add.hpp"
 #include "tpu/tpu_alpha_blend.hpp"
+#include "tpu/tpu_alpha_blend_pixel.hpp"
 #include "tpu/tpu_and.hpp"
 #include "tpu/tpu_block.hpp"
 #include "tpu/tpu_cmp.hpp"
@@ -123,6 +124,7 @@ struct TPU_HANDLE {
   IveTPUThresholdSlope t_thresh_s;
   IveTPUXOr t_xor;
   IveTPUBlend t_blend;
+  IveTPUBlendPixel t_blend_pixel;
 };
 
 struct IVE_HANDLE_CTX {
