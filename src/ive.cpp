@@ -5,6 +5,8 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb/stb_image_write.h"
 
+#include <memory>
+
 /**
  * @brief String array of IVE_IMAGE_S enType.
  *
@@ -892,22 +894,46 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   return ret;
 }
 
+static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
+  CVIIMGTYPE img_type = CVIIMGTYPE::CVI_GRAY;
+  cvk_fmt_t fmt = CVK_FMT_U8;
+  std::vector<uint32_t> heights;
+  uint16_t new_height = src->u16Height + src->u16Height / 2;
+  heights.push_back(new_height);
+
+  std::vector<uint32_t> strides, u32_length;
+  strides.push_back(src->u16Stride[0]);
+  u32_length.push_back(src->u16Stride[0] * new_height);
+
+  auto *cpp_img = new CviImg(new_height, src->u16Width, strides, heights, u32_length,
+                             src->pu8VirAddr[0], src->u64PhyAddr[0], img_type, fmt);
+  if (!cpp_img->IsInit()) {
+    LOGE("Failed to init IVE_IMAGE_S.\n");
+    delete cpp_img;
+    return nullptr;
+  }
+  return cpp_img;
+}
+
 CVI_S32 CVI_IVE_Blend(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                       IVE_DST_IMAGE_S *pstDst, IVE_BLEND_CTRL_S *pstBlendCtrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
-  if (!IsValidImageType(pstSrc1, STRFY(pstSrc1), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+  if (!IsValidImageType(pstSrc1, STRFY(pstSrc1), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_YUV420P)) {
     LOGE(
         "image type of pstSrc1 should be one of (IVE_IMAGE_TYPE_U8C1, "
         "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
     return CVI_FAILURE;
   }
-  if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+  if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_YUV420P)) {
     LOGE(
         "image type of pstSrc2 should be one of (IVE_IMAGE_TYPE_U8C1, "
         "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
     return CVI_FAILURE;
   }
-  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_YUV420P)) {
     LOGE(
         "image type of pstDst should be one of (IVE_IMAGE_TYPE_U8C1, "
         "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
@@ -921,9 +947,31 @@ CVI_S32 CVI_IVE_Blend(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_I
 
   int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
-  CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
-  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+
+  std::shared_ptr<CviImg> cpp_src1;
+  std::shared_ptr<CviImg> cpp_src2;
+  std::shared_ptr<CviImg> cpp_dst;
+
+  if (pstDst->enType == IVE_IMAGE_TYPE_YUV420P) {
+    // NOTE: Computing tpu slice with different stride in different channel is quite complicated.
+    // Instead, we consider YUV420P image as U8C1 with Wx(H + H / 2) image size so that there is
+    // only one channel have to blended.
+    cpp_src1 = std::shared_ptr<CviImg>(ViewAsU8C1(pstSrc1));
+    cpp_src2 = std::shared_ptr<CviImg>(ViewAsU8C1(pstSrc2));
+    cpp_dst = std::shared_ptr<CviImg>(ViewAsU8C1(pstDst));
+  } else {
+    cpp_src1 =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstSrc1->tpu_block), [](CviImg *) {});
+    cpp_src2 =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstSrc2->tpu_block), [](CviImg *) {});
+    cpp_dst =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstDst->tpu_block), [](CviImg *) {});
+  }
+
+  if (cpp_src1 == nullptr || cpp_src2 == nullptr || cpp_dst == nullptr) {
+    LOGE("Cannot get tpu block\n");
+    return CVI_FAILURE;
+  }
 
   if ((cpp_src1->GetImgHeight() != cpp_src2->GetImgHeight()) ||
       (cpp_src1->GetImgHeight() != cpp_dst->GetImgHeight()) ||
@@ -946,26 +994,29 @@ CVI_S32 CVI_IVE_Blend_Pixel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
                             IVE_SRC_IMAGE_S *pstSrc2, IVE_SRC_IMAGE_S *pstAlpha,
                             IVE_DST_IMAGE_S *pstDst, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
-  if (!IsValidImageType(pstSrc1, STRFY(pstSrc1), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+  if (!IsValidImageType(pstSrc1, STRFY(pstSrc1), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_YUV420P)) {
     LOGE(
         "image type of pstSrc1 should be one of (IVE_IMAGE_TYPE_U8C1, "
         "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
     return CVI_FAILURE;
   }
-  if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+  if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_YUV420P)) {
     LOGE(
         "image type of pstSrc2 should be one of (IVE_IMAGE_TYPE_U8C1, "
         "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
     return CVI_FAILURE;
   }
-  if (!IsValidImageType(pstAlpha, STRFY(pstAlpha), IVE_IMAGE_TYPE_U8C1,
-                        IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+  if (!IsValidImageType(pstAlpha, STRFY(pstAlpha), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_YUV420P)) {
     LOGE(
         "image type of pstDst should be one of (IVE_IMAGE_TYPE_U8C1, "
         "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
     return CVI_FAILURE;
   }
-  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_YUV420P)) {
     LOGE(
         "image type of pstDst should be one of (IVE_IMAGE_TYPE_U8C1, "
         "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
@@ -980,10 +1031,35 @@ CVI_S32 CVI_IVE_Blend_Pixel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
 
   int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
-  CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
-  CviImg *cpp_alpha = reinterpret_cast<CviImg *>(pstAlpha->tpu_block);
-  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+
+  std::shared_ptr<CviImg> cpp_src1;
+  std::shared_ptr<CviImg> cpp_src2;
+  std::shared_ptr<CviImg> cpp_alpha;
+  std::shared_ptr<CviImg> cpp_dst;
+
+  if (pstDst->enType == IVE_IMAGE_TYPE_YUV420P) {
+    // NOTE: Computing tpu slice with different stride in different channel is quite complicated.
+    // Instead, we consider YUV420P image as U8C1 with Wx(H + H / 2) image size so that there is
+    // only one channel have to blended.
+    cpp_src1 = std::shared_ptr<CviImg>(ViewAsU8C1(pstSrc1));
+    cpp_src2 = std::shared_ptr<CviImg>(ViewAsU8C1(pstSrc2));
+    cpp_alpha = std::shared_ptr<CviImg>(ViewAsU8C1(pstAlpha));
+    cpp_dst = std::shared_ptr<CviImg>(ViewAsU8C1(pstDst));
+  } else {
+    cpp_src1 =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstSrc1->tpu_block), [](CviImg *) {});
+    cpp_src2 =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstSrc2->tpu_block), [](CviImg *) {});
+    cpp_alpha =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstAlpha->tpu_block), [](CviImg *) {});
+    cpp_dst =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstDst->tpu_block), [](CviImg *) {});
+  }
+
+  if (cpp_src1 == nullptr || cpp_src2 == nullptr || cpp_alpha == nullptr || cpp_dst == nullptr) {
+    LOGE("Cannot get tpu block\n");
+    return CVI_FAILURE;
+  }
 
   if ((cpp_src1->GetImgHeight() != cpp_src2->GetImgHeight()) ||
       (cpp_src1->GetImgHeight() != cpp_dst->GetImgHeight()) ||
