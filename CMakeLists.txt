@@ -43,6 +43,12 @@ endif()
 # Reset flag string
 set(WORKAROUND_FLAGS_STR "")
 
+# platform specific settings
+if("${CVI_PLATFORM}" STREQUAL "cv1835")
+  add_definitions(-DWORKAROUND_SCALAR_4096_ALIGN_BUG)
+  set(WORKAROUND_FLAGS_STR "${WORKAROUND_FLAGS_STR} WORKAROUND_SCALAR_4096_ALIGN_BUG")
+endif()
+
 if("${CVI_TARGET}" STREQUAL "soc")
   add_definitions(-DCVI_SOC)
   if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")

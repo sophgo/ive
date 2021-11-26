@@ -3,7 +3,9 @@
 #include "cvi_math.h"
 #include "ive_log.hpp"
 
+#ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
 #define SCALAR_C_ALIGN 0x1000
+#endif
 
 CviImg::CviImg() {}
 CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_c, uint32_t img_h, uint32_t img_w,
