@@ -903,7 +903,13 @@ static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
 
   std::vector<uint32_t> strides, u32_length;
   strides.push_back(src->u16Stride[0]);
-  u32_length.push_back(src->u16Stride[0] * new_height);
+  CviImg *orig_cpp = reinterpret_cast<CviImg *>(src->tpu_block);
+
+  if (Is4096Workaound(orig_cpp->GetImgType())) {
+    u32_length.push_back(orig_cpp->GetImgCOffsets()[3]);
+  } else {
+    u32_length.push_back(src->u16Stride[0] * new_height);
+  }
 
   auto *cpp_img = new CviImg(new_height, src->u16Width, strides, heights, u32_length,
                              src->pu8VirAddr[0], src->u64PhyAddr[0], img_type, fmt);
