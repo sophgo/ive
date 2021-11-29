@@ -302,7 +302,7 @@ CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc) {
   std::vector<uint32_t> strides, u32_length;
   for (size_t i = 0; i < c; i++) {
     strides.push_back(pstSrc->u16Stride[i]);
-    u32_length.push_back(pstSrc->u16Stride[i] * pstSrc->u16Height);
+    u32_length.push_back(pstSrc->u16Stride[i] * heights[i]);
   }
   auto *cpp_img = new CviImg(pstSrc->u16Height, pstSrc->u16Width, strides, heights, u32_length,
                              pstSrc->pu8VirAddr[0], pstSrc->u64PhyAddr[0], img_type, fmt);
