@@ -20,20 +20,17 @@ void RGBToYUV420(IVE_IMAGE_S *rgb, IVE_IMAGE_S *yuv420) {
       int r = rgb->pu8VirAddr[0][w + h * rgb->u16Stride[0]];
       int g = rgb->pu8VirAddr[1][w + h * rgb->u16Stride[1]];
       int b = rgb->pu8VirAddr[2][w + h * rgb->u16Stride[2]];
-      *pY = ((66 * r + 129 * g + 25 * b) >> 8) + 16;
-      pY++;
+      pY[w + h * yuv420->u16Stride[0]] = ((66 * r + 129 * g + 25 * b) >> 8) + 16;
 
       if (h % 2 == 0 && w % 2 == 0) {
-        *pU = ((-38 * r - 74 * g + 112 * b) >> 8) + 128;
-        pU++;
-        *pV = ((112 * r - 94 * g - 18 * b) >> 8) + 128;
-        pV++;
+        pU[w / 2 + h / 2 * yuv420->u16Stride[1]] = ((-38 * r - 74 * g + 112 * b) >> 8) + 128;
+        pV[w / 2 + h / 2 * yuv420->u16Stride[2]] = ((112 * r - 94 * g - 18 * b) >> 8) + 128;
       }
     }
   }
 }
 
-void YUV420pToBGR(IVE_IMAGE_S *yuv420, IVE_IMAGE_S *rgb) {
+void YUV420pToRGB(IVE_IMAGE_S *yuv420, IVE_IMAGE_S *rgb) {
   for (int i = 0; i < yuv420->u16Height; i++) {
     for (int j = 0; j < yuv420->u16Width; j++) {
       float Y = yuv420->pu8VirAddr[0][i * yuv420->u16Stride[0] + j];
@@ -155,7 +152,7 @@ int main(int argc, char **argv) {
 
     IVE_DST_IMAGE_S dst_rgb;
     CVI_IVE_CreateImage(handle, &dst_rgb, IVE_IMAGE_TYPE_U8C3_PLANAR, width, height);
-    YUV420pToBGR(&dst, &dst_rgb);
+    YUV420pToRGB(&dst, &dst_rgb);
 
     printf("Save result to file.\n");
     CVI_IVE_WriteImage(handle, "sample_alpha_blend_pixel.png", &dst_rgb);
