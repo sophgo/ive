@@ -35,12 +35,12 @@ int main(int argc, char **argv) {
     for (int j = 0; j < height; j++) {
       for (int i = 0; i < width; i++) {
         if (i < gradient_start) {
-          alpha.pu8VirAddr[0][i + j * strideWidth + c * height * strideWidth] = 0;
+          alpha.pu8VirAddr[c][i + j * strideWidth] = 0;
         } else if (i > gradient_end) {
-          alpha.pu8VirAddr[0][i + j * strideWidth + c * height * strideWidth] = 255;
+          alpha.pu8VirAddr[c][i + j * strideWidth] = 255;
         } else {
           uint8_t alpha_pixel = (uint8_t)(((float)(i - gradient_start) / gradient_length) * 255);
-          alpha.pu8VirAddr[0][i + j * strideWidth + c * height * strideWidth] = alpha_pixel;
+          alpha.pu8VirAddr[c][i + j * strideWidth] = alpha_pixel;
         }
       }
     }
