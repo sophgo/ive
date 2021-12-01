@@ -5,6 +5,12 @@
 #include <iostream>
 #include <memory>
 
+#ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
+#define SCALAR_C_ALIGN 0x1000
+#else
+#define SCALAR_C_ALIGN 0x1
+#endif
+
 inline void GetSliceUnitProperty(const uint32_t length, const uint32_t slice, const int kernel_sz,
                                  const int default_stride, sliceUnit *unit) {
   unit->slice = slice > length ? length : slice;
@@ -1199,6 +1205,11 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
           }
         }
         bm_src_info.addr_vec[k] += 1 * input[k].m_tg.stride.h * jump_val;
+        if (in_slice_res_h_left_pixels == 0 && i == in_slice_res.h.turn - 1 &&
+            Is4096Workaound(input[k].GetImgType())) {
+          bm_src_info.addr_vec[k] = Align64(bm_src_info.addr_vec[k], SCALAR_C_ALIGN);
+          LOGD("aligned bm_src_info.addr_vec[%lu]=0x%" PRIx64 "\n", k, bm_src_info.addr_vec[k]);
+        }
       }
       for (size_t k = 0; k < bm_dest_info.addr_vec.size(); k++) {
         uint32_t jump_val = 0;
@@ -1219,6 +1230,14 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
           }
         }
         bm_dest_info.addr_vec[k] += 1 * (*output)[k].m_tg.stride.h * jump_val;
+        if (out_slice_res_h_left_pixels == 0 && i == out_slice_res.h.turn - 1 &&
+            Is4096Workaound((*output)[k].GetImgType())) {
+          int offset = (*output)[k].m_tg.stride.h * m_kernel_info.pad[0] +
+                       m_kernel_info.pad[2] * bm_dest_info.fns_vec[k].getSize();
+          bm_dest_info.addr_vec[k] = Align64(bm_dest_info.addr_vec[k], SCALAR_C_ALIGN) + offset;
+          LOGD("aligned bm_dest_info.addr_vec[%lu]=0x%" PRIx64 ", offset=%x\n", k,
+               bm_dest_info.addr_vec[k], offset);
+        }
       }
     }
   }

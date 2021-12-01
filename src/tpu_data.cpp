@@ -5,6 +5,8 @@
 
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG
 #define SCALAR_C_ALIGN 0x1000
+#else
+#define SCALAR_C_ALIGN 0x1
 #endif
 
 CviImg::CviImg() {}
