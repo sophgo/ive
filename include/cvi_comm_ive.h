@@ -103,6 +103,11 @@ typedef struct IVE_IMAGE {
 typedef IVE_IMAGE_S IVE_SRC_IMAGE_S;
 typedef IVE_IMAGE_S IVE_DST_IMAGE_S;
 
+typedef struct IVE_CONVERT_SCALE_ABS_CRTL {
+  float alpha;
+  float beta;
+} IVE_CONVERT_SCALE_ABS_CRTL_S;
+
 typedef enum IVE_ITC_TYPE {
   IVE_ITC_SATURATE = 0x0,
   IVE_ITC_NORMALIZE = 0x1,

@@ -851,6 +851,64 @@ CVI_S32 CVI_IVE_ConstFill(IVE_HANDLE pIveHandle, const CVI_FLOAT value, IVE_DST_
                                           &outputs);
 }
 
+CVI_S32 CVI_IVE_ConvertScaleAbs(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
+                                IVE_DST_IMAGE_S *pstDst, IVE_CONVERT_SCALE_ABS_CRTL *pstConvertCtrl,
+                                bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
+  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_BF16C1)) {
+    LOGE("image type of pstSrc should be IVE_IMAGE_TYPE_BF16C1\n");
+    return CVI_FAILURE;
+  }
+
+  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
+    LOGE("image type of pstDst should be IVE_IMAGE_TYPE_U8C1\n");
+    return CVI_FAILURE;
+  }
+
+  uint16_t alpha = convert_fp32_bf16(-1.0 * pstConvertCtrl->alpha);
+  if (alpha == NAN_VALUE) {
+    LOGE("alpha value: %f is NaN\n", pstConvertCtrl->alpha);
+    return CVI_FAILURE;
+  }
+
+  uint16_t beta = convert_fp32_bf16(-1.0 * pstConvertCtrl->beta);
+  if (beta == NAN_VALUE) {
+    LOGE("beta value: %f is NaN\n", pstConvertCtrl->beta);
+    return CVI_FAILURE;
+  }
+
+  int ret = CVI_FAILURE;
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+
+  std::shared_ptr<CviImg> cpp_src;
+  std::shared_ptr<CviImg> cpp_dst;
+
+  cpp_src = std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstSrc->tpu_block), [](CviImg *) {});
+  cpp_dst = std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstDst->tpu_block), [](CviImg *) {});
+
+  if (cpp_src == nullptr || cpp_dst == nullptr) {
+    LOGE("Cannot get tpu block\n");
+    return CVI_FAILURE;
+  }
+
+  if ((cpp_src->GetImgHeight() != cpp_dst->GetImgHeight()) ||
+      (cpp_src->GetImgWidth() != cpp_dst->GetImgWidth())) {
+    LOGE("source/dst image size do not matched!\n");
+    return CVI_FAILURE;
+  }
+
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
+
+  handle_ctx->t_h.t_convert_scale_abs.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+
+  handle_ctx->t_h.t_convert_scale_abs.setAlpha(alpha);
+  handle_ctx->t_h.t_convert_scale_abs.setBeta(beta);
+  ret = handle_ctx->t_h.t_convert_scale_abs.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
+                                                &outputs);
+  return ret;
+}
+
 CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_IMAGE_S *pstDst, IVE_ADD_CTRL_S *ctrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);

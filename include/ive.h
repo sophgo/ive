@@ -218,6 +218,21 @@ CVI_S32 CVI_IVE_ConstFill(IVE_HANDLE pIveHandle, const CVI_FLOAT value, IVE_DST_
                           bool bInstant);
 
 /**
+ * @brief Scales, calculates absolute values, and converts the result to 8-bit:
+ * dst = saturate_uint8(abs(src * alpha + beta)).
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc Input image, should be BF16C1.
+ * @param pstDst Output result, should be U8C1.
+ * @param ctrl control parameter.
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_ConvertScaleAbs(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
+                                IVE_DST_IMAGE_S *pstDst,
+                                IVE_CONVERT_SCALE_ABS_CRTL_S *pstConvertCtrl, bool bInstant);
+
+/**
  * @brief Add two image and output the result.
  *
  * @param pIveHandle Ive instance handler.

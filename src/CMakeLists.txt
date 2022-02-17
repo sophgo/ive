@@ -49,6 +49,7 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_xor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_alpha_blend.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_alpha_blend_pixel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_convert_scale_abs.cpp
 )
 
 set(DRAWSRC ${CMAKE_CURRENT_SOURCE_DIR}/ive_draw.cpp

@@ -16,6 +16,7 @@
 #include "tpu/tpu_and.hpp"
 #include "tpu/tpu_block.hpp"
 #include "tpu/tpu_cmp.hpp"
+#include "tpu/tpu_convert_scale_abs.hpp"
 #include "tpu/tpu_copy.hpp"
 #include "tpu/tpu_fill.hpp"
 #include "tpu/tpu_filter.hpp"
@@ -125,6 +126,7 @@ struct TPU_HANDLE {
   IveTPUXOr t_xor;
   IveTPUBlend t_blend;
   IveTPUBlendPixel t_blend_pixel;
+  IveTPUConvertScaleAbs t_convert_scale_abs;
 };
 
 struct IVE_HANDLE_CTX {

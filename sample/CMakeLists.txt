@@ -37,6 +37,7 @@ buildninstall_test(sample_xor)
 buildninstall_test(sample_alpha_blend)
 buildninstall_test(sample_alpha_blend_pixel)
 buildninstall_test(sample_alpha_blend_pixel_yuv420)
+buildninstall_test(sample_convert_scale_abs)
 
 buildninstall_test(sample_draw_rect)
 
