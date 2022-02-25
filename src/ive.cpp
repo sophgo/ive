@@ -1851,6 +1851,20 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
   return handle_ctx->t_h.t_or.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
 }
 
+CVI_S32 CVI_IVE_Average(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, float *average,
+                        bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
+  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
+    return CVI_FAILURE;
+  }
+
+  CVI_IVE_BufRequest(pIveHandle, pstSrc);
+  uint64_t accumulate = 0;
+  neonU8Accumulate(pstSrc->pu8VirAddr[0], pstSrc->u16Stride[0] * pstSrc->u16Height, &accumulate);
+  *average = (float)accumulate / (pstSrc->u16Width * pstSrc->u16Height);
+  return CVI_SUCCESS;
+}
+
 CVI_S32 CVI_IVE_OrdStatFilter(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                               IVE_DST_IMAGE_S *pstDst,
                               IVE_ORD_STAT_FILTER_CTRL_S *pstOrdStatFltCtrl, bool bInstant) {

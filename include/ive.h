@@ -450,6 +450,18 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
                    IVE_DST_IMAGE_S *pstDst, bool bInstant);
 
 /**
+ * @brief Calculate average value of image.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc Input image.
+ * @param average average value of image;
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Average(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
+                              float *average, bool bInstant);
+
+/**
  * @brief Find min max of an image with a 3x3 size kernel.
  *
  * @param pIveHandle Ive instance handler.

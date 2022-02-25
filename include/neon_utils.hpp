@@ -442,6 +442,23 @@ inline void neonS162S8Threshold(int16_t *src_ptr, int8_t *dst_ptr, const uint64_
   }
 }
 
+inline void neonU8Accumulate(uint8_t *src_ptr, const uint64_t arr_size, uint64_t *result) {
+  uint64_t neon_turn = arr_size / 16;
+  uint64_t rest = arr_size - (neon_turn * 16);
+  *result = 0;
+  for (uint64_t i = 0; i < neon_turn; i++) {
+    uint8x16_t value = vld1q_u8(src_ptr);
+    uint64x2_t sum = vpaddlq_u32(vpaddlq_u16(vpaddlq_u8(value)));
+    *result += (vgetq_lane_u64(sum, 0) + vgetq_lane_u64(sum, 1));
+    src_ptr += 16;
+  }
+
+  for (uint64_t i = 0; i < rest; i++) {
+   *result += *src_ptr;
+   src_ptr++;
+  }
+}
+
 inline void neonU162U8ThresholdLH(uint16_t *src_ptr, uint8_t *dst_ptr, const uint64_t arr_size,
                                   const uint16_t threshold_low, const uint16_t threshold_high,
                                   const uint8_t min, const uint8_t mid, const uint8_t max,
