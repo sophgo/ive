@@ -4,6 +4,7 @@
 class IveTPUSub : public IveCore {
  public:
   virtual int init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) override;
+  void setSignedOutput(bool is_signed_output) { m_is_signed_output = is_signed_output; }
 
  protected:
   virtual int runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
@@ -18,6 +19,7 @@ class IveTPUSub : public IveCore {
   std::vector<cvk_tl_t *> m_input1;
   std::vector<cvk_tl_t *> m_input2;
   cvk_tiu_mac_param_t m_p_mac;
+  bool m_is_signed_output;
 };
 
 class IveTPUSubAbs : public IveCore {
