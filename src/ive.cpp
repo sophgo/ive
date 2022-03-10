@@ -916,8 +916,8 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
                         IVE_IMAGE_TYPE_BF16C1)) {
     return CVI_FAILURE;
   }
-  if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
-                        IVE_IMAGE_TYPE_BF16C1)) {
+  if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_S8C1,
+                        IVE_IMAGE_TYPE_U8C3_PLANAR, IVE_IMAGE_TYPE_BF16C1)) {
     return CVI_FAILURE;
   }
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
@@ -941,8 +941,14 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
           ? true
           : false;
   if (((x == 1 && y == 1) || (x == 0.f && y == 0.f)) && !is_bf16) {
-    handle_ctx->t_h.t_add.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-    ret = handle_ctx->t_h.t_add.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
+    if (pstSrc2->enType == IVE_IMAGE_TYPE_S8C1) {
+      handle_ctx->t_h.t_add_signed.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+      ret = handle_ctx->t_h.t_add_signed.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
+                                             &outputs);
+    } else {
+      handle_ctx->t_h.t_add.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+      ret = handle_ctx->t_h.t_add.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
+    }
   } else {
     handle_ctx->t_h.t_add_bf16.setCoef(x, y);
     handle_ctx->t_h.t_add_bf16.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);

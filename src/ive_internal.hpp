@@ -97,6 +97,7 @@ inline bool IsValidImageType(IVE_IMAGE_S *pstImg, std::string pstImgStr, const T
 struct TPU_HANDLE {
   TblMgr t_tblmgr;
   IveTPUAdd t_add;
+  IveTPUAddSigned t_add_signed;
   IveTPUAddBF16 t_add_bf16;
   IveTPUAnd t_and;
   IveTPUBlock t_block;

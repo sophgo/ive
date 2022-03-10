@@ -454,8 +454,8 @@ inline void neonU8Accumulate(uint8_t *src_ptr, const uint64_t arr_size, uint64_t
   }
 
   for (uint64_t i = 0; i < rest; i++) {
-   *result += *src_ptr;
-   src_ptr++;
+    *result += *src_ptr;
+    src_ptr++;
   }
 }
 
