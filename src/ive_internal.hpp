@@ -121,6 +121,7 @@ struct TPU_HANDLE {
   IveTPUSubAbs t_sub_abs;
   IveTPUSub t_sub;
   IveTPUTbl t_tbl;
+  IveTPUTbl512 t_tbl512;
   IveTPUThreshold t_thresh;
   IveTPUThresholdHighLow t_thresh_hl;
   IveTPUThresholdSlope t_thresh_s;

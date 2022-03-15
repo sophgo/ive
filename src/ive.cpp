@@ -1607,28 +1607,58 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
 CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO_S *pstMap,
                     IVE_DST_IMAGE_S *pstDst, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
-  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
+  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U16C1)) {
     return CVI_FAILURE;
   }
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
   }
 
-  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  auto &shape = handle_ctx->t_h.t_tblmgr.getTblTLShape(CVK_FMT_U8);
-  uint32_t tbl_sz = shape.h * shape.w;
-  if (pstMap->u32ByteSize != tbl_sz) {
-    LOGE("Mapping table must be size %u in CVI_U8 format.\n", tbl_sz);
-    return CVI_FAILURE;
+  if (pstMap->u32ByteSize == 512) {
+    IVE_IMAGE_S table_index, lookup_index;
+    CVI_IVE_CreateImage(pIveHandle, &table_index, IVE_IMAGE_TYPE_U8C1, pstSrc->u16Width,
+                        pstSrc->u16Height);
+    CVI_IVE_CreateImage(pIveHandle, &lookup_index, IVE_IMAGE_TYPE_U8C1, pstSrc->u16Width,
+                        pstSrc->u16Height);
+    neonU16SeperateU8((uint16_t *)pstSrc->pu8VirAddr[0], table_index.pu8VirAddr[0],
+                      lookup_index.pu8VirAddr[0], (pstSrc->u16Stride[0] / 2) * pstSrc->u16Height);
+
+    CVI_IVE_BufFlush(pIveHandle, &table_index);
+    CVI_IVE_BufFlush(pIveHandle, &lookup_index);
+
+    IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+    CviImg *cpp_src_index = reinterpret_cast<CviImg *>(table_index.tpu_block);
+    CviImg *cpp_src = reinterpret_cast<CviImg *>(lookup_index.tpu_block);
+    CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+    std::vector<CviImg> inputs = {*cpp_src_index, *cpp_src};
+    std::vector<CviImg> outputs = {*cpp_dst};
+    handle_ctx->t_h.t_tbl512.setTable(handle_ctx->rt_handle, &handle_ctx->t_h.t_tblmgr,
+                                      pstMap->pu8VirAddr);
+    handle_ctx->t_h.t_tbl512.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+    CVI_S32 ret =
+        handle_ctx->t_h.t_tbl512.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
+
+    CVI_SYS_FreeI(pIveHandle, &table_index);
+    CVI_SYS_FreeI(pIveHandle, &lookup_index);
+
+    return ret;
+  } else {
+    IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+    auto &shape = handle_ctx->t_h.t_tblmgr.getTblTLShape(CVK_FMT_U8);
+    uint32_t tbl_sz = shape.h * shape.w;
+    if (pstMap->u32ByteSize != tbl_sz) {
+      LOGE("Mapping table must be size %u in CVI_U8 format.\n", tbl_sz);
+      return CVI_FAILURE;
+    }
+    CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+    CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+    std::vector<CviImg> inputs = {*cpp_src};
+    std::vector<CviImg> outputs = {*cpp_dst};
+    handle_ctx->t_h.t_tbl.setTable(handle_ctx->rt_handle, &handle_ctx->t_h.t_tblmgr,
+                                   pstMap->pu8VirAddr);
+    handle_ctx->t_h.t_tbl.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+    return handle_ctx->t_h.t_tbl.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   }
-  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
-  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg> inputs = {*cpp_src};
-  std::vector<CviImg> outputs = {*cpp_dst};
-  handle_ctx->t_h.t_tbl.setTable(handle_ctx->rt_handle, &handle_ctx->t_h.t_tblmgr,
-                                 pstMap->pu8VirAddr);
-  handle_ctx->t_h.t_tbl.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-  return handle_ctx->t_h.t_tbl.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
 }
 
 CVI_S32 CVI_IVE_Mask(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,

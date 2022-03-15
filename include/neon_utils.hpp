@@ -557,6 +557,23 @@ inline void neonS162S8ThresholdLH(int16_t *src_ptr, int8_t *dst_ptr, const uint6
   }
 }
 
+inline void neonU16SeperateU8(uint16_t *src_ptr, uint8_t *dst1_ptr, uint8_t *dst2_ptr,
+                              const uint64_t arr_size) {
+  uint64_t neon_turn = arr_size / 8;
+  for (uint64_t i = 0; i < neon_turn; i++) {
+    uint16x8_t u16_data = vld1q_u16(src_ptr);
+    uint8x8_t u8_table_index = vqshrn_n_u16(u16_data, 8);
+    uint8x8_t u8_lookup_index = vmovn_u16(u16_data);
+
+    vst1_u8(dst1_ptr, u8_table_index);
+    vst1_u8(dst2_ptr, u8_lookup_index);
+
+    src_ptr += 8;
+    dst1_ptr += 8;
+    dst2_ptr += 8;
+  }
+}
+
 inline void neonS162U8ThresholdLH(int16_t *src_ptr, uint8_t *dst_ptr, const uint64_t arr_size,
                                   const int16_t threshold_low, const int16_t threshold_high,
                                   const uint8_t min, const uint8_t mid, const uint8_t max,
