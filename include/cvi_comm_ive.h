@@ -140,7 +140,7 @@ typedef IVE_ELEMENT_STRUCTURE_CTRL_S IVE_ERODE_CTRL_S;
 
 typedef struct IVE_FILTER_CTRL {
   CVI_U8 u8MaskSize;
-  CVI_S8 as8Mask[25];
+  CVI_S8 as8Mask[169];
   CVI_U32 u32Norm;
 } IVE_FILTER_CTRL_S;
 

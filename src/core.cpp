@@ -1037,6 +1037,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
   tg_out.base_reg_index = 0;
 
   std::vector<uint64_t> bm_src_addr_bk = bm_src_info.addr_vec;
+  std::vector<uint64_t> bm_dst_addr_bk = bm_dest_info.addr_vec;
   // Main for loop
   for (uint32_t b = 0; b < batch; b++) {
     TensorSliceInfo *tsi = &out_info;
@@ -1205,11 +1206,6 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
           }
         }
         bm_src_info.addr_vec[k] += 1 * input[k].m_tg.stride.h * jump_val;
-        if (in_slice_res_h_left_pixels == 0 && i == in_slice_res.h.turn - 1 &&
-            Is4096Workaound(input[k].GetImgType())) {
-          bm_src_info.addr_vec[k] = Align64(bm_src_info.addr_vec[k], SCALAR_C_ALIGN);
-          LOGD("aligned bm_src_info.addr_vec[%lu]=0x%" PRIx64 "\n", k, bm_src_info.addr_vec[k]);
-        }
       }
       for (size_t k = 0; k < bm_dest_info.addr_vec.size(); k++) {
         uint32_t jump_val = 0;
@@ -1230,14 +1226,27 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
           }
         }
         bm_dest_info.addr_vec[k] += 1 * (*output)[k].m_tg.stride.h * jump_val;
-        if (out_slice_res_h_left_pixels == 0 && i == out_slice_res.h.turn - 1 &&
-            Is4096Workaound((*output)[k].GetImgType())) {
-          int offset = (*output)[k].m_tg.stride.h * m_kernel_info.pad[0] +
-                       m_kernel_info.pad[2] * bm_dest_info.fns_vec[k].getSize();
-          bm_dest_info.addr_vec[k] = Align64(bm_dest_info.addr_vec[k], SCALAR_C_ALIGN) + offset;
-          LOGD("aligned bm_dest_info.addr_vec[%lu]=0x%" PRIx64 ", offset=%x\n", k,
-               bm_dest_info.addr_vec[k], offset);
-        }
+      }
+    }
+
+    for (size_t k = 0; k < bm_src_info.addr_vec.size(); k++) {
+      if (Is4096Workaound(input[k].GetImgType())) {
+        uint32_t img_height = input[k].m_tg.shape.h;
+        uint32_t img_stride = input[k].m_tg.stride.h / getFmtSize(input[k].m_tg.fmt);
+
+        bm_src_info.addr_vec[k] =
+            bm_src_addr_bk[k] + (Align64(img_stride * img_height, SCALAR_C_ALIGN) * (b + 1));
+        LOGD("aligned bm_src_info.addr_vec[%lu]=0x%" PRIu64 "\n", k, bm_src_info.addr_vec[k]);
+      }
+    }
+
+    for (size_t k = 0; k < bm_dest_info.addr_vec.size(); k++) {
+      if (Is4096Workaound((*output)[k].GetImgType())) {
+        uint32_t img_height = (*output)[k].m_tg.shape.h;
+        uint32_t img_stride = (*output)[k].m_tg.stride.h / getFmtSize((*output)[k].m_tg.fmt);
+        bm_dest_info.addr_vec[k] =
+            bm_dst_addr_bk[k] + (Align64(img_stride * img_height, SCALAR_C_ALIGN) * (b + 1));
+        LOGD("aligned bm_dest_info.addr_vec[%lu]=0x%" PRIu64 "\n", k, bm_dest_info.addr_vec[k]);
       }
     }
   }

@@ -1313,8 +1313,8 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
 
-  if (pstFltCtrl->u8MaskSize != 3 && pstFltCtrl->u8MaskSize != 5) {
-    LOGE("Currently Filter only supports filter size 3 or 5.\n");
+  if (pstFltCtrl->u8MaskSize != 3 && pstFltCtrl->u8MaskSize != 5 && pstFltCtrl->u8MaskSize != 13) {
+    LOGE("Currently Filter only supports filter size 3, 5, 13.\n");
   }
   uint32_t npu_num = handle_ctx->t_h.t_filter.getNpuNum(handle_ctx->cvk_ctx);
   CviImg cimg(handle_ctx->rt_handle, npu_num, pstFltCtrl->u8MaskSize, pstFltCtrl->u8MaskSize,
