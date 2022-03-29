@@ -40,7 +40,7 @@ int IveTPUSub::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   m_p_mac.b_const.is_signed = 1;
   m_p_mac.lshift_bits = 0;
   m_p_mac.res_is_int8 = 1;
-  m_p_mac.rshift_bits = 0;
+  m_p_mac.rshift_bits = m_enable_right_shift ? 1 : 0;
   m_p_mac.relu_enable = m_is_signed_output ? 0 : 1;
 
   for (size_t pp = 0; pp < m_slice_info.ping_pong_size; pp++) {

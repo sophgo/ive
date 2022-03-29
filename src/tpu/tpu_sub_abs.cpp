@@ -50,6 +50,15 @@ int IveTPUSubAbs::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   m_p_mac.rshift_bits = 0;
   m_p_mac.relu_enable = 1;
 
+  if (m_is_binary_output) {
+    m_p_mul.b_const.val = 255;
+    m_p_mul.b_is_const = 1;
+    m_p_mul.b_const.is_signed = 0;
+    m_p_mul.relu_enable = 0;
+    m_p_mul.res_high = NULL;
+    m_p_mul.rshift_bits = 0;
+  }
+
   for (size_t pp = 0; pp < m_slice_info.ping_pong_size; pp++) {
     tl_in_idx->push_back(0 + pp * 3);
     tl_in_idx->push_back(1 + pp * 3);
@@ -70,4 +79,10 @@ void IveTPUSubAbs::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, ui
   cvk_ctx->ops->tiu_min(cvk_ctx, &m_p_min);
   cvk_ctx->ops->tiu_max(cvk_ctx, &m_p_max);
   cvk_ctx->ops->tiu_mac(cvk_ctx, &m_p_mac);
+
+  if (m_is_binary_output) {
+    m_p_mul.a = m_input1[ping_idx];
+    m_p_mul.res_low = m_input1[ping_idx];
+    cvk_ctx->ops->tiu_mul(cvk_ctx, &m_p_mul);
+  }
 }

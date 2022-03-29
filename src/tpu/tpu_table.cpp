@@ -90,7 +90,7 @@ void IveTPUTbl512::setTable(CVI_RT_HANDLE rt_handle, TblMgr *tblmgr, const uint8
 int IveTPUTbl512::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_slice_info.io_fmt = CVK_FMT_U8;
   m_cmdbuf_subfix = "tbl";
-  m_slice_info.ping_pong_size = 2;
+  m_slice_info.ping_pong_size = 1;
   m_slice_info.ping_pong_share_tl = 0;
   m_slice_info.nums_of_tl = 4;
   m_slice_info.nums_of_table = 2;

@@ -2146,13 +2146,14 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 
   int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  if (ctrl->enMode == IVE_SUB_MODE_NORMAL) {
+  if (ctrl->enMode == IVE_SUB_MODE_NORMAL || ctrl->enMode == IVE_SUB_MODE_SHIFT) {
     if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_S8C1,
                           IVE_IMAGE_TYPE_U8C3_PLANAR)) {
       return CVI_FAILURE;
     }
     handle_ctx->t_h.t_sub.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     handle_ctx->t_h.t_sub.setSignedOutput(pstDst->enType == IVE_IMAGE_TYPE_S8C1);
+    handle_ctx->t_h.t_sub.setRightShiftOneBit(ctrl->enMode == IVE_SUB_MODE_SHIFT);
     CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
     CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
     CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
@@ -2160,12 +2161,13 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     std::vector<CviImg> outputs = {*cpp_dst};
 
     ret = handle_ctx->t_h.t_sub.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
-  } else if (ctrl->enMode == IVE_SUB_MODE_ABS) {
+  } else if (ctrl->enMode == IVE_SUB_MODE_ABS || ctrl->enMode == IVE_SUB_MODE_ABS_THRESH) {
     if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
       return CVI_FAILURE;
     }
 
     handle_ctx->t_h.t_sub_abs.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+    handle_ctx->t_h.t_sub_abs.setBinaryOutput(ctrl->enMode == IVE_SUB_MODE_ABS_THRESH);
     CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
     CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
     CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
