@@ -2661,7 +2661,7 @@ CVI_S32 CVI_IVE_16BitTo8Bit(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_
   CVI_IVE_BufRequest(pIveHandle, pstSrc);
   CVI_IVE_BufRequest(pIveHandle, pstDst);
 
-  int wxh = ((int)pstSrc->u16Stride[0] * (int)pstSrc->u16Height);
+  int wxh = ((int)pstSrc->u16Stride[0] / 2 * (int)pstSrc->u16Height);
   uint16_8bit((uint16_t *)pstSrc->pu8VirAddr[0], (uint8_t *)pstDst->pu8VirAddr[0], wxh);
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
