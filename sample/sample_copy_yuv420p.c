@@ -116,9 +116,21 @@ int main(int argc, char **argv) {
   writeYUV420P(handle, "result_rearrange.yuv", width, height, &dst3);
 
   // Free memory, instance
+  CVI_SYS_FreeI(handle, &src_1);
+  CVI_SYS_FreeI(handle, &src_2);
+  CVI_SYS_FreeI(handle, &src_3);
+  CVI_SYS_FreeI(handle, &src_4);
   CVI_SYS_FreeI(handle, &src);
   CVI_SYS_FreeI(handle, &dst);
+  CVI_SYS_FreeI(handle, &dst2_1);
+  CVI_SYS_FreeI(handle, &dst2_2);
+  CVI_SYS_FreeI(handle, &dst2_3);
+  CVI_SYS_FreeI(handle, &dst2_4);
   CVI_SYS_FreeI(handle, &dst2);
+  CVI_SYS_FreeI(handle, &dst3_1);
+  CVI_SYS_FreeI(handle, &dst3_2);
+  CVI_SYS_FreeI(handle, &dst3_3);
+  CVI_SYS_FreeI(handle, &dst3_4);
   CVI_SYS_FreeI(handle, &dst3);
   CVI_IVE_DestroyHandle(handle);
 

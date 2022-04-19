@@ -66,6 +66,7 @@ int main(int argc, char **argv) {
   CVI_IVE_WriteImage(handle, "sample_copySub.png", &dst3);
 
   // Free memory, instance
+  CVI_SYS_FreeI(handle, &src_crop);
   CVI_SYS_FreeI(handle, &src);
   CVI_SYS_FreeI(handle, &dst);
   CVI_SYS_FreeI(handle, &dst2);

@@ -319,7 +319,9 @@ int CviImg::AllocateDevice(CVI_RT_HANDLE rt_handle) {
 
 int CviImg::Free(CVI_RT_HANDLE rt_handle) {
   if (this->m_rtmem != NULL) {
-    CVI_RT_MemFree(rt_handle, this->m_rtmem);
+    if (!m_is_sub_img) {
+      CVI_RT_MemFree(rt_handle, this->m_rtmem);
+    }
     this->m_rtmem = NULL;
   }
   return CVI_SUCCESS;

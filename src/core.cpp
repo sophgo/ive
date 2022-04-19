@@ -1236,7 +1236,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
 
         bm_src_info.addr_vec[k] =
             bm_src_addr_bk[k] + (Align64(img_stride * img_height, SCALAR_C_ALIGN) * (b + 1));
-        LOGD("aligned bm_src_info.addr_vec[%lu]=0x%" PRIu64 "\n", k, bm_src_info.addr_vec[k]);
+        LOGD("aligned bm_src_info.addr_vec[%u]=0x%" PRIu64 "\n", k, bm_src_info.addr_vec[k]);
       }
     }
 
@@ -1246,7 +1246,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
         uint32_t img_stride = (*output)[k].m_tg.stride.h / getFmtSize((*output)[k].m_tg.fmt);
         bm_dest_info.addr_vec[k] =
             bm_dst_addr_bk[k] + (Align64(img_stride * img_height, SCALAR_C_ALIGN) * (b + 1));
-        LOGD("aligned bm_dest_info.addr_vec[%lu]=0x%" PRIu64 "\n", k, bm_dest_info.addr_vec[k]);
+        LOGD("aligned bm_dest_info.addr_vec[%u]=0x%" PRIu64 "\n", k, bm_dest_info.addr_vec[k]);
       }
     }
   }
