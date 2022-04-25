@@ -19,7 +19,7 @@
  * For 1080p images around 134KB. Take 150KB.
  * For 480p images around 46KB. Take 50KB.
  */
-#define CMDBUF4k 2000000
+#define CMDBUF4k 2300000
 #define CMDBUF1080 500000
 #define CMDBUF720 150000
 #define CMDBUF640 50000

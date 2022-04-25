@@ -86,12 +86,11 @@ int main(int argc, char **argv) {
 
   // To get the feature from HOG, you must cast the dstHist.pu8VirAddr to (float *) to get the
   // correct value.
-  printf("Output HOG feature.\n");
+  printf("Output first 10x10 HOG features.\n");
   uint32_t blkUnitLength = blkSizeInCell * blkSizeInCell * binNum;
-  uint32_t numOfBlk = (dstHistByteSize / sizeof(float)) / blkUnitLength;
-  for (size_t i = 0; i < numOfBlk; i++) {
+  for (size_t i = 0; i < 10; i++) {
     printf("\n");
-    for (size_t j = 0; j < blkUnitLength; j++) {
+    for (size_t j = 0; j < 10; j++) {
       printf("%.3f ", ((float *)dstHist.pu8VirAddr)[i * blkUnitLength + j]);
     }
   }
