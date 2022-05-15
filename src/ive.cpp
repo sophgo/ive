@@ -962,7 +962,16 @@ static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
   CVIIMGTYPE img_type = CVIIMGTYPE::CVI_GRAY;
   cvk_fmt_t fmt = CVK_FMT_U8;
   std::vector<uint32_t> heights;
-  uint16_t new_height = src->u16Height + src->u16Height / 2;
+  uint16_t new_height;
+  if (src->enType == IVE_IMAGE_TYPE_YUV420P) {
+    new_height = src->u16Height + src->u16Height / 2;
+  } else if (src->enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
+    new_height = src->u16Height * 3;
+  } else {
+    LOGE("Only support IVE_IMAGE_TYPE_YUV420P or IVE_IMAGE_TYPE_U8C3_PLANAR.\n");
+    return nullptr;
+  }
+
   heights.push_back(new_height);
 
   std::vector<uint32_t> strides, u32_length;
@@ -1872,7 +1881,7 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
   if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
     return CVI_FAILURE;
   }
-  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
+  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
     return CVI_FAILURE;
   }
 
@@ -2183,17 +2192,32 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_THRESH_CTRL_S *ctrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
-  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
+  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
     return CVI_FAILURE;
   }
-  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
+  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
     return CVI_FAILURE;
   }
 
   int ret = CVI_FAILURE;
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
-  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+  std::shared_ptr<CviImg> cpp_src;
+  std::shared_ptr<CviImg> cpp_dst;
+  if (pstSrc->enType == IVE_IMAGE_TYPE_U8C3_PLANAR &&
+      pstDst->enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
+    cpp_src = std::shared_ptr<CviImg>(ViewAsU8C1(pstSrc));
+    cpp_dst = std::shared_ptr<CviImg>(ViewAsU8C1(pstDst));
+  } else {
+    cpp_src =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstSrc->tpu_block), [](CviImg *) {});
+    cpp_dst =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstDst->tpu_block), [](CviImg *) {});
+  }
+
+  if (cpp_src == nullptr || cpp_dst == nullptr) {
+    return CVI_FAILURE;
+  }
+
   std::vector<CviImg> inputs = {*cpp_src};
   std::vector<CviImg> outputs = {*cpp_dst};
 
