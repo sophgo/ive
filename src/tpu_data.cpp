@@ -55,6 +55,10 @@ CviImg::CviImg(CVI_RT_HANDLE rt_handle, const CviImg &img, uint32_t x1, uint32_t
     this->m_tg = img.m_tg;
     this->m_tg.shape.h = new_height;
     this->m_tg.shape.w = new_width;
+    this->m_tg.stride.h = this->m_strides[0];
+    this->m_tg.stride.c = new_height * this->m_strides[0];
+    this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+
     uint32_t start_offset = y1_new * img.m_tg.stride.h + x1_new * getFmtSize(img.m_tg.fmt);
     this->m_tg.start_address = img.m_tg.start_address + start_offset;
     this->m_paddr = img.m_paddr + start_offset;
