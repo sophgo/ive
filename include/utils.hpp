@@ -10,7 +10,9 @@
 #include <string.h>
 #include <sys/sysinfo.h>
 #include <iostream>
+#ifndef PHOBOS
 #include <neon_utils.hpp>
+#endif
 #include <vector>
 
 /*

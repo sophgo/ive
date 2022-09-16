@@ -1,6 +1,4 @@
 #include "tpu_data.hpp"
-#include "cvi_defines.h"
-#include "cvi_math.h"
 #include "ive_log.hpp"
 
 #ifdef WORKAROUND_SCALAR_4096_ALIGN_BUG

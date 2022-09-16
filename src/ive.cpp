@@ -679,6 +679,7 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
 CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                                  IVE_DST_IMAGE_S *pstDst, IVE_ITC_CRTL_S *pstItcCtrl,
                                  bool bInstant) {
+#ifndef PHOBOS
   if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
     LOGE("Source cannot be inited.\n");
     return CVI_FAILURE;
@@ -834,6 +835,9 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
     return CVI_FAILURE;
   }
   return CVI_SUCCESS;
+#else
+  return CVI_FAILURE;
+#endif
 }
 
 CVI_S32 CVI_IVE_ConstFill(IVE_HANDLE pIveHandle, const CVI_FLOAT value, IVE_DST_IMAGE_S *pstDst,
@@ -1388,6 +1392,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
                     IVE_DST_IMAGE_S *pstDstV, IVE_DST_IMAGE_S *pstDstMag,
                     IVE_DST_IMAGE_S *pstDstAng, IVE_DST_MEM_INFO_S *pstDstHist,
                     IVE_HOG_CTRL_S *pstHogCtrl, bool bInstant) {
+#ifndef PHOBOS
   ScopedTrace t(__PRETTY_FUNCTION__);
   // No need to check here. Will check later.
   if (pstDstAng->u16Width % pstHogCtrl->u32CellSize != 0) {
@@ -1550,6 +1555,9 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   Tracer::TraceEnd();
   Tracer::TraceEnd();
   return CVI_SUCCESS;
+#else
+  return CVI_FAILURE;
+#endif
 }
 
 CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_SRC_IMAGE_S *pstSrcV,
@@ -1615,6 +1623,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
 
 CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO_S *pstMap,
                     IVE_DST_IMAGE_S *pstDst, bool bInstant) {
+#ifndef PHOBOS
   ScopedTrace t(__PRETTY_FUNCTION__);
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U16C1)) {
     return CVI_FAILURE;
@@ -1668,6 +1677,9 @@ CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO
     handle_ctx->t_h.t_tbl.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     return handle_ctx->t_h.t_tbl.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   }
+#else
+  return CVI_FAILURE;
+#endif
 }
 
 CVI_S32 CVI_IVE_Mask(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
@@ -1898,6 +1910,7 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
 
 CVI_S32 CVI_IVE_Average(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, float *average,
                         bool bInstant) {
+#ifndef PHOBOS
   ScopedTrace t(__PRETTY_FUNCTION__);
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
@@ -1908,6 +1921,9 @@ CVI_S32 CVI_IVE_Average(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, float *a
   neonU8Accumulate(pstSrc->pu8VirAddr[0], pstSrc->u16Stride[0] * pstSrc->u16Height, &accumulate);
   *average = (float)accumulate / (pstSrc->u16Width * pstSrc->u16Height);
   return CVI_SUCCESS;
+#else
+  return CVI_FAILURE;
+#endif
 }
 
 CVI_S32 CVI_IVE_OrdStatFilter(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
@@ -2244,6 +2260,7 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
 
 CVI_S32 CVI_IVE_Thresh_S16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                            IVE_THRESH_S16_CTRL_S *pstThrS16Ctrl, bool bInstant) {
+#ifndef PHOBOS
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_S16C1)) {
     return CVI_FAILURE;
   }
@@ -2277,10 +2294,14 @@ CVI_S32 CVI_IVE_Thresh_S16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_D
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
   CVI_IVE_BufFlush(pIveHandle, pstDst);
   return CVI_SUCCESS;
+#else
+  return CVI_FAILURE;
+#endif
 }
 
 CVI_S32 CVI_IVE_Thresh_U16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                            IVE_THRESH_U16_CTRL_S *pstThrU16Ctrl, bool bInstant) {
+#ifndef PHOBOS
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U16C1)) {
     return CVI_FAILURE;
   }
@@ -2300,6 +2321,9 @@ CVI_S32 CVI_IVE_Thresh_U16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_D
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
   CVI_IVE_BufFlush(pIveHandle, pstDst);
   return CVI_SUCCESS;
+#else
+  return CVI_FAILURE;
+#endif
 }
 
 CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,

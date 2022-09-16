@@ -14,11 +14,16 @@ elif [[ "$SDK_VER" == "64bit" ]]; then
     TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-aarch64-linux.cmake
 elif [[ "$SDK_VER" == "32bit" ]]; then
     TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-gnueabihf-linux.cmake
+elif [[ "$SDK_VER" == "musl_riscv64" ]]; then
+    KERNEL_HEADER_PATH="${KERNEL_PATH}"/build/"${PROJECT_FULLNAME}"/riscv/usr/
+    TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-riscv64-musl.cmake
 else
     echo "Wrong SDK_VER=$SDK_VER"
     exit 1
 fi
-
+echo "CHIP_ARCH:" $CHIP_ARCH
+echo "TOOLCHAIN:" $TOOLCHAIN_FILE
+echo "HOST_TOOL_PATH:" $HOST_TOOL_PATH
 cmake -G Ninja $IVE_ROOT -DCVI_TARGET=soc \
                             -DCVI_PLATFORM=$CHIP_ARCH \
                             -DENABLE_SYSTRACE=OFF \
