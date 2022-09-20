@@ -12,7 +12,6 @@ int IveTPUSubAbs::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   m_slice_info.ping_pong_size = 2;
   m_slice_info.ping_pong_share_tl = 1;
   m_slice_info.nums_of_tl = 4;
-
   return CVI_SUCCESS;
 }
 
@@ -83,9 +82,7 @@ void IveTPUSubAbs::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, ui
   if (m_clip_128) {
     cvk_tiu_min_param_t pmin;
     pmin.min = m_input1[ping_idx];
-
     pmin.a = m_input1[ping_idx];
-
     pmin.b_is_const = 1;
     pmin.b_const.val = 128;
     pmin.b_const.is_signed = 0;

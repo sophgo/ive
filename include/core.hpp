@@ -37,6 +37,8 @@ class IveCore {
   kernelInfo m_kernel_info;
   std::vector<IVETLType> m_tl_type;
   std::vector<cvk_tl_t *> m_tl_vec;
+  std::vector<cvk_fmt_t> m_input_fmts;
+  std::vector<cvk_fmt_t> m_output_fmts;
   std::string m_cmdbuf_subfix;
   bool m_force_use_ext = false;
   bool m_allocate_failed_ = false;

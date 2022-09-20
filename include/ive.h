@@ -370,7 +370,19 @@ CVI_S32 CVI_IVE_Blend(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_I
 CVI_S32 CVI_IVE_Blend_Pixel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
                             IVE_SRC_IMAGE_S *pstSrc2, IVE_SRC_IMAGE_S *pstAlpha,
                             IVE_DST_IMAGE_S *pstDst, bool bInstant);
-
+/**
+ * @brief Pixel-wise alpha blending for two images.clip(s8_a*u8_w + s8_b*(255-u8_w),-128,127)
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc1 Input image. Both S8C3_PLANAR and S8C1 format are accepted.
+ * @param pstSrc2 Input image. Both S8C3_PLANAR and S8C1 format are accepted.
+ * @param pstAlpha alpha image. Both U8C3_PLANAR and U8C1 format are accepted.
+ * @param pstDst Output result.Both S8C3_PLANAR and S8C1 format are accepted.
+ * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Blend_Pixel_S8_CLIP(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
+                                    IVE_SRC_IMAGE_S *pstSrc2, IVE_SRC_IMAGE_S *pstAlpha,
+                                    IVE_DST_IMAGE_S *pstDst);
 /**
  * @brief Pixel-wise alpha blending for two images.
  *
@@ -698,6 +710,18 @@ CVI_S32 CVI_IVE_Resize(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
 CVI_S32 CVI_IVE_FilterAndCSC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                              IVE_SRC_IMAGE_S *pstSrcBuf, IVE_DST_IMAGE_S *pstDst,
                              IVE_FILTER_AND_CSC_CTRL_S *ctrl, bool bInstant);
+
+/**
+ * @brief Pixel-wise compare ,abs(pstSrc1)>abs(pstSrc2)?255:0.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc1 Input image. only S8C1 accepted.
+ * @param pstSrc2 Input image. only S8C1 accepted.
+ * @param pstDst Output result. U8C1 type
+ * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_CMP_S8_BINARY(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
+                              IVE_SRC_IMAGE_S *pstSrc2, IVE_DST_IMAGE_S *pstDst);
 
 #ifdef __cplusplus
 }

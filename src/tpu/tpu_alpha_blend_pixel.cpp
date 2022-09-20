@@ -30,14 +30,14 @@ int IveTPUBlendPixel::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t* cvk_ctx,
   tl_shape.h = tg_in_slices[0].h;
   tl_shape.w = tg_in_slices[0].w;
   for (size_t i = 0; i < m_slice_info.ping_pong_size; i++) {
-    m_input1.emplace_back(allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1));
-    m_input2.emplace_back(allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1));
+    m_input1.emplace_back(allocTLMem(cvk_ctx, tl_shape, m_input_fmts[0], 1));
+    m_input2.emplace_back(allocTLMem(cvk_ctx, tl_shape, m_input_fmts[1], 1));
     m_alpha.emplace_back(allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1));
   }
 
   for (size_t i = 0; i < m_slice_info.ping_pong_size; i++) {
-    m_buf_low.emplace_back(allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1));
-    m_buf_high.emplace_back(allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1));
+    m_buf_low.emplace_back(allocTLMem(cvk_ctx, tl_shape, m_output_fmts[0], 1));
+    m_buf_high.emplace_back(allocTLMem(cvk_ctx, tl_shape, m_output_fmts[0], 1));
     auto mask_255 = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_U8, 1);
     constantFillTL(rt_handle, cvk_ctx, 255, mask_255);
     m_alpha2.emplace_back(mask_255);
@@ -92,8 +92,8 @@ void IveTPUBlendPixel::operation(CVI_RT_HANDLE rt_handle, cvk_context_t* cvk_ctx
   p2.a = m_input2[ping_idx];
   p2.b_is_const = 0;
   p2.b = m_alpha2[ping_idx];
-  p2.lshift_bits = 0;  // lshift_bits;
-  p2.rshift_bits = 8;  // rshift_bits;
+  p2.lshift_bits = 0;           // lshift_bits;
+  p2.rshift_bits = m_ishift_r;  // rshift_bits;
   p2.relu_enable = 0;
   cvk_ctx->ops->tiu_mac(cvk_ctx, &p2);
 }

@@ -349,12 +349,15 @@ int IveCore::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                  const std::vector<CviImg *> &input, std::vector<CviImg *> &output,
                  bool legacy_mode) {
   m_chip_info = cvk_ctx->info;
+  m_input_fmts.clear();
+  m_output_fmts.clear();
   for (const auto &img : input) {
     if (!img->IsStideCEQ()) {
       LOGE("Input image ( %u, %u) appears does not have equal strides in different channels.\n",
            img->GetImgWidth(), img->GetImgHeight());
       return CVI_FAILURE;
     }
+    m_input_fmts.push_back(img->m_tg.fmt);
   }
   for (const auto &img : output) {
     if (!img->IsStideCEQ()) {
@@ -362,6 +365,7 @@ int IveCore::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
            img->GetImgWidth(), img->GetImgHeight());
       return CVI_FAILURE;
     }
+    m_output_fmts.push_back(img->m_tg.fmt);
   }
   int ret = CVI_SUCCESS;
   if (legacy_mode) {
@@ -1247,7 +1251,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
 
         bm_src_info.addr_vec[k] =
             bm_src_addr_bk[k] + (Align64(img_stride * img_height, SCALAR_C_ALIGN) * (b + 1));
-        LOGD("aligned bm_src_info.addr_vec[%u]=0x%" PRIu64 "\n", k, bm_src_info.addr_vec[k]);
+        LOGD("aligned bm_src_info.addr_vec[%lu]=0x%" PRIu64 "\n", k, bm_src_info.addr_vec[k]);
       }
     }
 
@@ -1257,7 +1261,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
         uint32_t img_stride = output[k]->m_tg.stride.h / getFmtSize(output[k]->m_tg.fmt);
         bm_dest_info.addr_vec[k] =
             bm_dst_addr_bk[k] + (Align64(img_stride * img_height, SCALAR_C_ALIGN) * (b + 1));
-        LOGD("aligned bm_dest_info.addr_vec[%u]=0x%" PRIu64 "\n", k, bm_dest_info.addr_vec[k]);
+        LOGD("aligned bm_dest_info.addr_vec[%lu]=0x%" PRIu64 "\n", k, bm_dest_info.addr_vec[k]);
       }
     }
   }
@@ -1317,10 +1321,15 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   uint32_t npu_num = m_chip_info.npu_num;
   uint32_t idiv_n = (uint32_t)(total_size / npu_num);
   uint32_t div = max_hxw;
+  LOGD("numoftable:%u,result:%ld,maxhw:%lu,idiv_n:%u", m_slice_info.nums_of_table, result, max_hxw,
+       idiv_n);
+  LOGD("kernel_size:%u,lmemesize:%u,npunum:%u\n", kernel_sz, m_chip_info.lmem_size,
+       m_chip_info.npu_num);
   // Find div value that idiv % div == 0 while div < max_hxw
   while (idiv_n % div != 0) {
     uint32_t val = std::ceil(float(idiv_n) / div);
     div = std::floor(float(idiv_n) / val);
+    LOGD("val:%u,div:%u", val, div);
   }
   // Make w 16 align.
   uint32_t div_16 = div / 16;
@@ -1352,7 +1361,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   }
   LOGD("Total size %u\n", total_size);
   LOGD("turn %zu left %zu\n", loop_turn, left_pixels);
-  LOGD("%u %u %u %u\n", shape.n, shape.c, shape.h, shape.w);
+  LOGD("shape:%u %u %u %u\n", shape.n, shape.c, shape.h, shape.w);
 
   std::vector<cvk_tg_shape_t> s_in_vec, s_out_vec;
   for (size_t k = 0; k < input.size(); k++) {

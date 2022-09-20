@@ -18,6 +18,7 @@
 #include "tpu/tpu_blend_pixel_ab.hpp"
 #include "tpu/tpu_block.hpp"
 #include "tpu/tpu_cmp.hpp"
+#include "tpu/tpu_cmp_sat.hpp"
 #include "tpu/tpu_convert_scale_abs.hpp"
 #include "tpu/tpu_copy.hpp"
 #include "tpu/tpu_fill.hpp"
@@ -93,7 +94,13 @@ inline bool IsValidImageType(IVE_IMAGE_S *pstImg, std::string pstImgStr, const T
   }
   return ret;
 }
-
+inline bool IsSignedImageType(IVE_IMAGE_S *pstImg) {
+  if (pstImg->enType == IVE_IMAGE_TYPE_S8C1 || pstImg->enType == IVE_IMAGE_TYPE_S8C3_PACKAGE ||
+      pstImg->enType == IVE_IMAGE_TYPE_S8C3_PLANAR)
+    return true;
+  else
+    return false;
+}
 struct TPU_HANDLE {
   TblMgr t_tblmgr;
   IveTPUAdd t_add;
@@ -128,8 +135,9 @@ struct TPU_HANDLE {
   IveTPUXOr t_xor;
   IveTPUBlend t_blend;
   IveTPUBlendPixel t_blend_pixel;
-  IveTPUConvertScaleAbs t_convert_scale_abs;
   IveTPUBlendPixelAB t_blend_pixel_ab;
+  IveTPUConvertScaleAbs t_convert_scale_abs;
+  IveTPUCmpSat t_cmp_sat;
 };
 
 struct IVE_HANDLE_CTX {
