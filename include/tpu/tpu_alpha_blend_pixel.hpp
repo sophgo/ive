@@ -4,6 +4,7 @@
 class IveTPUBlendPixel : public IveCore {
  public:
   virtual int init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) override;
+  void set_right_shift_bit(int num_shift) { m_ishift_r = num_shift; }
 
  protected:
   virtual int runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
@@ -18,6 +19,7 @@ class IveTPUBlendPixel : public IveCore {
                            cvk_tl_t *tl_update_tbl, uint8_t threshold, bool is_less);
 
  private:
+  int m_ishift_r = 8;
   std::vector<cvk_tl_t *> m_input1;
   std::vector<cvk_tl_t *> m_input2;
   std::vector<cvk_tl_t *> m_alpha;

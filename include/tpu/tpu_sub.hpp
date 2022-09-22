@@ -28,6 +28,7 @@ class IveTPUSubAbs : public IveCore {
  public:
   virtual int init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) override;
   void setBinaryOutput(bool is_binary) { m_is_binary_output = is_binary; }
+  void setClipOutput(bool is_clip) { m_clip_128 = is_clip; }
 
  protected:
   virtual int runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
@@ -47,4 +48,5 @@ class IveTPUSubAbs : public IveCore {
   cvk_tiu_mac_param_t m_p_mac;
   cvk_tiu_mul_param_t m_p_mul;
   bool m_is_binary_output;
+  bool m_clip_128;
 };

@@ -5,8 +5,8 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb/stb_image_write.h"
 
+#include <iostream>
 #include <memory>
-
 /**
  * @brief String array of IVE_IMAGE_S enType.
  *
@@ -2163,9 +2163,11 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
                     IVE_DST_IMAGE_S *pstDst, IVE_SUB_CTRL_S *ctrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
   if (!IsValidImageType(pstSrc1, STRFY(pstSrc1), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+    LOGE("input1 type not support:%d", pstSrc1->enType);
     return CVI_FAILURE;
   }
   if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+    LOGE("input2 type not support:%d", pstSrc2->enType);
     return CVI_FAILURE;
   }
 
@@ -2174,6 +2176,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   if (ctrl->enMode == IVE_SUB_MODE_NORMAL || ctrl->enMode == IVE_SUB_MODE_SHIFT) {
     if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_S8C1,
                           IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+      LOGE("dst type not support:%d", pstDst->enType);
       return CVI_FAILURE;
     }
     handle_ctx->t_h.t_sub.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
@@ -2186,12 +2189,15 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     std::vector<CviImg> outputs = {*cpp_dst};
 
     ret = handle_ctx->t_h.t_sub.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
-  } else if (ctrl->enMode == IVE_SUB_MODE_ABS || ctrl->enMode == IVE_SUB_MODE_ABS_THRESH) {
+  } else if (ctrl->enMode == IVE_SUB_MODE_ABS || ctrl->enMode == IVE_SUB_MODE_ABS_THRESH ||
+             ctrl->enMode == IVE_SUB_MODE_ABS_CLIP) {
     if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
+      LOGE("dst type not support:%d", pstDst->enType);
       return CVI_FAILURE;
     }
 
     handle_ctx->t_h.t_sub_abs.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+    handle_ctx->t_h.t_sub_abs.setClipOutput(ctrl->enMode == IVE_SUB_MODE_ABS_CLIP);
     handle_ctx->t_h.t_sub_abs.setBinaryOutput(ctrl->enMode == IVE_SUB_MODE_ABS_THRESH);
     CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
     CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);

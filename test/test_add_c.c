@@ -150,7 +150,7 @@ int main(int argc, char **argv) {
     printf("OOO %-10s %10lu %10s %10s\n", "ADD BF16", elapsed_tpu, "NA", "NA");
   }
 #endif
-
+  printf("check result:%d\n", ret);
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src1);
   CVI_SYS_FreeI(handle, &src2);

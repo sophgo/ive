@@ -62,7 +62,11 @@ int main(int argc, char **argv) {
   CVI_IVE_BufRequest(handle, &src2);
   CVI_IVE_BufRequest(handle, &dst);
   int ret = cpu_ref(nChannels, &src1, &src2, &dst);
-
+  if (ret == CVI_SUCCESS) {
+    printf("equality checkok\n");
+  } else {
+    printf("check failed\n");
+  }
 #ifdef __ARM_ARCH
   IVE_DST_IMAGE_S dst_cpu;
   CVI_IVE_CreateImage(handle, &dst_cpu, IVE_IMAGE_TYPE_U8C1, width, height);
