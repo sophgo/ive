@@ -333,6 +333,20 @@ CVI_S32 CVI_IVE_Blend_Pixel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
                             IVE_DST_IMAGE_S *pstDst, bool bInstant);
 
 /**
+ * @brief Pixel-wise alpha blending for two images.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc1 Input image. U8C3_PLANAR,U8C1,YUV420P format are accepted.
+ * @param pstSrc2 Input image. U8C3_PLANAR,U8C1,YUV420P format are accepted.
+ * @param pstWa alpha image. U8C3_PLANAR,U8C1,YUV420P format are accepted.
+ * @param pstWb alpha image. U8C3_PLANAR,U8C1,YUV420P format are accepted.
+ * @param pstDst Output result.
+ * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Blend_Pixel_U8_AB(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
+                                  IVE_SRC_IMAGE_S *pstSrc2, IVE_SRC_IMAGE_S *pstWa,
+                                  IVE_SRC_IMAGE_S *pstWb, IVE_DST_IMAGE_S *pstDst);
+/**
  * @brief Apply a filter to an image.
  *
  * @param pIveHandle Ive instance handler.

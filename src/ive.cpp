@@ -1162,7 +1162,113 @@ CVI_S32 CVI_IVE_Blend_Pixel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
                                           &outputs);
   return ret;
 }
+CVI_S32 CVI_IVE_Blend_Pixel_U8_AB(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
+                                  IVE_SRC_IMAGE_S *pstSrc2, IVE_SRC_IMAGE_S *pstWa,
+                                  IVE_SRC_IMAGE_S *pstWb, IVE_DST_IMAGE_S *pstDst) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
 
+  if (!IsValidImageType(pstSrc1, STRFY(pstSrc1), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_YUV420P)) {
+    LOGE(
+        "image type of pstSrc1 should be one of (IVE_IMAGE_TYPE_U8C1, "
+        "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
+    return CVI_FAILURE;
+  }
+  if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_YUV420P)) {
+    LOGE(
+        "image type of pstSrc2 should be one of (IVE_IMAGE_TYPE_U8C1, "
+        "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
+    return CVI_FAILURE;
+  }
+  if (!IsValidImageType(pstWa, STRFY(pstWa), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_YUV420P)) {
+    LOGE(
+        "image type of pstDst should be one of (IVE_IMAGE_TYPE_U8C1, "
+        "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
+    return CVI_FAILURE;
+  }
+  if (!IsValidImageType(pstWb, STRFY(pstWb), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_YUV420P)) {
+    LOGE(
+        "image type of pstDst should be one of (IVE_IMAGE_TYPE_U8C1, "
+        "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
+    return CVI_FAILURE;
+  }
+
+  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
+                        IVE_IMAGE_TYPE_YUV420P)) {
+    LOGE(
+        "image type of pstDst should be one of (IVE_IMAGE_TYPE_U8C1, "
+        "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
+    return CVI_FAILURE;
+  }
+
+  if ((pstDst->enType != pstSrc1->enType) || (pstDst->enType != pstSrc2->enType)) {
+    LOGE("source1/source2/dst image pixel format do not match,%d,%d,%d!\n", pstSrc1->enType,
+         pstSrc2->enType, pstDst->enType);
+    return CVI_FAILURE;
+  }
+
+  int ret = CVI_FAILURE;
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+
+  std::shared_ptr<CviImg> cpp_src1;
+  std::shared_ptr<CviImg> cpp_src2;
+  std::shared_ptr<CviImg> cpp_alpha;
+  std::shared_ptr<CviImg> cpp_alphb;
+  std::shared_ptr<CviImg> cpp_dst;
+
+  if (pstDst->enType == IVE_IMAGE_TYPE_YUV420P) {
+    // NOTE: Computing tpu slice with different stride in different channel is quite complicated.
+    // Instead, we consider YUV420P image as U8C1 with Wx(H + H / 2) image size so that there is
+    // only one channel have to blended.
+    cpp_src1 = std::shared_ptr<CviImg>(ViewAsU8C1(pstSrc1));
+    cpp_src2 = std::shared_ptr<CviImg>(ViewAsU8C1(pstSrc2));
+    cpp_alpha = std::shared_ptr<CviImg>(ViewAsU8C1(pstWa));
+    cpp_alphb = std::shared_ptr<CviImg>(ViewAsU8C1(pstWb));
+    cpp_dst = std::shared_ptr<CviImg>(ViewAsU8C1(pstDst));
+  } else {
+    cpp_src1 =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstSrc1->tpu_block), [](CviImg *) {});
+    cpp_src2 =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstSrc2->tpu_block), [](CviImg *) {});
+    cpp_alpha =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstWa->tpu_block), [](CviImg *) {});
+    cpp_alphb =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstWb->tpu_block), [](CviImg *) {});
+    cpp_dst =
+        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstDst->tpu_block), [](CviImg *) {});
+  }
+
+  if (cpp_src1 == nullptr || cpp_src2 == nullptr || cpp_alpha == nullptr || cpp_dst == nullptr) {
+    LOGE("Cannot get tpu block\n");
+    return CVI_FAILURE;
+  }
+
+  if ((cpp_src1->GetImgHeight() != cpp_src2->GetImgHeight()) ||
+      (cpp_src1->GetImgHeight() != cpp_dst->GetImgHeight()) ||
+      (cpp_src1->GetImgWidth() != cpp_src2->GetImgWidth()) ||
+      (cpp_src1->GetImgWidth() != cpp_dst->GetImgWidth()) ||
+      (cpp_src1->GetImgWidth() != cpp_alpha->GetImgWidth()) ||
+      (cpp_src1->GetImgHeight() != cpp_alpha->GetImgHeight()) ||
+      (cpp_alphb->GetImgWidth() != cpp_alpha->GetImgWidth()) ||
+      (cpp_alphb->GetImgHeight() != cpp_alpha->GetImgHeight()) ||
+      (cpp_src1->GetImgChannel() != cpp_src2->GetImgChannel()) ||
+      (cpp_src1->GetImgChannel() != cpp_alpha->GetImgChannel()) ||
+      (cpp_src1->GetImgChannel() != cpp_dst->GetImgChannel())) {
+    LOGE("source1/source2/alpha/dst image size do not match!\n");
+    return CVI_FAILURE;
+  }
+
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2, *cpp_alpha, *cpp_alphb};
+  std::vector<CviImg> outputs = {*cpp_dst};
+  // handle_ctx->t_h.t_blend_pixel.set_right_shift_bit(0);
+  handle_ctx->t_h.t_blend_pixel_ab.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+  ret = handle_ctx->t_h.t_blend_pixel_ab.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
+                                             &outputs);
+  return ret;
+}
 CVI_S32 CVI_IVE_And(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_IMAGE_S *pstDst, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);

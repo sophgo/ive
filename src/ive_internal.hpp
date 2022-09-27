@@ -10,10 +10,12 @@
 #include "table_manager.hpp"
 #include "tpu_data.hpp"
 
+#include "ive_draw.h"
 #include "tpu/tpu_add.hpp"
 #include "tpu/tpu_alpha_blend.hpp"
 #include "tpu/tpu_alpha_blend_pixel.hpp"
 #include "tpu/tpu_and.hpp"
+#include "tpu/tpu_blend_pixel_ab.hpp"
 #include "tpu/tpu_block.hpp"
 #include "tpu/tpu_cmp.hpp"
 #include "tpu/tpu_convert_scale_abs.hpp"
@@ -33,8 +35,6 @@
 #include "tpu/tpu_table.hpp"
 #include "tpu/tpu_threshold.hpp"
 #include "tpu/tpu_xor.hpp"
-
-#include "ive_draw.h"
 
 #include "2ddraw/tpu_draw.hpp"
 
@@ -129,6 +129,7 @@ struct TPU_HANDLE {
   IveTPUBlend t_blend;
   IveTPUBlendPixel t_blend_pixel;
   IveTPUConvertScaleAbs t_convert_scale_abs;
+  IveTPUBlendPixelAB t_blend_pixel_ab;
 };
 
 struct IVE_HANDLE_CTX {
