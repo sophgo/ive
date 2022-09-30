@@ -1,7 +1,7 @@
 #ifndef _IVE_H
 #define _IVE_H
 #include "cvi_comm_ive.h"
-#ifdef PHOBOS
+#ifdef CV180X
 #include "linux/cvi_comm_video.h"
 #else
 #include "cvi_comm_video.h"

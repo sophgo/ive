@@ -679,7 +679,7 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
 CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                                  IVE_DST_IMAGE_S *pstDst, IVE_ITC_CRTL_S *pstItcCtrl,
                                  bool bInstant) {
-#ifndef PHOBOS
+#ifndef CV180X
   if (CVI_IVE_ImageInit(pstSrc) != CVI_SUCCESS) {
     LOGE("Source cannot be inited.\n");
     return CVI_FAILURE;
@@ -1498,7 +1498,7 @@ CVI_S32 CVI_IVE_HOG(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
                     IVE_DST_IMAGE_S *pstDstV, IVE_DST_IMAGE_S *pstDstMag,
                     IVE_DST_IMAGE_S *pstDstAng, IVE_DST_MEM_INFO_S *pstDstHist,
                     IVE_HOG_CTRL_S *pstHogCtrl, bool bInstant) {
-#ifndef PHOBOS
+#ifndef CV180X
   ScopedTrace t(__PRETTY_FUNCTION__);
   // No need to check here. Will check later.
   if (pstDstAng->u16Width % pstHogCtrl->u32CellSize != 0) {
@@ -1729,7 +1729,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
 
 CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO_S *pstMap,
                     IVE_DST_IMAGE_S *pstDst, bool bInstant) {
-#ifndef PHOBOS
+#ifndef CV180X
   ScopedTrace t(__PRETTY_FUNCTION__);
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U16C1)) {
     return CVI_FAILURE;
@@ -2016,7 +2016,7 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
 
 CVI_S32 CVI_IVE_Average(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, float *average,
                         bool bInstant) {
-#ifndef PHOBOS
+#ifndef CV180X
   ScopedTrace t(__PRETTY_FUNCTION__);
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
     return CVI_FAILURE;
@@ -2372,7 +2372,7 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
 
 CVI_S32 CVI_IVE_Thresh_S16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                            IVE_THRESH_S16_CTRL_S *pstThrS16Ctrl, bool bInstant) {
-#ifndef PHOBOS
+#ifndef CV180X
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_S16C1)) {
     return CVI_FAILURE;
   }
@@ -2413,7 +2413,7 @@ CVI_S32 CVI_IVE_Thresh_S16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_D
 
 CVI_S32 CVI_IVE_Thresh_U16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                            IVE_THRESH_U16_CTRL_S *pstThrU16Ctrl, bool bInstant) {
-#ifndef PHOBOS
+#ifndef CV180X
   if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U16C1)) {
     return CVI_FAILURE;
   }
