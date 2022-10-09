@@ -137,18 +137,29 @@ failed:
 }
 
 int main(int argc, char **argv) {
-  if (argc != 2) {
-    printf("Incorrect arguments. Usage: %s <image>\n", argv[0]);
+  if (argc != 4) {
+    printf("Incorrect loop value. Usage: %s <w> <h> <file_name>\n", argv[0]);
+    printf("Example: %s 352 288 data/00_352x288_y.yuv\n", argv[0]);
     return CVI_FAILURE;
   }
+  // 00_352x288_y.yuv
+  int input_w, input_h;
+
+  input_w = atoi(argv[1]);
+  input_h = atoi(argv[2]);
 
   // Create instance
   printf("Create instance.\n");
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
 
   // Read image from file. CVI_IVE_ReadImage will do the flush for you.
-  const char *filename = argv[1];
-  IVE_IMAGE_S src1 = CVI_IVE_ReadImage(handle, filename, IVE_IMAGE_TYPE_U8C1);
+  const char *filename = argv[3];
+
+  IVE_IMAGE_S src1;
+
+  src1.u16Width = input_w;
+  src1.u16Height = input_h;
+  CVI_IVE_ReadRawImage(handle, &src1, (char *)filename, IVE_IMAGE_TYPE_U8C1, input_w, input_h);
 
   srand(time(NULL));
 
@@ -161,6 +172,7 @@ int main(int argc, char **argv) {
   };
 
   CVI_S32 ret = RunAdd(handle, &src1, 10, param);
+
   printf("\n\n");
   if (ret != CVI_SUCCESS) {
     goto failed;

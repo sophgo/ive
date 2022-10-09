@@ -22,6 +22,17 @@ inline CVI_U16 CVI_CalcStride(CVI_U16 width, CVI_U16 align) {
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef enum _EN_IVE_ERR_CODE_E {
+  ERR_IVE_SYS_TIMEOUT = 0x40,   /* IVE process timeout */
+  ERR_IVE_QUERY_TIMEOUT = 0x41, /* IVE query timeout */
+  ERR_IVE_OPEN_FILE = 0x42,     /* IVE open file error */
+  ERR_IVE_READ_FILE = 0x43,     /* IVE read file error */
+  ERR_IVE_WRITE_FILE = 0x44,    /* IVE write file error */
+
+  ERR_IVE_BUTT
+} EN_IVE_ERR_CODE_E;
+
 /**
  * @brief Create an IVE instance handler.
  *
@@ -153,6 +164,34 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename, IVE_I
  */
 IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAGE_TYPE_E enType,
                                CVI_BOOL invertPackage);
+
+/**
+ * @brief Read an image from file system. for yuv.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstImg pointer of src1.
+ * @param filename File path to the image.
+ * @param enType Type of the destination image.
+ * @param u32Width Yuv w
+ * @param u32Width Yuv h
+ * @return IVE_IMAGE_S Return IVE_IMAGE_S
+ */
+CVI_S32 CVI_IVE_ReadRawImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, const char *filename,
+                             IVE_IMAGE_TYPE_E enType, CVI_U16 u32Width, CVI_U16 u32Height);
+
+/**
+ * @brief Read an image from file system. for yuv.
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstImg pointer of src1.
+ * @param pBuffer File save buffer.
+ * @param enType Type of the destination image.
+ * @param u32Width Yuv w
+ * @param u32Width Yuv h
+ * @return IVE_IMAGE_S Return IVE_IMAGE_S
+ */
+CVI_S32 CVI_IVE_ReadImageArray(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, char *pBuffer,
+                               IVE_IMAGE_TYPE_E enType, CVI_U16 u32Width, CVI_U16 u32Height);
 
 /**
  * @brief Write an IVE_IMAGE_S to file system.

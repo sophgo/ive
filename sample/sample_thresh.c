@@ -20,6 +20,7 @@ int main(int argc, char **argv) {
   input_h = atoi(argv[2]);
 
   const char *file_name = argv[3];
+
   // Create instance
   printf("Create instance.\n");
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
@@ -31,60 +32,47 @@ int main(int argc, char **argv) {
   src1.u16Height = input_h;
   CVI_IVE_ReadRawImage(handle, &src1, (char *)file_name, IVE_IMAGE_TYPE_U8C1, input_w, input_h);
 
-  int nChannels = 1;  // IVE_IMAGE_TYPE_U8C1 = 1 channel
-  int width = src1.u16Width;
-  int strideWidth = src1.u16Stride[0];
-  int height = src1.u16Height;
-
-  // Create second image to add with src1.
-  IVE_SRC_IMAGE_S src2;
-
-  CVI_IVE_CreateImage(handle, &src2, IVE_IMAGE_TYPE_U8C1, width, height);
-  CVI_U32 imgSize = nChannels * strideWidth * height;
-
-  memset(src2.pu8VirAddr[0], 255, imgSize);
-  for (int j = height / 10; j < height * 9 / 10; j++) {
-    for (int i = width / 10; i < width * 9 / 10; i++) {
-      src2.pu8VirAddr[0][i + j * strideWidth] = 0;
-    }
-  }
-  // Flush to DRAM before IVE function.
-  CVI_IVE_BufFlush(handle, &src2);
-
   // Create dst image.
   IVE_DST_IMAGE_S dst;
 
-  CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, width, height);
+  CVI_IVE_CreateImage(handle, &dst, IVE_IMAGE_TYPE_U8C1, input_w, input_h);
 
-  printf("Run IVE Or.\n");
-  // Run IVE Or.
+  // Config Setting.
+  IVE_THRESH_CTRL_S iveThreshCtrl;
+
+  iveThreshCtrl.enMode = IVE_THRESH_MODE_BINARY;
+  iveThreshCtrl.u8LowThr = 41;
+  iveThreshCtrl.u8MinVal = 190;
+  iveThreshCtrl.u8MaxVal = 225;
+
+  // Run IVE
+  printf("Run HW IVE Threashold BINARY.\n");
   struct timeval t0, t1;
 
   gettimeofday(&t0, NULL);
-  int ret = CVI_IVE_Or(handle, &src1, &src2, &dst, 0);
+  int ret = CVI_IVE_Thresh(handle, &src1, &dst, &iveThreshCtrl, 1);
 
   gettimeofday(&t1, NULL);
 
   unsigned long elapsed = (t1.tv_sec - t0.tv_sec) * 1000000 + t1.tv_usec - t0.tv_usec;
 
   if (ret != CVI_SUCCESS) {
-    printf("Failed when run CVI_IVE_Or ret: %x\n", ret);
-    CVI_SYS_FreeI(handle, &src2);
+    printf("Failed when run CVI_IVE_Threashold ret: %x\n", ret);
     CVI_SYS_FreeI(handle, &dst);
     CVI_IVE_DestroyHandle(handle);
     return ret;
   }
 
   printf("elapsed time: %lu us\n", elapsed);
+
   // Refresh CPU cache before CPU use.
   CVI_IVE_BufRequest(handle, &dst);
 
   printf("Save result to file.\n");
-  CVI_IVE_WriteImage(handle, "sample_or.png", &dst);
+  CVI_IVE_WriteImage(handle, "sample_Thresh_Binary.yuv", &dst);
 
   // Free memory, instance
   CVI_SYS_FreeI(handle, &src1);
-  CVI_SYS_FreeI(handle, &src2);
   CVI_SYS_FreeI(handle, &dst);
   CVI_IVE_DestroyHandle(handle);
 

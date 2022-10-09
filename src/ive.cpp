@@ -96,7 +96,7 @@ CVI_S32 CVI_IVE_CreateMemInfo(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo,
 CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
                              uint16_t u16Width, uint16_t u16Height, IVE_IMAGE_S *pstBuffer) {
   if (u16Width == 0 || u16Height == 0) {
-    LOGE("Image width or height cannot be 0.\n");
+    printf("Image width or height cannot be 0.\n");
     pstImg->tpu_block = NULL;
     pstImg->enType = enType;
     pstImg->u16Width = 0;
@@ -210,12 +210,12 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
       fmt = CVK_FMT_F32;
     } break;
     default:
-      LOGE("Not supported enType %s.\n", cviIveImgEnTypeStr[enType]);
+      printf("Not supported enType %s.\n", cviIveImgEnTypeStr[enType]);
       return CVI_FAILURE;
       break;
   }
   if (strides.size() == 0 || heights.size() == 0) {
-    LOGE("[DEV] Stride not set.\n");
+    printf("[DEV] Stride not set.\n");
     return CVI_FAILURE;
   }
 
@@ -224,7 +224,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
   auto *cpp_img = new CviImg(handle_ctx->rt_handle, u16Height, u16Width, strides, heights, img_type,
                              fmt, buffer_ptr);
   if (!cpp_img->IsInit()) {
-    LOGE("Failed to init IVE_IMAGE_S.\n");
+    printf("Failed to init IVE_IMAGE_S.\n");
     return CVI_FAILURE;
   }
 
@@ -295,7 +295,7 @@ CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc) {
       heights.resize(c, pstSrc->u16Height);
     } break;
     default: {
-      LOGE("Unsupported conversion type: %u.\n", pstSrc->enType);
+      printf("Unsupported conversion type: %u.\n", pstSrc->enType);
       return CVI_FAILURE;
     } break;
   }
@@ -307,7 +307,7 @@ CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc) {
   auto *cpp_img = new CviImg(pstSrc->u16Height, pstSrc->u16Width, strides, heights, u32_length,
                              pstSrc->pu8VirAddr[0], pstSrc->u64PhyAddr[0], img_type, fmt);
   if (!cpp_img->IsInit()) {
-    LOGE("Failed to init IVE_IMAGE_S.\n");
+    printf("Failed to init IVE_IMAGE_S.\n");
     return CVI_FAILURE;
   }
 
@@ -508,7 +508,7 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
       desiredNChannels = STBI_rgb;
       break;
     default:
-      LOGE("Not support channel %s.\n", cviIveImgEnTypeStr[enType]);
+      printf("Not support channel %s.\n", cviIveImgEnTypeStr[enType]);
       break;
   }
   IVE_IMAGE_S img;
@@ -517,11 +517,11 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
     int width, height, nChannels;
     stbi_uc *stbi_data = stbi_load(filename, &width, &height, &nChannels, desiredNChannels);
     if (stbi_data == nullptr) {
-      LOGE("Image %s read failed.\n", filename);
+      printf("Image %s read failed.\n", filename);
       return img;
     }
     CVI_IVE_CreateImage(pIveHandle, &img, enType, width, height);
-    LOGI("desiredNChannels, width, height: %d %d %d\n", desiredNChannels, width, height);
+    printf("desiredNChannels, width, height: %d %d %d\n", desiredNChannels, width, height);
     if (enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
       for (size_t i = 0; i < (size_t)height; i++) {
         for (size_t j = 0; j < (size_t)width; j++) {
@@ -563,6 +563,136 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
                               IVE_IMAGE_TYPE_E enType) {
   return CVI_IVE_ReadImage2(pIveHandle, filename, enType, false);
 }
+#if 1
+CVI_S32 CVI_IVE_ReadRawImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, const char *filename,
+                             IVE_IMAGE_TYPE_E enType, CVI_U16 u32Width, CVI_U16 u32Height) {
+  float desiredNChannels = -1;
+
+  switch (enType) {
+    case IVE_IMAGE_TYPE_U8C1:
+    case IVE_IMAGE_TYPE_S8C1:
+      desiredNChannels = 1;
+      break;
+    case IVE_IMAGE_TYPE_YUV420SP:
+      desiredNChannels = 1.5;
+      break;
+    case IVE_IMAGE_TYPE_U16C1:
+    case IVE_IMAGE_TYPE_S16C1:
+    case IVE_IMAGE_TYPE_YUV422SP:
+      desiredNChannels = 2;
+      break;
+    case IVE_IMAGE_TYPE_U8C3_PLANAR:
+    case IVE_IMAGE_TYPE_U8C3_PACKAGE:
+      desiredNChannels = 3;
+      break;
+    default:
+      printf("Not support channel %s.\n", cviIveImgEnTypeStr[enType]);
+      return CVI_FAILURE_ILLEGAL_PARAM;
+  }
+
+  if (desiredNChannels > 0) {
+    int buf_size = (int)((float)u32Width * (float)u32Height * (float)desiredNChannels);
+    char buffer[buf_size];
+    FILE *fp;
+
+    fp = fopen(filename, "r");
+    int readCnt = fread(buffer, 1, buf_size, fp);
+
+    if (readCnt == 0) {
+      printf("Image %s read failed.\n", filename);
+      return ERR_IVE_READ_FILE;
+    }
+    fclose(fp);
+
+    CVI_IVE_ReadImageArray(pIveHandle, pstImg, buffer, enType, u32Width, u32Height);
+    return CVI_SUCCESS;
+  }
+  return CVI_FAILURE;
+}
+
+CVI_S32 CVI_IVE_ReadImageArray(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, char *pBuffer,
+                               IVE_IMAGE_TYPE_E enType, CVI_U16 u32Width, CVI_U16 u32Height) {
+  char *ptr = NULL;
+
+  memset(pstImg, 0, sizeof(IVE_IMAGE_S));
+
+  CVI_IVE_CreateImage(pIveHandle, pstImg, enType, u32Width, u32Height);
+
+  if (enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
+    ptr = pBuffer;
+    for (size_t j = 0; j < (size_t)u32Height; j++) {
+      memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[0] + (j * pstImg->u16Stride[0])), ptr,
+             u32Width);
+      ptr += u32Width;
+    }
+    for (size_t j = 0; j < (size_t)pstImg->u16Height; j++) {
+      memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[1] + (j * pstImg->u16Stride[1])), ptr,
+             u32Width);
+      ptr += u32Width;
+    }
+    for (size_t j = 0; j < (size_t)pstImg->u16Height; j++) {
+      memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[2] + (j * pstImg->u16Stride[2])), ptr,
+             u32Width);
+      ptr += u32Width;
+    }
+  } else if (enType == IVE_IMAGE_TYPE_U8C3_PACKAGE) {
+    // yyy... uuu... vvv... to yyy... uuu... vvv...
+    ptr = pBuffer;
+    for (size_t i = 0; i < (size_t)u32Height; i++) {
+      uint32_t stb_stride = i * u32Width * 3;
+      uint32_t image_stride = (i * pstImg->u16Stride[0]);
+
+      for (size_t j = 0; j < (size_t)u32Width; j++) {
+        uint32_t buf_idx = stb_stride + (j * 3);
+        uint32_t img_idx = image_stride + (j * 3);
+        ((char *)(uintptr_t)pstImg->pu8VirAddr[0])[img_idx] = ptr[buf_idx];
+        ((char *)(uintptr_t)pstImg->pu8VirAddr[0])[img_idx + 1] = ptr[buf_idx + 1];
+        ((char *)(uintptr_t)pstImg->pu8VirAddr[0])[img_idx + 2] = ptr[buf_idx + 2];
+      }
+    }
+  } else if (enType == IVE_IMAGE_TYPE_YUV420SP) {
+    ptr = pBuffer;
+    for (size_t j = 0; j < (size_t)u32Height; j++) {
+      memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[0] + (j * pstImg->u16Stride[0])), ptr,
+             u32Width);
+      ptr += u32Width;
+    }
+    for (size_t j = 0; j < (size_t)pstImg->u16Height / 2; j++) {
+      memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[1] + (j * pstImg->u16Stride[1])), ptr,
+             u32Width);
+      ptr += u32Width;
+    }
+  } else if (enType == IVE_IMAGE_TYPE_YUV422SP) {
+    ptr = pBuffer;
+    for (size_t j = 0; j < (size_t)u32Height; j++) {
+      memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[0] + (j * pstImg->u16Stride[0])), ptr,
+             u32Width);
+      ptr += u32Width;
+    }
+    for (size_t j = 0; j < (size_t)pstImg->u16Height; j++) {
+      memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[1] + (j * pstImg->u16Stride[1])), ptr,
+             u32Width);
+      ptr += u32Width;
+    }
+  } else if (enType == IVE_IMAGE_TYPE_U16C1 || enType == IVE_IMAGE_TYPE_S16C1) {
+    ptr = pBuffer;
+    for (size_t j = 0; j < (size_t)u32Height; j++) {
+      memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[0] + (j * pstImg->u16Stride[0])), ptr,
+             u32Width * (sizeof(uint16_t)));
+      ptr += u32Width * (sizeof(uint16_t));
+    }
+  } else {
+    ptr = pBuffer;
+    for (size_t j = 0; j < (size_t)u32Height; j++) {
+      memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[0] + (j * pstImg->u16Stride[0])), ptr,
+             u32Width);
+      ptr += u32Width;
+    }
+  }
+
+  return CVI_SUCCESS;
+}
+#endif
 
 CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAGE_S *pstImg) {
   int desiredNChannels = -1;
@@ -2269,11 +2399,11 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
                     IVE_DST_IMAGE_S *pstDst, IVE_SUB_CTRL_S *ctrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
   if (!IsValidImageType(pstSrc1, STRFY(pstSrc1), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
-    LOGE("input1 type not support:%d", pstSrc1->enType);
+    printf("input1 type not support:%d", pstSrc1->enType);
     return CVI_FAILURE;
   }
   if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
-    LOGE("input2 type not support:%d", pstSrc2->enType);
+    printf("input2 type not support:%d", pstSrc2->enType);
     return CVI_FAILURE;
   }
 
@@ -2282,7 +2412,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   if (ctrl->enMode == IVE_SUB_MODE_NORMAL || ctrl->enMode == IVE_SUB_MODE_SHIFT) {
     if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_S8C1,
                           IVE_IMAGE_TYPE_U8C3_PLANAR)) {
-      LOGE("dst type not support:%d", pstDst->enType);
+      printf("dst type not support:%d", pstDst->enType);
       return CVI_FAILURE;
     }
     handle_ctx->t_h.t_sub.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
@@ -2298,7 +2428,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   } else if (ctrl->enMode == IVE_SUB_MODE_ABS || ctrl->enMode == IVE_SUB_MODE_ABS_THRESH ||
              ctrl->enMode == IVE_SUB_MODE_ABS_CLIP) {
     if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
-      LOGE("dst type not support:%d", pstDst->enType);
+      printf("dst type not support:%d", pstDst->enType);
       return CVI_FAILURE;
     }
 
