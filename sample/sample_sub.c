@@ -252,7 +252,6 @@ int main(int argc, char **argv) {
   }
 
 failed:
-  printf("Failed when run CVI_IVE_Sub ret: %x\n", ret);
   CVI_SYS_FreeI(handle, &src1);
   CVI_IVE_DestroyHandle(handle);
 
