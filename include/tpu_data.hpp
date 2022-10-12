@@ -395,7 +395,7 @@ class CviImg {
     return CVI_SUCCESS;
 #endif
   }
-
+  bool IsNullMem() { return m_rtmem == NULL; }
   cvk_tg_t m_tg;
 
  private:

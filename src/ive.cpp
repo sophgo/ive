@@ -96,7 +96,7 @@ CVI_S32 CVI_IVE_CreateMemInfo(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo,
 CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
                              uint16_t u16Width, uint16_t u16Height, IVE_IMAGE_S *pstBuffer) {
   if (u16Width == 0 || u16Height == 0) {
-    printf("Image width or height cannot be 0.\n");
+    LOGE("Image width or height cannot be 0.\n");
     pstImg->tpu_block = NULL;
     pstImg->enType = enType;
     pstImg->u16Width = 0;
@@ -210,12 +210,12 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
       fmt = CVK_FMT_F32;
     } break;
     default:
-      printf("Not supported enType %s.\n", cviIveImgEnTypeStr[enType]);
+      LOGE("Not supported enType %s.\n", cviIveImgEnTypeStr[enType]);
       return CVI_FAILURE;
       break;
   }
   if (strides.size() == 0 || heights.size() == 0) {
-    printf("[DEV] Stride not set.\n");
+    LOGE("[DEV] Stride not set.\n");
     return CVI_FAILURE;
   }
 
@@ -224,7 +224,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
   auto *cpp_img = new CviImg(handle_ctx->rt_handle, u16Height, u16Width, strides, heights, img_type,
                              fmt, buffer_ptr);
   if (!cpp_img->IsInit()) {
-    printf("Failed to init IVE_IMAGE_S.\n");
+    LOGE("Failed to init IVE_IMAGE_S.\n");
     return CVI_FAILURE;
   }
 
@@ -295,7 +295,7 @@ CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc) {
       heights.resize(c, pstSrc->u16Height);
     } break;
     default: {
-      printf("Unsupported conversion type: %u.\n", pstSrc->enType);
+      LOGE("Unsupported conversion type: %u.\n", pstSrc->enType);
       return CVI_FAILURE;
     } break;
   }
@@ -307,7 +307,7 @@ CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc) {
   auto *cpp_img = new CviImg(pstSrc->u16Height, pstSrc->u16Width, strides, heights, u32_length,
                              pstSrc->pu8VirAddr[0], pstSrc->u64PhyAddr[0], img_type, fmt);
   if (!cpp_img->IsInit()) {
-    printf("Failed to init IVE_IMAGE_S.\n");
+    LOGE("Failed to init IVE_IMAGE_S.\n");
     return CVI_FAILURE;
   }
 
@@ -412,6 +412,13 @@ CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *
 }
 
 CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S *pstIIDst) {
+  if (pstIIDst->tpu_block != NULL) {
+    CviImg *cpp_img = reinterpret_cast<CviImg *>(pstIIDst->tpu_block);
+    if (!cpp_img->IsNullMem()) {
+      LOGE("pstIIDst->tpu_block->m_rtmem is not NULL");
+    }
+    delete cpp_img;
+  }
   VIDEO_FRAME_S *pstVFSrc = &pstVFISrc->stVFrame;
   size_t c = 1;
   CVIIMGTYPE img_type = CVIIMGTYPE::CVI_GRAY;
@@ -508,7 +515,7 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
       desiredNChannels = STBI_rgb;
       break;
     default:
-      printf("Not support channel %s.\n", cviIveImgEnTypeStr[enType]);
+      LOGE("Not support channel %s.\n", cviIveImgEnTypeStr[enType]);
       break;
   }
   IVE_IMAGE_S img;
@@ -517,11 +524,11 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
     int width, height, nChannels;
     stbi_uc *stbi_data = stbi_load(filename, &width, &height, &nChannels, desiredNChannels);
     if (stbi_data == nullptr) {
-      printf("Image %s read failed.\n", filename);
+      LOGE("Image %s read failed.\n", filename);
       return img;
     }
     CVI_IVE_CreateImage(pIveHandle, &img, enType, width, height);
-    printf("desiredNChannels, width, height: %d %d %d\n", desiredNChannels, width, height);
+    LOGI("desiredNChannels, width, height: %d %d %d\n", desiredNChannels, width, height);
     if (enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
       for (size_t i = 0; i < (size_t)height; i++) {
         for (size_t j = 0; j < (size_t)width; j++) {
@@ -746,12 +753,17 @@ CVI_S32 CVI_SYS_FreeM(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo) {
 CVI_S32 CVI_SYS_FreeI(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
   if (pstImg->tpu_block == NULL) {
     LOGI("Image tpu block is freed.\n");
+    return CVI_SUCCESS;
   }
-  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   auto *cpp_img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
-  cpp_img->Free(handle_ctx->rt_handle);
+  if (!cpp_img->IsNullMem()) {
+    if (pIveHandle == NULL) {
+      LOGE("should have ive handle to release cpp_img inside memory");
+    }
+    IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+    cpp_img->Free(handle_ctx->rt_handle);
+  }
   delete cpp_img;
-  cpp_img = nullptr;
   pstImg->tpu_block = NULL;
   return CVI_SUCCESS;
 }
@@ -2399,11 +2411,11 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
                     IVE_DST_IMAGE_S *pstDst, IVE_SUB_CTRL_S *ctrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
   if (!IsValidImageType(pstSrc1, STRFY(pstSrc1), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
-    printf("input1 type not support:%d", pstSrc1->enType);
+    LOGE("input1 type not support:%d", pstSrc1->enType);
     return CVI_FAILURE;
   }
   if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
-    printf("input2 type not support:%d", pstSrc2->enType);
+    LOGE("input2 type not support:%d", pstSrc2->enType);
     return CVI_FAILURE;
   }
 
@@ -2412,7 +2424,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   if (ctrl->enMode == IVE_SUB_MODE_NORMAL || ctrl->enMode == IVE_SUB_MODE_SHIFT) {
     if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_S8C1,
                           IVE_IMAGE_TYPE_U8C3_PLANAR)) {
-      printf("dst type not support:%d", pstDst->enType);
+      LOGE("dst type not support:%d", pstDst->enType);
       return CVI_FAILURE;
     }
     handle_ctx->t_h.t_sub.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
@@ -2428,7 +2440,7 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   } else if (ctrl->enMode == IVE_SUB_MODE_ABS || ctrl->enMode == IVE_SUB_MODE_ABS_THRESH ||
              ctrl->enMode == IVE_SUB_MODE_ABS_CLIP) {
     if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
-      printf("dst type not support:%d", pstDst->enType);
+      LOGE("dst type not support:%d", pstDst->enType);
       return CVI_FAILURE;
     }
 
