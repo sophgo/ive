@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2.2)
-project(ive)
+project(ive_project)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Options
@@ -76,29 +76,15 @@ else()
   set(GCC_STRIP_FLAG "")
 endif()
 
-# Check if tracer exists.
-if ("${TRACER_ROOT}" STREQUAL "")
-  set(TRACER_ROOT ${CMAKE_SOURCE_DIR}/3rdparty/tracer)
-  message("use tracerroot:" ${TRACER_ROOT})
-endif()
-if(EXISTS "${TRACER_ROOT}")
-  execute_process(COMMAND git remote -v
-                  WORKING_DIRECTORY ${TRACER_ROOT}
-                  OUTPUT_VARIABLE TRACER_REMOTE_URL)
-  if (NOT "${TRACER_REMOTE_URL}" MATCHES "10.34.33.3:8480" OR
-          "${TRACER_REMOTE_URL}" MATCHES "10.34.33.3:8422")
-    message(AUTHOR_WARNING "Warning, this tracer is not cloned from GitLab. "
-                           "May cause error while compiling or running.")
-  endif()
-  message("-- Found Tracer (directory: ${CMAKE_SOURCE_DIR}/3rdparty/tracer)")
-  include(cmake/tracer.cmake)
-else()
-  message(FATAL_ERROR "Tracer folder not found. Git clone to 3rdparty at "
-                      "http://10.34.33.3:8480/sys_app/tracer.")
-endif()
 if (ENABLE_SYSTRACE)
   add_definitions(-DENABLE_TRACE)
 endif()
+set(TRACER_ROOT ${CMAKE_SOURCE_DIR}/3rdparty/tracer)
+message("use tracerroot:" ${TRACER_ROOT})
+execute_process(COMMAND git remote -v
+                WORKING_DIRECTORY ${TRACER_ROOT}
+                OUTPUT_VARIABLE TRACER_REMOTE_URL)
+include(cmake/tracer.cmake)
 
 # Check if MLIR SDK exists.
 include(cmake/mlir.cmake)
@@ -148,9 +134,7 @@ message("C   compiler     ${CMAKE_C_COMPILER}")
 message("CXX compiler     ${CMAKE_CXX_COMPILER}")
 message("C Flags          ${CMAKE_C_FLAGS}")
 message("CXX Flags        ${CMAKE_CXX_FLAGS}")
-message("SYSROOT          ${CMAKE_SYSROOT}")
 message("Install dir      ${CMAKE_INSTALL_PREFIX}")
-message("Use Systrace     ${ENABLE_SYSTRACE}")
 message("")
 message("Workaround flags ${WORKAROUND_FLAGS_STR}")
 message("==================================================")

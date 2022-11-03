@@ -60,9 +60,8 @@ add_library(cvi_ive_tpu SHARED ${SRC} ${DRAWSRC})
 
 if (ENABLE_SYSTRACE)
 add_dependencies(cvi_ive_tpu tracer)
-target_link_libraries(cvi_ive_tpu ${TRACER_LIB_DIR}/libcvitracer.so ${MLIR_LIBS})
-set_target_properties(cvi_ive_tpu PROPERTIES
-                     IMPORTED_LOCATION ${TRACER_LIB_DIR}/libcvitracer.so)
+target_link_libraries(cvi_ive_tpu cvitracer ${MLIR_LIBS})
+set_target_properties(cvi_ive_tpu PROPERTIES LINK_FLAGS "-L ${TRACER_LIB_DIR}")
 else()
 target_link_libraries(cvi_ive_tpu ${MLIR_LIBS})
 endif()
@@ -72,7 +71,8 @@ add_library(cvi_ive_tpu-static ${SRC} ${DRAWSRC})
 
 if (ENABLE_SYSTRACE)
 add_dependencies(cvi_ive_tpu-static tracer)
-target_link_libraries(cvi_ive_tpu-static ${TRACER_LIB_DIR}/libtracer.so ${MLIR_LIBS})
+target_link_libraries(cvi_ive_tpu-static cvitracer ${MLIR_LIBS})
+set_target_properties(cvi_ive_tpu PROPERTIES LINK_FLAGS "-L ${TRACER_LIB_DIR}")
 endif()
 
 install(TARGETS cvi_ive_tpu DESTINATION lib)
