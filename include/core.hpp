@@ -11,10 +11,11 @@ enum IVETLType { DATA, KERNEL, TABLE };
 class IveCore {
  public:
   IveCore();
+  ~IveCore();
   const unsigned int getNpuNum(cvk_context_t *cvk_ctx) const { return cvk_ctx->info.npu_num; }
   virtual int init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) = 0;
-  int run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
-          std::vector<CviImg> *output, bool legacy_mode = false);
+  int run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, const std::vector<CviImg *> &input,
+          std::vector<CviImg *> &output, bool legacy_mode = false);
 
  protected:
   cvk_tl_t *allocTLMem(cvk_context_t *cvk_ctx, cvk_tl_shape_t tl_shape, cvk_fmt_t fmt, int eu_align,
@@ -27,7 +28,7 @@ class IveCore {
                        const bool enable_cext) = 0;
   virtual void operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, uint32_t ping_idx) = 0;
   virtual void beforeSubmit(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
-                            std::vector<CviImg> &input, std::vector<CviImg> *output);
+                            const std::vector<CviImg *> &input, std::vector<CviImg *> &output);
   virtual int postProcess(CVI_RT_HANDLE rt_handle);
 
   uint32_t m_nums_of_input = 1;
@@ -38,6 +39,7 @@ class IveCore {
   std::vector<cvk_tl_t *> m_tl_vec;
   std::string m_cmdbuf_subfix;
   bool m_force_use_ext = false;
+  bool m_allocate_failed_ = false;
 
  private:
   int getSlice(const uint32_t nums_of_lmem, const uint32_t nums_of_table,
@@ -46,13 +48,14 @@ class IveCore {
                const int npu_num, sliceUnit *unit_h, sliceUnit *unit_w, const bool enable_cext);
   int freeTLMems(cvk_context_t *cvk_ctx);
   int runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
-                          std::vector<CviImg> &input, std::vector<CviImg> *output,
+                          const std::vector<CviImg *> &input, std::vector<CviImg *> &output,
                           bool enable_min_max = false);
   int runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
-                             std::vector<CviImg> &input, std::vector<CviImg> *output,
+                             const std::vector<CviImg *> &input, std::vector<CviImg *> &output,
                              bool enable_min_max = false);
-  int runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
-                  std::vector<CviImg> *output, bool enable_min_max = false);
+  int runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                  const std::vector<CviImg *> &input, std::vector<CviImg *> &output,
+                  bool enable_min_max = false);
 
   bool m_write_cmdbuf = false;
   cvk_chip_info_t m_chip_info;

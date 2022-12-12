@@ -50,7 +50,7 @@ void IveTPUMulSum::operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, ui
 }
 
 void IveTPUMulSum::beforeSubmit(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
-                                std::vector<CviImg> &input, std::vector<CviImg> *output) {
+                                const std::vector<CviImg *> &input, std::vector<CviImg *> &output) {
   uint32_t total_data_size = m_tl_mulsum_shape.h * m_tl_mulsum_shape.w;
   uint32_t data_size = total_data_size;
   uint32_t fmt_size = getFmtSize(mp_tl_mulsum->fmt);

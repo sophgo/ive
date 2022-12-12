@@ -9,7 +9,7 @@
 #include <string.h>
 #include <iostream>
 #include <vector>
-
+#define CVI_IMG_VIDEO_FRM_MAGIC_NUM 123456
 /**
  * @brief Convert cvk_fmt_t to actual data type size.
  *
@@ -238,6 +238,10 @@ class CviImg {
          std::vector<uint32_t> heights, std::vector<uint32_t> u32_lengths, uint8_t *vaddr,
          uint64_t paddr, CVIIMGTYPE img_type, cvk_fmt_t fmt);
 
+  int ReInit(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
+             std::vector<uint32_t> heights, std::vector<uint32_t> u32_lengths, uint8_t *vaddr,
+             uint64_t paddr, CVIIMGTYPE img_type, cvk_fmt_t fmt);
+
   /**
    * @brief Init CviImg if default constructor is used.
    *
@@ -396,6 +400,7 @@ class CviImg {
 #endif
   }
   bool IsNullMem() { return m_rtmem == NULL; }
+  int GetMagicNum() { return m_magic_num; }
   cvk_tg_t m_tg;
 
  private:
@@ -440,6 +445,7 @@ class CviImg {
   bool m_is_planar = true;      // Is image planar.
   bool m_is_sub_img = false;    // Is sub-image flag.
   bool m_is_stride_ceq = true;  // Are all the strides in every channel equal.
+  int m_magic_num;
 };
 
 /**

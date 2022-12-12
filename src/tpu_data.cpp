@@ -167,17 +167,16 @@ CviImg::CviImg(CVI_RT_HANDLE rt_handle, uint32_t img_h, uint32_t img_w,
     }
   }
 }
-
-CviImg::CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
-               std::vector<uint32_t> heights, std::vector<uint32_t> u32_lengths, uint8_t *vaddr,
-               uint64_t paddr, CVIIMGTYPE img_type, cvk_fmt_t fmt) {
+int CviImg::ReInit(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
+                   std::vector<uint32_t> heights, std::vector<uint32_t> u32_lengths, uint8_t *vaddr,
+                   uint64_t paddr, CVIIMGTYPE img_type, cvk_fmt_t fmt) {
   if (strides.size() == 0) {
     LOGE("Strides are empty.\n");
-    return;
+    return CVI_FAILURE;
   }
   if (strides.size() != heights.size()) {
     LOGE("Strides size and heights size must be the same.\n");
-    return;
+    return CVI_FAILURE;
   }
   this->m_fmt = fmt;
   this->m_channel = strides.size();
@@ -190,6 +189,7 @@ CviImg::CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
   this->m_coffsets.clear();
   this->m_size = 0;
   this->m_coffsets.push_back(this->m_size);
+  m_is_stride_ceq = true;
   if (Is4096Workaound(img_type)) {
     for (size_t i = 0; i < strides.size(); i++) {
       this->m_size += Align64(u32_lengths[i], SCALAR_C_ALIGN);
@@ -227,6 +227,17 @@ CviImg::CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
   this->m_tg.stride.h = this->m_strides[0];
   this->m_tg.stride.c = u32_lengths[0];
   this->m_tg.stride.n = m_tg.shape.c * this->m_tg.stride.c;
+  return CVI_SUCCESS;
+}
+CviImg::CviImg(uint32_t img_h, uint32_t img_w, std::vector<uint32_t> strides,
+               std::vector<uint32_t> heights, std::vector<uint32_t> u32_lengths, uint8_t *vaddr,
+               uint64_t paddr, CVIIMGTYPE img_type, cvk_fmt_t fmt) {
+  m_magic_num = CVI_IMG_VIDEO_FRM_MAGIC_NUM;
+  if (CVI_SUCCESS !=
+      ReInit(img_h, img_w, strides, heights, u32_lengths, vaddr, paddr, img_type, fmt)) {
+    printf("CviImg init failed\n");
+    assert(0);
+  }
 }
 
 void CviImg::SetupImageInfo(uint32_t img_c, uint32_t img_h, uint32_t img_w, cvk_fmt_t fmt) {

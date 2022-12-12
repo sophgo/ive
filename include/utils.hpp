@@ -118,6 +118,10 @@ inline void cviImg2TL(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, const Cvi
 
 inline void constantFillTL(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, const uint16_t value,
                            cvk_tl_t *lmem) {
+  if (lmem == nullptr) {
+    LOGE("constantFillTL got nullptr input\n");
+    return;
+  }
   cvk_tdma_g2l_tensor_fill_constant_param_t p_fill;
   p_fill.constant = value;
   p_fill.dst = lmem;

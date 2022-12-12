@@ -3,8 +3,8 @@
 
 class IveTPUCopyDirect {
  public:
-  static int run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
-                 std::vector<CviImg> *output);
+  static int run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, const CviImg *input,
+                 CviImg *output);
 };
 
 class IveTPUCopyInterval : public IveCore {

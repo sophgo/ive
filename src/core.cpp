@@ -80,26 +80,26 @@ inline void getTLInfo(const std::vector<cvk_tl_t *> &tl_vec, const std::vector<u
   }
 }
 
-inline void getBMAddrInfo(const std::vector<CviImg> &input, const std::vector<CviImg> &output,
+inline void getBMAddrInfo(const std::vector<CviImg *> &input, const std::vector<CviImg *> &output,
                           const int pad_left, const int pad_top, BMAddrInfo *bm_src_info,
                           BMAddrInfo *bm_dest_info) {
   for (size_t k = 0; k < input.size(); k++) {
-    uint64_t bm_start_addr = input[k].GetPAddr();
+    uint64_t bm_start_addr = input[k]->GetPAddr();
     bm_src_info->addr_vec.push_back(bm_start_addr);
-    bm_src_info->fns_vec.push_back(FmtnSize(input[k].m_tg.fmt));
+    bm_src_info->fns_vec.push_back(FmtnSize(input[k]->m_tg.fmt));
   }
   for (size_t k = 0; k < output.size(); k++) {
-    uint64_t bm_des_addr = output[k].GetPAddr();
-    FmtnSize fns(output[k].m_tg.fmt);
+    uint64_t bm_des_addr = output[k]->GetPAddr();
+    FmtnSize fns(output[k]->m_tg.fmt);
     uint64_t new_bm_des_addr =
-        bm_des_addr + (output[k].m_tg.stride.h * pad_top) + (pad_left * fns.getSize());
+        bm_des_addr + (output[k]->m_tg.stride.h * pad_top) + (pad_left * fns.getSize());
     bm_dest_info->addr_vec.push_back(new_bm_des_addr);
     bm_dest_info->fns_vec.push_back(fns);
   }
 }
 
-inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
-                                 const std::vector<CviImg> &output, const BMAddrInfo &bm_src_info,
+inline int checkIsBufferOverflow(const std::vector<CviImg *> &input,
+                                 const std::vector<CviImg *> &output, const BMAddrInfo &bm_src_info,
                                  const BMAddrInfo &bm_dest_info, const int &pad_l, const int &pad_t,
                                  const bool is_1d, const bool shift_pad_offset) {
 #if DISABLE_OVERFLOWCHECK
@@ -107,9 +107,9 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
 #else
   int ret = CVI_SUCCESS;
   for (size_t k = 0; k < input.size(); k++) {
-    const u64 bm_start_addr = input[k].GetPAddr();
+    const u64 bm_start_addr = input[k]->GetPAddr();
     u64 jumped_value = bm_src_info.addr_vec[k] - bm_start_addr;
-    u32 total_addr = is_1d ? input[k].m_tg.stride.n : input[k].m_tg.stride.c;
+    u32 total_addr = is_1d ? input[k]->m_tg.stride.n : input[k]->m_tg.stride.c;
     if (jumped_value != total_addr) {
       LOGE(
           "Error! Input %u jumped value %lu not align to image size %u, start addr "
@@ -119,14 +119,14 @@ inline int checkIsBufferOverflow(const std::vector<CviImg> &input,
     }
   }
   for (size_t k = 0; k < output.size(); k++) {
-    const u64 bm_des_addr = output[k].GetPAddr();
+    const u64 bm_des_addr = output[k]->GetPAddr();
     u64 jumped_value = bm_dest_info.addr_vec[k] - bm_des_addr;
     u32 pad_offset =
         shift_pad_offset
-            ? ((output[k].m_tg.stride.h * pad_t) + (pad_l * bm_dest_info.fns_vec[k].getSize()))
+            ? ((output[k]->m_tg.stride.h * pad_t) + (pad_l * bm_dest_info.fns_vec[k].getSize()))
             : 0;
     u32 total_addr =
-        is_1d ? (output[k].m_tg.stride.n + pad_offset) : (output[k].m_tg.stride.c + pad_offset);
+        is_1d ? (output[k]->m_tg.stride.n + pad_offset) : (output[k]->m_tg.stride.c + pad_offset);
     if (jumped_value != total_addr) {
       LOGE(
           "Error! Output %u jumped value %lu not align to image size %u, start addr "
@@ -344,21 +344,22 @@ inline void updateLMemSize(cvk_context_t *cvk_ctx, const int &npu_num, const cvk
 // Ext end
 
 IveCore::IveCore() {}
-
-int IveCore::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, std::vector<CviImg> &input,
-                 std::vector<CviImg> *output, bool legacy_mode) {
+IveCore::~IveCore() {}
+int IveCore::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                 const std::vector<CviImg *> &input, std::vector<CviImg *> &output,
+                 bool legacy_mode) {
   m_chip_info = cvk_ctx->info;
   for (const auto &img : input) {
-    if (!img.IsStideCEQ()) {
+    if (!img->IsStideCEQ()) {
       LOGE("Input image ( %u, %u) appears does not have equal strides in different channels.\n",
-           img.GetImgWidth(), img.GetImgHeight());
+           img->GetImgWidth(), img->GetImgHeight());
       return CVI_FAILURE;
     }
   }
-  for (const auto &img : (*output)) {
-    if (!img.IsStideCEQ()) {
+  for (const auto &img : output) {
+    if (!img->IsStideCEQ()) {
       LOGE("Output image ( %u, %u) appears does not have equal strides in different channels.\n",
-           img.GetImgWidth(), img.GetImgHeight());
+           img->GetImgWidth(), img->GetImgHeight());
       return CVI_FAILURE;
     }
   }
@@ -367,31 +368,33 @@ int IveCore::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, std::vector<Cv
     ret = runSingleSizeKernel(rt_handle, cvk_ctx, input, output);
   } else {
     bool use_ext = false;
-    if (input.size() > 1 && output->size() > 1) {
-      uint32_t total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
-      uint32_t total_size2 = (*output)[0].m_tg.stride.n / getFmtSize((*output)[0].m_tg.fmt);
+    if (input.size() > 1 && output.size() > 1) {
+      uint32_t total_size = input[0]->m_tg.stride.n / getFmtSize(input[0]->m_tg.fmt);
+      uint32_t total_size2 = output[0]->m_tg.stride.n / getFmtSize(output[0]->m_tg.fmt);
       if (total_size != total_size2) {
         use_ext |= true;
       }
     } else if (input.size() > 1) {
-      uint32_t total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
+      uint32_t total_size = input[0]->m_tg.stride.n / getFmtSize(input[0]->m_tg.fmt);
       use_ext |= (total_size % 16 != 0) ? true : false;
     } else {
-      uint32_t total_size = (*output)[0].m_tg.stride.n / getFmtSize((*output)[0].m_tg.fmt);
+      uint32_t total_size = output[0]->m_tg.stride.n / getFmtSize(output[0]->m_tg.fmt);
       use_ext |= (total_size % 16 != 0) ? true : false;
     }
     for (const auto &img : input) {
-      use_ext |= img.IsSubImg();
+      use_ext |= img->IsSubImg();
     }
-    for (const auto &img : (*output)) {
-      use_ext |= img.IsSubImg();
+    for (const auto &img : output) {
+      use_ext |= img->IsSubImg();
     }
     if (m_kernel_info.size != 1) {
       use_ext |= true;
     }
     if (use_ext || m_force_use_ext) {
+      // printf("run singlesize\n");
       ret = runSingleSizeExtKernel(rt_handle, cvk_ctx, input, output);
     } else {
+      // printf("run nokernel\n");
       ret = runNoKernel(rt_handle, cvk_ctx, input, output);
     }
   }
@@ -500,6 +503,7 @@ cvk_tl_t *IveCore::allocTLMem(cvk_context_t *cvk_ctx, cvk_tl_shape_t tl_shape, c
   if (lmem == NULL) {
     LOGE("Tensor allocate failed. ( n, c, h, w) = ( %u, %u, %u, %u).\n", tl_shape.n, tl_shape.c,
          tl_shape.h, tl_shape.w);
+    m_allocate_failed_ = true;
     return nullptr;
   }
 
@@ -527,22 +531,22 @@ int IveCore::sliceSetup(SliceRes &slice_res, SliceRes *tg_in_res, SliceRes *tg_o
 }
 
 void IveCore::beforeSubmit(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
-                           std::vector<CviImg> &input, std::vector<CviImg> *output) {}
+                           const std::vector<CviImg *> &input, std::vector<CviImg *> &output) {}
 
 int IveCore::postProcess(CVI_RT_HANDLE rt_handle) { return CVI_SUCCESS; }
 
 int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
-                                 std::vector<CviImg> &input, std::vector<CviImg> *output,
+                                 const std::vector<CviImg *> &input, std::vector<CviImg *> &output,
                                  bool enable_min_max) {
   // FIXME: Support later
   if (m_slice_info.ping_pong_size != 1) {
     LOGI("Currently runSingleSizeKernel does not support ping pong.\n");
     m_slice_info.ping_pong_size = 1;
   }
-  uint32_t batch = input[0].m_tg.shape.n;
-  uint32_t channel = input[0].m_tg.shape.c;
-  uint32_t height = input[0].m_tg.shape.h;
-  uint32_t width = input[0].m_tg.shape.w;
+  uint32_t batch = input[0]->m_tg.shape.n;
+  uint32_t channel = input[0]->m_tg.shape.c;
+  uint32_t height = input[0]->m_tg.shape.h;
+  uint32_t width = input[0]->m_tg.shape.w;
   std::vector<bool> find_min_max;
   // Insert extra tl
   uint32_t nums_of_tl = m_slice_info.nums_of_tl;
@@ -550,13 +554,13 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
 #if 0  // Disable now
   if (enable_min_max) {
     nums_of_tl += 1;
-    fix_lmem_size += (2 * (*output)[0].m_tg.shape.c);
+    fix_lmem_size += (2 * output[0]->m_tg.shape.c);
   }
-  for (size_t i = 0; i < output->size(); i++) {
+  for (size_t i = 0; i < output.size(); i++) {
     find_min_max.emplace_back(enable_min_max);
     if (enable_min_max) {
       nums_of_tl += 1;
-      fix_lmem_size += (2 * 2 * (*output)[i].m_tg.shape.c);
+      fix_lmem_size += (2 * 2 * output[i]->m_tg.shape.c);
     }
   }
 #endif
@@ -588,29 +592,33 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
   for (size_t k = 0; k < input.size(); k++) {
     s_in_vec.push_back({1, channel, in_slice_res.h.slice, in_slice_res.w.slice});
   }
-  for (size_t k = 0; k < output->size(); k++) {
+  for (size_t k = 0; k < output.size(); k++) {
     s_out_vec.push_back({1, channel, out_slice_res.h.slice, out_slice_res.w.slice});
   }
   std::vector<cvk_tg_shape_t> s_in_left_vec, s_out_left_vec;
   for (size_t k = 0; k < input.size(); k++) {
     s_in_left_vec.push_back({1, channel, in_slice_res.h.left, in_slice_res.w.left});
   }
-  for (size_t k = 0; k < output->size(); k++) {
+  for (size_t k = 0; k < output.size(); k++) {
     s_out_left_vec.push_back({1, channel, out_slice_res.h.left, out_slice_res.w.left});
   }
 
   // allocate tl shape and get input/ output indices.
   std::vector<uint32_t> tl_in_idx, tl_out_idx;
   runSetup(rt_handle, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
-
+  if (m_allocate_failed_) {
+    printf("allocate ive local mem failed\n");
+    freeTLMems(cvk_ctx);
+    return CVI_FAILURE;
+  }
   // Dummy check, can be turned off in official release
   if (tl_in_idx.size() != input.size()) {
     LOGE("Input tl size not match input image num %u, %u\n", (uint32_t)tl_in_idx.size(),
          (uint32_t)input.size());
   }
-  if (tl_out_idx.size() != output->size()) {
+  if (tl_out_idx.size() != output.size()) {
     LOGE("Output tl size not match input image num %u, %u\n", (uint32_t)tl_out_idx.size(),
-         (uint32_t)output->size());
+         (uint32_t)output.size());
   }
   // Dummy check end
   // Category tl shapes
@@ -623,7 +631,7 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
 
   // Get device memory start offset
   BMAddrInfo bm_src_info, bm_dest_info;
-  getBMAddrInfo(input, *output, m_kernel_info.pad[0], m_kernel_info.pad[2], &bm_src_info,
+  getBMAddrInfo(input, output, m_kernel_info.pad[0], m_kernel_info.pad[2], &bm_src_info,
                 &bm_dest_info);
 
   // Create tg block
@@ -702,7 +710,7 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
         tg_in.shape.h = tl_in_info.lmem_vec[k]->shape.h;
         tg_in.shape.w = tl_in_info.lmem_vec[k]->shape.w;
         tg_in.fmt = bm_src_info.fns_vec[k].getFmt();
-        tg_in.stride = input[k].m_tg.stride;
+        tg_in.stride = input[k]->m_tg.stride;
         cvk_tdma_g2l_tensor_copy_param_t p_copy_in;
         memset(&p_copy_in, 0, sizeof(cvk_tdma_g2l_tensor_copy_param_t));
         p_copy_in.src = &tg_in;
@@ -725,7 +733,7 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
             tl_out_info.lmem_vec[k]->shape.h - (m_kernel_info.pad[2] + m_kernel_info.pad[3]);
         tg_out.shape.w =
             tl_out_info.lmem_vec[k]->shape.w - (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
-        tg_out.stride = (*output)[k].m_tg.stride;
+        tg_out.stride = output[k]->m_tg.stride;
         cvk_tl_t out_shape;
         auto &tl_out = tl_out_info.lmem_vec;
         // printf("st addr%d, tg st addr %lu\n", tl_out[k]->start_address, bm_dest_addr_w[k]);
@@ -756,7 +764,7 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
       } else {
         jump_val = in_slice_res.h.skip;
       }
-      bm_src_info.addr_vec[k] += 1 * input[k].m_tg.stride.h * jump_val;
+      bm_src_info.addr_vec[k] += 1 * input[k]->m_tg.stride.h * jump_val;
     }
     for (size_t k = 0; k < bm_dest_info.addr_vec.size(); k++) {
       uint32_t jump_val = 0;
@@ -765,7 +773,7 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
       } else {
         jump_val = out_slice_res.h.skip;
       }
-      bm_dest_info.addr_vec[k] += 1 * (*output)[k].m_tg.stride.h * jump_val;
+      bm_dest_info.addr_vec[k] += 1 * output[k]->m_tg.stride.h * jump_val;
     }
   }
   LOGD("Slice info:\n");
@@ -775,7 +783,7 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
        in_slice_res.w.turn, in_slice_res.w.skip, in_slice_res.w.left);
 
   // Dummy gaurd for buffer overflow
-  ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
+  ret |= checkIsBufferOverflow(input, output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], false, true);
 
   beforeSubmit(rt_handle, cvk_ctx, input, output);
@@ -790,8 +798,8 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
 }
 
 int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
-                                    std::vector<CviImg> &input, std::vector<CviImg> *output,
-                                    bool enable_min_max) {
+                                    const std::vector<CviImg *> &input,
+                                    std::vector<CviImg *> &output, bool enable_min_max) {
   if (m_slice_info.io_fmt == CVK_FMT_INVALID) {
     LOGE("Invalid fmt engine type.\n");
     return CVI_FAILURE;
@@ -801,20 +809,19 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
     LOGI("Currently runSingleSizeKernel does not support ping pong.\n");
     m_slice_info.ping_pong_size = 1;
   }
-  if (input[0].m_tg.shape.n != 1) {
+  if (input[0]->m_tg.shape.n != 1) {
     LOGE("Currently ext only supports single batch.\n");
     return CVI_FAILURE;
   }
   // TODO: FIXME: Due to HW limitation. We have to split channels into individual images
-  // to process. Let channel = 1, do input[0].m_tg.shape.c times.
-  uint32_t batch = input[0].m_tg.shape.c;
+  // to process. Let channel = 1, do input[0]->m_tg.shape.c times.
+  uint32_t batch = input[0]->m_tg.shape.c;
   uint32_t channel = 1;
-  uint32_t height = input[0].m_tg.shape.h;
-  uint32_t width = input[0].m_tg.shape.w;
-  uint32_t w_from_stride = input[0].m_tg.stride.h / getFmtSize(input[0].m_tg.fmt);
-  uint32_t w_from_stride_out = output->empty()
-                                   ? w_from_stride
-                                   : (*output)[0].m_tg.stride.h / getFmtSize((*output)[0].m_tg.fmt);
+  uint32_t height = input[0]->m_tg.shape.h;
+  uint32_t width = input[0]->m_tg.shape.w;
+  uint32_t w_from_stride = input[0]->m_tg.stride.h / getFmtSize(input[0]->m_tg.fmt);
+  uint32_t w_from_stride_out =
+      output.empty() ? w_from_stride : output[0]->m_tg.stride.h / getFmtSize(output[0]->m_tg.fmt);
   // Insert extra tl
   uint32_t nums_of_tl = m_slice_info.nums_of_tl;
   uint32_t fix_lmem_size = m_slice_info.fix_lmem_size;
@@ -977,7 +984,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
     s_in_vec.push_back(
         {1, out_info.tl_load.shape.c, out_info.tl_load.shape.h, out_info.tl_load.shape.w});
   }
-  for (size_t k = 0; k < output->size(); k++) {
+  for (size_t k = 0; k < output.size(); k++) {
     s_out_vec.push_back(
         {1, out_info.tl_store.shape.c, out_info.tl_store.shape.h, out_info.tl_store.shape.w});
   }
@@ -985,15 +992,19 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
   // allocate tl shape and get input/ output indices.
   std::vector<uint32_t> tl_in_idx, tl_out_idx;
   runSetup(rt_handle, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, true);
-
+  if (m_allocate_failed_) {
+    printf("allocate ive local mem failed\n");
+    freeTLMems(cvk_ctx);
+    return CVI_FAILURE;
+  }
   // Dummy check, can be turned off in official release
   if (tl_in_idx.size() != input.size()) {
     LOGE("Input tl size not match input image num %u, %u.\n", (uint32_t)tl_in_idx.size(),
          (uint32_t)input.size());
   }
-  if (tl_out_idx.size() != output->size()) {
+  if (tl_out_idx.size() != output.size()) {
     LOGE("Output tl size not match input image num %u, %u.\n", (uint32_t)tl_out_idx.size(),
-         (uint32_t)output->size());
+         (uint32_t)output.size());
   }
   // Dummy check end
 
@@ -1007,7 +1018,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
 
   // Get device memory start offset
   BMAddrInfo bm_src_info, bm_dest_info;
-  getBMAddrInfo(input, *output, m_kernel_info.pad[0], m_kernel_info.pad[2], &bm_src_info,
+  getBMAddrInfo(input, output, m_kernel_info.pad[0], m_kernel_info.pad[2], &bm_src_info,
                 &bm_dest_info);
 
   // Experimental feature
@@ -1015,12 +1026,12 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
   uint32_t max_channel = 1;
   bool extend_error = false;
   for (uint32_t i = 0; i < input.size(); i++) {
-    if (input[i].m_tg.shape.c != 1) {
-      if (max_channel != 1 && input[i].m_tg.shape.c != max_channel) {
+    if (input[i]->m_tg.shape.c != 1) {
+      if (max_channel != 1 && input[i]->m_tg.shape.c != max_channel) {
         extend_error = true;
         break;
       }
-      max_channel = input[i].m_tg.shape.c;
+      max_channel = input[i]->m_tg.shape.c;
     } else {
       extend_channel[i] = true;
     }
@@ -1205,7 +1216,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
             jump_val = in_slice_res.h.skip;
           }
         }
-        bm_src_info.addr_vec[k] += 1 * input[k].m_tg.stride.h * jump_val;
+        bm_src_info.addr_vec[k] += 1 * input[k]->m_tg.stride.h * jump_val;
       }
       for (size_t k = 0; k < bm_dest_info.addr_vec.size(); k++) {
         uint32_t jump_val = 0;
@@ -1225,14 +1236,14 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
             jump_val = out_slice_res.h.skip;
           }
         }
-        bm_dest_info.addr_vec[k] += 1 * (*output)[k].m_tg.stride.h * jump_val;
+        bm_dest_info.addr_vec[k] += 1 * output[k]->m_tg.stride.h * jump_val;
       }
     }
 
     for (size_t k = 0; k < bm_src_info.addr_vec.size(); k++) {
-      if (Is4096Workaound(input[k].GetImgType())) {
-        uint32_t img_height = input[k].m_tg.shape.h;
-        uint32_t img_stride = input[k].m_tg.stride.h / getFmtSize(input[k].m_tg.fmt);
+      if (Is4096Workaound(input[k]->GetImgType())) {
+        uint32_t img_height = input[k]->m_tg.shape.h;
+        uint32_t img_stride = input[k]->m_tg.stride.h / getFmtSize(input[k]->m_tg.fmt);
 
         bm_src_info.addr_vec[k] =
             bm_src_addr_bk[k] + (Align64(img_stride * img_height, SCALAR_C_ALIGN) * (b + 1));
@@ -1241,9 +1252,9 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
     }
 
     for (size_t k = 0; k < bm_dest_info.addr_vec.size(); k++) {
-      if (Is4096Workaound((*output)[k].GetImgType())) {
-        uint32_t img_height = (*output)[k].m_tg.shape.h;
-        uint32_t img_stride = (*output)[k].m_tg.stride.h / getFmtSize((*output)[k].m_tg.fmt);
+      if (Is4096Workaound(output[k]->GetImgType())) {
+        uint32_t img_height = output[k]->m_tg.shape.h;
+        uint32_t img_stride = output[k]->m_tg.stride.h / getFmtSize(output[k]->m_tg.fmt);
         bm_dest_info.addr_vec[k] =
             bm_dst_addr_bk[k] + (Align64(img_stride * img_height, SCALAR_C_ALIGN) * (b + 1));
         LOGD("aligned bm_dest_info.addr_vec[%u]=0x%" PRIu64 "\n", k, bm_dest_info.addr_vec[k]);
@@ -1262,7 +1273,7 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
        out_slice_res.w.turn, out_slice_res.w.skip, out_slice_res.w.left);
 
   // Dummy gaurd for buffer overflow
-  ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
+  ret |= checkIsBufferOverflow(input, output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], true, true);
   beforeSubmit(rt_handle, cvk_ctx, input, output);
 
@@ -1276,14 +1287,14 @@ int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_
 }
 
 int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
-                         std::vector<CviImg> &input, std::vector<CviImg> *output,
+                         const std::vector<CviImg *> &input, std::vector<CviImg *> &output,
                          bool enable_min_max) {
   // Only supports kernel size = 1. NoKernel means kernel size = 1. You still can use depthwise
   // conv + qdm as uint8_t div.
   if (m_kernel_info.size != 1) {
     return CVI_FAILURE;
   }
-  uint32_t total_size = input[0].m_tg.stride.n / getFmtSize(input[0].m_tg.fmt);
+  uint32_t total_size = input[0]->m_tg.stride.n / getFmtSize(input[0]->m_tg.fmt);
   if (total_size % 16) {
     LOGE("Image size %u is not 16 aligned.\n", total_size);
     return CVI_FAILURE;
@@ -1347,12 +1358,17 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   for (size_t k = 0; k < input.size(); k++) {
     s_in_vec.push_back({shape.n, shape.c, shape.h, shape.w});
   }
-  for (size_t k = 0; k < output->size(); k++) {
+  for (size_t k = 0; k < output.size(); k++) {
     s_out_vec.push_back({shape.n, shape.c, shape.h, shape.w});
   }
   // allocate tl shape and get input/ output indices.
   std::vector<uint32_t> tl_in_idx, tl_out_idx;
   runSetup(rt_handle, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
+  if (m_allocate_failed_) {
+    printf("allocate ive local mem failed\n");
+    freeTLMems(cvk_ctx);
+    return CVI_FAILURE;
+  }
 
   // Find and create input/ output fmt size pair.
   TLInfo tl_in_info, tl_out_info;
@@ -1360,16 +1376,16 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
 
   // Get device memory start offset
   BMAddrInfo bm_src_info, bm_dest_info;
-  getBMAddrInfo(input, *output, m_kernel_info.pad[0], m_kernel_info.pad[2], &bm_src_info,
+  getBMAddrInfo(input, output, m_kernel_info.pad[0], m_kernel_info.pad[2], &bm_src_info,
                 &bm_dest_info);
   // Get reshaped stride
   std::vector<cvk_tg_stride_t> input_stride_vec, output_stride_vec;
   for (size_t i = 0; i < bm_src_info.addr_vec.size(); i++) {
-    input_stride_vec.push_back(cvk_ctx->ops->tg_default_stride(cvk_ctx, shape, input[i].m_tg.fmt));
+    input_stride_vec.push_back(cvk_ctx->ops->tg_default_stride(cvk_ctx, shape, input[i]->m_tg.fmt));
   }
   for (size_t i = 0; i < bm_dest_info.addr_vec.size(); i++) {
     output_stride_vec.push_back(
-        cvk_ctx->ops->tg_default_stride(cvk_ctx, shape, (*output)[i].m_tg.fmt));
+        cvk_ctx->ops->tg_default_stride(cvk_ctx, shape, output[i]->m_tg.fmt));
   }
 
   // Create tg block
@@ -1468,11 +1484,12 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
     LOGD("%u %u %u %u\n", left_shape.n, left_shape.c, left_shape.h, left_shape.w);
 
     for (size_t i = 0; i < input_stride_vec.size(); i++) {
-      input_stride_vec[i] = cvk_ctx->ops->tg_default_stride(cvk_ctx, left_shape, input[0].m_tg.fmt);
+      input_stride_vec[i] =
+          cvk_ctx->ops->tg_default_stride(cvk_ctx, left_shape, input[0]->m_tg.fmt);
     }
     for (size_t i = 0; i < output_stride_vec.size(); i++) {
       output_stride_vec[i] =
-          cvk_ctx->ops->tg_default_stride(cvk_ctx, left_shape, (*output)[0].m_tg.fmt);
+          cvk_ctx->ops->tg_default_stride(cvk_ctx, left_shape, output[0]->m_tg.fmt);
     }
     // Category tl shapes
     for (size_t i = 0; i < m_tl_vec.size(); i++) {
@@ -1547,7 +1564,7 @@ int IveCore::runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
     }
   }
   int ret = CVI_SUCCESS;
-  ret |= checkIsBufferOverflow(input, *output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
+  ret |= checkIsBufferOverflow(input, output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
                                m_kernel_info.pad[2], true, false);
 
   beforeSubmit(rt_handle, cvk_ctx, input, output);

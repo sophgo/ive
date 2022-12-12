@@ -27,21 +27,22 @@ inline void DirectCopyWrapper(cvk_context_t *cvk_ctx, const cvk_tg_t &in, const 
   }
 }
 
-int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
-                          std::vector<CviImg> &input, std::vector<CviImg> *output) {
-  if (input.size() != 1) {
-    return CVI_FAILURE;
+int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, const CviImg *input,
+                          CviImg *output) {
+  if (input == NULL) {
+    printf("IveTPUCopyDirect::run input is null\n");
+    assert(0);
   }
-  if (output->size() != 1) {
-    return CVI_FAILURE;
+  if (output == NULL) {
+    printf("IveTPUCopyDirect::run output is null\n");
+    assert(0);
   }
   // Special case handling for YUV sub-images
-  if (input[0].IsStideCEQ() && input[0].IsPlanar() && (*output)[0].IsStideCEQ() &&
-      (*output)[0].IsPlanar()) {
-    DirectCopyWrapper(cvk_ctx, input[0].m_tg, (*output)[0].m_tg);
+  if (input->IsStideCEQ() && input->IsPlanar() && output->IsStideCEQ() && output->IsPlanar()) {
+    DirectCopyWrapper(cvk_ctx, input->m_tg, output->m_tg);
   } else {
-    if (input[0].GetImgType() == CVI_YUV422P) {
-      if (input[0].m_tg.shape.w % 2 != 0 || (*output)[0].m_tg.shape.w % 2 != 0) {
+    if (input->GetImgType() == CVI_YUV422P) {
+      if (input->m_tg.shape.w % 2 != 0 || output->m_tg.shape.w % 2 != 0) {
         LOGE("Currently does not support odd width for YUV 422\n");
         return CVI_FAILURE;
       }
@@ -50,24 +51,24 @@ int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
       memset(&in, 0, sizeof(cvk_tg_t));
       memset(&out, 0, sizeof(cvk_tg_t));
       for (uint8_t i = 0; i < 3; i++) {
-        in.start_address = input[0].GetPAddr() + input[0].GetImgCOffsets()[i];
-        in.shape = {1, 1, input[0].m_tg.shape.h, input[0].m_tg.shape.w / div[i]};
-        in.stride.h = input[0].GetImgStrides()[i];
-        in.stride.c = input[0].m_tg.shape.h * in.stride.h;
+        in.start_address = input->GetPAddr() + input->GetImgCOffsets()[i];
+        in.shape = {1, 1, input->m_tg.shape.h, input->m_tg.shape.w / div[i]};
+        in.stride.h = input->GetImgStrides()[i];
+        in.stride.c = input->m_tg.shape.h * in.stride.h;
         in.stride.n = in.stride.c;
-        out.start_address = (*output)[0].GetPAddr() + (*output)[0].GetImgCOffsets()[i];
-        out.shape = {1, 1, (*output)[0].m_tg.shape.h, (*output)[0].m_tg.shape.w / div[i]};
-        out.stride.h = (*output)[0].GetImgStrides()[i];
-        out.stride.c = (*output)[0].m_tg.shape.h * out.stride.h;
+        out.start_address = output->GetPAddr() + output->GetImgCOffsets()[i];
+        out.shape = {1, 1, output->m_tg.shape.h, output->m_tg.shape.w / div[i]};
+        out.stride.h = output->GetImgStrides()[i];
+        out.stride.c = output->m_tg.shape.h * out.stride.h;
         out.stride.n = out.stride.c;
         DirectCopyWrapper(cvk_ctx, in, out);
       }
-    } else if (input[0].GetImgType() == CVI_YUV420P) {
-      if (input[0].m_tg.shape.w % 2 != 0 || (*output)[0].m_tg.shape.w % 2 != 0) {
+    } else if (input->GetImgType() == CVI_YUV420P) {
+      if (input->m_tg.shape.w % 2 != 0 || output->m_tg.shape.w % 2 != 0) {
         LOGE("Currently does not support odd width for YUV 420\n");
         return CVI_FAILURE;
       }
-      if (input[0].m_tg.shape.h % 2 != 0 || (*output)[0].m_tg.shape.h % 2 != 0) {
+      if (input->m_tg.shape.h % 2 != 0 || output->m_tg.shape.h % 2 != 0) {
         LOGE("Currently does not support odd height for YUV 420\n");
         return CVI_FAILURE;
       }
@@ -76,24 +77,24 @@ int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
       memset(&in, 0, sizeof(cvk_tg_t));
       memset(&out, 0, sizeof(cvk_tg_t));
       for (uint8_t i = 0; i < 3; i++) {
-        in.start_address = input[0].GetPAddr() + input[0].GetImgCOffsets()[i];
-        in.shape = {1, 1, input[0].m_tg.shape.h / div[i], input[0].m_tg.shape.w / div[i]};
-        in.stride.h = input[0].GetImgStrides()[i];
-        in.stride.c = input[0].m_tg.shape.h * in.stride.h;
+        in.start_address = input->GetPAddr() + input->GetImgCOffsets()[i];
+        in.shape = {1, 1, input->m_tg.shape.h / div[i], input->m_tg.shape.w / div[i]};
+        in.stride.h = input->GetImgStrides()[i];
+        in.stride.c = input->m_tg.shape.h * in.stride.h;
         in.stride.n = in.stride.c;
-        out.start_address = (*output)[0].GetPAddr() + (*output)[0].GetImgCOffsets()[i];
-        out.shape = {1, 1, (*output)[0].m_tg.shape.h / div[i], (*output)[0].m_tg.shape.w / div[i]};
-        out.stride.h = (*output)[0].GetImgStrides()[i];
-        out.stride.c = (*output)[0].m_tg.shape.h * out.stride.h;
+        out.start_address = output->GetPAddr() + output->GetImgCOffsets()[i];
+        out.shape = {1, 1, output->m_tg.shape.h / div[i], output->m_tg.shape.w / div[i]};
+        out.stride.h = output->GetImgStrides()[i];
+        out.stride.c = output->m_tg.shape.h * out.stride.h;
         out.stride.n = out.stride.c;
         DirectCopyWrapper(cvk_ctx, in, out);
       }
-    } else if (input[0].GetImgType() == CVI_YUV420SP) {
-      if (input[0].m_tg.shape.w % 2 != 0 || (*output)[0].m_tg.shape.w % 2 != 0) {
+    } else if (input->GetImgType() == CVI_YUV420SP) {
+      if (input->m_tg.shape.w % 2 != 0 || output->m_tg.shape.w % 2 != 0) {
         LOGE("Currently does not support odd width for YUV 420\n");
         return CVI_FAILURE;
       }
-      if (input[0].m_tg.shape.h % 2 != 0 || (*output)[0].m_tg.shape.h % 2 != 0) {
+      if (input->m_tg.shape.h % 2 != 0 || output->m_tg.shape.h % 2 != 0) {
         LOGE("Currently does not support odd height for YUV 420\n");
         return CVI_FAILURE;
       }
@@ -102,20 +103,20 @@ int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
       memset(&in, 0, sizeof(cvk_tg_t));
       memset(&out, 0, sizeof(cvk_tg_t));
       for (uint8_t i = 0; i < 2; i++) {
-        in.start_address = input[0].GetPAddr() + input[0].GetImgCOffsets()[i];
-        in.shape = {1, 1, input[0].m_tg.shape.h / div[i], input[0].m_tg.shape.w};
-        in.stride.h = input[0].GetImgStrides()[i];
-        in.stride.c = input[0].m_tg.shape.h * in.stride.h;
+        in.start_address = input->GetPAddr() + input->GetImgCOffsets()[i];
+        in.shape = {1, 1, input->m_tg.shape.h / div[i], input->m_tg.shape.w};
+        in.stride.h = input->GetImgStrides()[i];
+        in.stride.c = input->m_tg.shape.h * in.stride.h;
         in.stride.n = in.stride.c;
-        out.start_address = (*output)[0].GetPAddr() + (*output)[0].GetImgCOffsets()[i];
-        out.shape = {1, 1, (*output)[0].m_tg.shape.h / div[i], (*output)[0].m_tg.shape.w};
-        out.stride.h = (*output)[0].GetImgStrides()[i];
-        out.stride.c = (*output)[0].m_tg.shape.h * out.stride.h;
+        out.start_address = output->GetPAddr() + output->GetImgCOffsets()[i];
+        out.shape = {1, 1, output->m_tg.shape.h / div[i], output->m_tg.shape.w};
+        out.stride.h = output->GetImgStrides()[i];
+        out.stride.c = output->m_tg.shape.h * out.stride.h;
         out.stride.n = out.stride.c;
         DirectCopyWrapper(cvk_ctx, in, out);
       }
     } else {
-      LOGE("Unsupported copy type %d.\n", input[0].GetImgType());
+      LOGE("Unsupported copy type %d.\n", input->GetImgType());
       return CVI_FAILURE;
     }
   }
