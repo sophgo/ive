@@ -25,9 +25,9 @@ else
     exit 1
 fi
 
-CURRENT_USER="$(git config user.email | sed 's/cvitek.com//g')"
-if [[ "${CURRENT_USER}" != "jenkins@" ]]; then
-REPO_USER="$(git config user.email | sed 's/cvitek.com//g')"
+CURRENT_USER="$(git config user.name)"
+if [[ "${CURRENT_USER}" != "sw_jenkins" ]]; then
+    REPO_USER="$(git config user.name)@"
 fi
 
 echo "repo user : $REPO_USER"
