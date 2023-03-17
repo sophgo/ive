@@ -317,6 +317,20 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
                       IVE_BLOCK_CTRL_S *pstBlkCtrl, bool bInstant);
 
 /**
+ * @brief Calculate the average of the sliced cells of an image. The output image size will be \
+ *        (input_w / u32CellSize, output_h / u32CellSize)
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc Input image. Only accepts U8C1.
+ * @param pstDst Output result.
+ * @param IVE_DOWNSAMPLE_CTRL_S downsample control parameter.
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_DOWNSAMPLE(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                           IVE_DOWNSAMPLE_CTRL_S *pstdsCtrl, bool bInstant);
+
+/**
  * @brief Dilate a gray scale image.
  *
  * @param pIveHandle Ive instance handler.

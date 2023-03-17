@@ -147,6 +147,10 @@ typedef struct IVE_FILTER_CTRL {
   CVI_U32 u32Norm;
 } IVE_FILTER_CTRL_S;
 
+typedef struct IVE_DOWNSAMPLE_CTRL {
+  CVI_U8 u8KnerlSize;
+} IVE_DOWNSAMPLE_CTRL_S;
+
 typedef struct IVE_HOG_CTRL {
   CVI_U8 u8BinSize;
   CVI_U32 u32CellSize;

@@ -1622,6 +1622,45 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   return ret;
 }
 
+CVI_S32 CVI_IVE_DOWNSAMPLE(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                           IVE_DOWNSAMPLE_CTRL_S *pstdsCtrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
+  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
+    return CVI_FAILURE;
+  }
+  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
+    return CVI_FAILURE;
+  }
+
+  CVI_U32 u32CellSize = pstdsCtrl->u8KnerlSize;
+  if (pstDst->u16Width != (pstSrc->u16Width / u32CellSize) ||
+      (pstSrc->u16Width % u32CellSize != 0)) {
+    LOGE("Dst downsample width not match! Src: %u, Dst: %u. Cell size :%u\n", pstSrc->u16Width,
+         pstDst->u16Width, u32CellSize);
+    return CVI_FAILURE;
+  }
+  if (pstDst->u16Height != (pstSrc->u16Height / u32CellSize) ||
+      (pstSrc->u16Height % u32CellSize != 0)) {
+    LOGE("Dst downsample height not match! Src: %u, Dst: %u. Cell size :%u\n", pstSrc->u16Height,
+         pstDst->u16Height, u32CellSize);
+    return CVI_FAILURE;
+  }
+
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
+  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+  std::vector<CviImg *> inputs = {cpp_src};
+  std::vector<CviImg *> outputs = {cpp_dst};
+  int ret = CVI_FAILURE;
+  if (cpp_src->m_tg.fmt == CVK_FMT_U8 && cpp_dst->m_tg.fmt == CVK_FMT_U8) {
+    handle_ctx->t_h.t_downsample.setCellSize(u32CellSize, cpp_src->m_tg.shape.c);
+    handle_ctx->t_h.t_downsample.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+    ret = handle_ctx->t_h.t_downsample.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
+                                           outputs, true);
+  }
+  return ret;
+}
+
 CVI_S32 CVI_IVE_Dilate(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_DILATE_CTRL_S *pstDilateCtrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
