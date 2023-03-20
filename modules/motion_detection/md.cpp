@@ -1,53 +1,13 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <algorithm>
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-#include <vector>
-#include "ive.h"
+#include "md.hpp"
+#include "ive_log.hpp"
 
-/* ccl */
-#define CC_MAX_NUM_LABELS 200
-#define MAX_CC_OBJECTS 200
-
-#define CC_SUPER_PIXEL_H 2
-#define CC_SUPER_PIXEL_W 2
-#define CC_SCAN_WINDOW_H 2
-#define CC_SCAN_WINDOW_W 2
-#define CC_FG_SUPER_PIX_THD 3
-#define BLOCK_SIZE 2
-
-typedef struct CCTag {
-  int maskWidth;
-  int maskHeight;
-  int ccSuperPixelSize;
-  int superPixMapW;
-  int superPixMapH;
-
-  int numTotalObj;
-
-  int maxID;
-
-  unsigned char *dataSuperPixMap;
-  unsigned char *dataSuperPixFG;
-  unsigned char *eqCCLabelArray;
-
-  int numObjects;
-  int *boundingBoxesTmp;
-  int *boundingBoxes;
-
-} CCLType;
-
-void *create_connect_instance() {
+inline void *create_connect_instance() {
   CCLType *p_inst = new CCLType();
   memset(p_inst, 0, sizeof(CCLType));
   return p_inst;
 }
 
-void init_connected_component(CCLType *ccGst, int width, int height) {
+inline void init_connected_component(CCLType *ccGst, int width, int height) {
   int superPixMapW, superPixMapH;
 
   ccGst->maskWidth = width;
@@ -72,7 +32,7 @@ void init_connected_component(CCLType *ccGst, int width, int height) {
   ccGst->boundingBoxes = new int[MAX_CC_OBJECTS * 5];
 }
 
-void release_connected_component(CCLType *ccGst) {
+inline void release_connected_component(CCLType *ccGst) {
   if (ccGst->maskWidth > 0 && ccGst->maskHeight > 0) {
     delete[] ccGst->dataSuperPixMap;
     delete[] ccGst->dataSuperPixFG;
@@ -174,6 +134,7 @@ int dump_ive_image_frame(const std::string &filepath, uint8_t *ptr_img, int w, i
   std::cout << "closed:" << filepath << std::endl;
   return 0;
 }
+
 int *extract_connected_component(unsigned char *p_fg_mask, int width, int height, int wstride,
                                  int area_thresh, void *p_cc_inst, int *p_num_boxes) {
   int r, c, i, j, rBlk, cBlk;
@@ -461,27 +422,14 @@ int *extract_connected_component(unsigned char *p_fg_mask, int width, int height
   return ccGst->boundingBoxes;
 } /*end of: void extract_connected_component() | connected component labeling.*/
 
-void destroy_connected_component(void *ccGst) {
+inline void destroy_connected_component(void *ccGst) {
   if (ccGst == NULL) return;
   CCLType *p_inst = (CCLType *)ccGst;
   release_connected_component(p_inst);
   delete p_inst;
 }
 
-//////////////
-
-struct Padding {
-  uint32_t left;
-  uint32_t top;
-  uint32_t right;
-  uint32_t bottom;
-};
-
-Padding m_padding;
-
-// for cv182x align
-#define DEFAULT_ALIGN 64
-CVI_U32 getWidthAlign() { return DEFAULT_ALIGN; }
+inline CVI_U32 getWidthAlign() { return DEFAULT_ALIGN; }
 
 uint32_t getAlignedWidth(uint32_t width) {
   uint32_t align = getWidthAlign();
@@ -492,72 +440,159 @@ uint32_t getAlignedWidth(uint32_t width) {
   return stride;
 }
 
-std::vector<CVI_U32> getStride(IVE_SRC_IMAGE_S *img) {
+inline void CVI_MemAllocInit(const uint32_t size, ive_bbox_t_info_t *meta) {
+  meta->size = size;
+  meta->info = (ive_bbox_t *)malloc(sizeof(ive_bbox_t) * size);
+  for (uint32_t i = 0; i < size; ++i) {
+    memset(&meta->info[i], 0, sizeof(ive_bbox_t));
+    meta->info[i].bbox.x1 = -1;
+    meta->info[i].bbox.x2 = -1;
+    meta->info[i].bbox.y1 = -1;
+    meta->info[i].bbox.y2 = -1;
+  }
+}
+
+inline std::vector<CVI_U32> getStride(IVE_SRC_IMAGE_S *img) {
   return std::vector<CVI_U32>(std::begin(img->u16Stride), std::end(img->u16Stride));
 }
 
-std::vector<CVI_U8 *> getVAddr(IVE_SRC_IMAGE_S *img) {
+inline std::vector<CVI_U8 *> getVAddr(IVE_SRC_IMAGE_S *img) {
   return std::vector<CVI_U8 *>(std::begin(img->pu8VirAddr), std::end(img->pu8VirAddr));
 }
 
-int main(int argc, char **argv) {
-  int ret = 0;
-  if (argc != 3) {
-    printf("Incorrect loop value. Usage: %s <file_name>\n", argv[0]);
+MotionDetection::MotionDetection() {
+    handle = CVI_IVE_CreateHandle();
+    p_ccl_instance = create_connect_instance();
+}
+
+MotionDetection::~MotionDetection() {
+  CVI_IVE_DestroyHandle(handle);
+  CVI_SYS_FreeI(handle, &md_output);
+  CVI_SYS_FreeI(handle, &background_img);
+  CVI_SYS_FreeI(handle, &tmp_cpy_img_);
+  CVI_SYS_FreeI(handle, &tmp_src_img_);
+  destroy_connected_component(p_ccl_instance);
+}
+
+
+int MotionDetection::init(VIDEO_FRAME_INFO_S *init_frame) {
+  memset(&background_img, 0 ,sizeof(background_img));
+  memset(&md_output, 0 ,sizeof(md_output));
+  memset(&tmp_cpy_img_, 0 ,sizeof(tmp_cpy_img_));
+  memset(&tmp_src_img_, 0 ,sizeof(tmp_src_img_));
+  CVI_S32 ret = construct_images(init_frame);
+
+  if (ret == CVI_SUCCESS) {
+    ret = copy_image(init_frame, &background_img);
+  }
+  p_ccl_instance = create_connect_instance();
+
+  return ret;
+}
+
+int MotionDetection::construct_images(VIDEO_FRAME_INFO_S *init_frame) {
+  im_width = init_frame->stVFrame.u32Width;
+  im_height = init_frame->stVFrame.u32Height;
+  uint32_t voWidth = init_frame->stVFrame.u32Width;
+  uint32_t voHeight = init_frame->stVFrame.u32Height;
+
+  // only phobos do not need padding because use custom ccl
+  memset(&md_output, 0, sizeof(md_output));
+  memset(&background_img, 0, sizeof(background_img));
+  CVI_IVE_CreateImage(handle, &md_output, IVE_IMAGE_TYPE_U8C1, voWidth,
+                      voHeight);
+  CVI_IVE_CreateImage(handle, &background_img, IVE_IMAGE_TYPE_U8C1, voWidth,
+                      voHeight);
+  return CVI_SUCCESS;
+}
+
+void MotionDetection::free_all() {
+  CVI_SYS_FreeI(handle, &md_output);
+  CVI_SYS_FreeI(handle, &background_img);
+}
+
+int MotionDetection::copy_image(VIDEO_FRAME_INFO_S *srcframe, IVE_IMAGE_S *dst) {
+  if (srcframe->stVFrame.enPixelFormat != PIXEL_FORMAT_YUV_400) {
     return CVI_FAILURE;
   }
-  const char *bg_file_name = argv[1];
-  const char *src_file_name = argv[2];
-  // Create instance
-  printf("Create instance.\n");
-  IVE_HANDLE handle = CVI_IVE_CreateHandle();
+  int ret = CVI_SUCCESS;
+  CVI_IVE_VideoFrameInfo2Image(srcframe, &tmp_cpy_img_);
 
-  // the shape must be same
-  IVE_IMAGE_S background_img = CVI_IVE_ReadImage(handle, bg_file_name, IVE_IMAGE_TYPE_U8C1);
-  IVE_IMAGE_S src_image = CVI_IVE_ReadImage(handle, src_file_name, IVE_IMAGE_TYPE_U8C1);
+  //dma tmp_img to dst img
+  IVE_DMA_CTRL_S ctrl;
+  ctrl.enMode = IVE_DMA_MODE_DIRECT_COPY;
+  ctrl.u64Val = 0;
+  ctrl.u8HorSegSize = 0;
+  ctrl.u8ElemSize = 0;
+  ctrl.u8VerSegRows = 0;
+  ret = CVI_IVE_DMA(handle, &tmp_cpy_img_, dst, &ctrl, false);
+  return ret;
+}
 
-  // for align
-  uint32_t im_width = background_img.u16Width;
-  uint32_t im_height = background_img.u16Height;
-  Padding m_padding;
-  m_padding.left = getAlignedWidth(1);
-  m_padding.right = 1;
-  m_padding.top = 1;
-  m_padding.bottom = 1;
-  memset((void *)&m_padding, 0, sizeof(m_padding));
-  uint32_t extend_aligned_width = im_width + m_padding.left + m_padding.right;
-  uint32_t extend_aligned_height = im_height + m_padding.top + m_padding.bottom;
-  // output need pad
-  IVE_SRC_IMAGE_S md_output;
-  CVI_IVE_CreateImage(handle, &md_output, IVE_IMAGE_TYPE_U8C1, extend_aligned_width,
-                      extend_aligned_height);
+int MotionDetection::update_background(VIDEO_FRAME_INFO_S *frame) {
+  if (frame->stVFrame.u32Width != background_img.u16Width ||
+      frame->stVFrame.u32Height != background_img.u16Height) {
+    free_all();
+    if (construct_images(frame) != CVI_SUCCESS) {
+      return CVI_FAILURE;
+    }
+  }
+  CVI_S32 ret = copy_image(frame, &background_img);
+  return ret;
+}
 
+/*bbox_info will alloc memory, must remember release*/
+int MotionDetection::detect(VIDEO_FRAME_INFO_S *srcframe, ive_bbox_t_info_t *bbox_info, uint8_t threshold, double min_area) {
+  if (srcframe->stVFrame.u32Height != im_height || srcframe->stVFrame.u32Width != im_width) {
+    LOGE("Height and width of frame isn't equal to background image in MotionDetection\n");
+    return CVI_FAILURE;
+  }
+  memset(bbox_info, 0, sizeof(ive_bbox_t_info_t));
+  CVI_S32 ret = CVI_SUCCESS;
+  if (srcframe->stVFrame.enPixelFormat != PIXEL_FORMAT_YUV_400) {
+    return CVI_FAILURE;
+  }
+
+  if (srcframe->stVFrame.pu8VirAddr[0] == NULL) {
+    LOGE("VIDEO_FRAME need mmap\n");
+    return CVI_FAILURE;
+  }
+  
+  ret = CVI_IVE_VideoFrameInfo2Image(srcframe, &tmp_src_img_);
+  if (ret != CVI_SUCCESS) {
+    LOGE("Convert frame to IVE_IMAGE_S fail %x\n", ret);
+    return CVI_FAILURE;
+  }
   IVE_SUB_CTRL_S ctrl;
   ctrl.enMode = IVE_SUB_MODE_NORMAL;
-  CVI_IVE_Sub(handle, &src_image, &background_img, &md_output, &ctrl, false);
+  ret |= CVI_IVE_Sub(handle, &tmp_src_img_, &background_img, &md_output, &ctrl, false);
 
   IVE_THRESH_CTRL_S ctrl_thresh;
   ctrl_thresh.enMode = IVE_THRESH_MODE_BINARY;
   ctrl_thresh.u8MinVal = 0;
   ctrl_thresh.u8MaxVal = 255;
   ctrl_thresh.u8LowThr = 30;
-  CVI_IVE_Thresh(handle, &md_output, &md_output, &ctrl_thresh, false);
+  ret |= CVI_IVE_Thresh(handle, &md_output, &md_output, &ctrl_thresh, false);
+  if (ret != CVI_SUCCESS) {
+    LOGE("failed to do frame difference ret=%d\n", ret);
+    return CVI_FAILURE;
+  }
 
+  CVI_IVE_BufRequest(handle, &md_output);
   int num_boxes = 0;
-  // min area contrl;
-  int min_area = 1000;
   int wstride = getStride(&md_output)[0];
   void *p_ccl_instance = create_connect_instance();
   int *p_boxes = extract_connected_component(getVAddr(&md_output)[0], im_width, im_height, wstride,
                                              min_area, p_ccl_instance, &num_boxes);
 
+  CVI_MemAllocInit(num_boxes, bbox_info);
+  memset(bbox_info->info, 0, sizeof(ive_bbox_t_info_t) * num_boxes);
   for (uint32_t i = 0; i < (uint32_t)num_boxes; ++i) {
-    printf("x1,y1:%d %d,   x2,y2: %d %d\n", p_boxes[i * 5 + 2], p_boxes[i * 5 + 1],
-           p_boxes[i * 5 + 4], p_boxes[i * 5 + 3]);
+    bbox_info->info[i].bbox.x1 = p_boxes[i * 5 + 2];
+    bbox_info->info[i].bbox.y1 = p_boxes[i * 5 + 1];
+    bbox_info->info[i].bbox.x2 = p_boxes[i * 5 + 4];
+    bbox_info->info[i].bbox.y2 = p_boxes[i * 5 + 3];
   }
-
-  CVI_SYS_FreeI(handle, &md_output);
-  CVI_IVE_DestroyHandle(handle);
-  destroy_connected_component(p_ccl_instance);
-  return ret;
+  return CVI_SUCCESS;
 }
+
