@@ -1,7 +1,7 @@
 include(ExternalProject)
 # Only Ninja needs this => BUILD_BYPRODUCTS.
 ExternalProject_Add(tracer
-                    GIT_REPOSITORY ssh://${REPO_USER}10.240.0.84:29418/tracer
+                    GIT_REPOSITORY ssh://${REPO_USER}10.132.3.76:29418/cvitek/tracer
                     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/tracer
                     INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}
                     CMAKE_ARGS
