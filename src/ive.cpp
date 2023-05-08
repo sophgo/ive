@@ -1996,7 +1996,6 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
   if (!IsValidImageType(pstSrcV, STRFY(pstSrcV), IVE_IMAGE_TYPE_BF16C1)) {
     return CVI_FAILURE;
   }
-
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_magandang.setTblMgr(&handle_ctx->t_h.t_tblmgr);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrcH->tpu_block);
@@ -3059,41 +3058,6 @@ CVI_S32 CVI_IVE_EqualizeHist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
   return CVI_SUCCESS;
 }
 
-inline float cal_norm_cc(unsigned char *psrc1, unsigned char *psrc2, int srcw, int srch) {
-  int i, wxh;
-  uint t1, t2, t3;
-  float rtv = 0;
-  double d1, d2, d3;
-
-  if (srcw < 1 || srch < 1) {
-    return (0.0);
-  }
-  t1 = 0;
-  t2 = 0;
-  t3 = 0;
-  wxh = srcw * srch;
-  for (i = 0; i < wxh; i++) {
-    t1 += (psrc1[i] * psrc2[i]);
-  }
-
-  for (i = 0; i < wxh; i++) {
-    t2 += (psrc1[i] * psrc1[i]);
-  }
-  for (i = 0; i < wxh; i++) {
-    t3 += (psrc2[i] * psrc2[i]);
-  }
-  if (t2 < 1 || t3 < 1) {
-    return (0.0);
-  }
-  d1 = (double)(t1);
-  d2 = sqrt((double)t2) * sqrt((double)t3);
-  d3 = d1 / (d2 + 1);
-  // printf("%lf %lf %d %d %d\n", d1, d2, t1, t2, t3);
-  rtv = (float)(d3);
-
-  return rtv;
-}
-
 CVI_S32 CVI_IVE_NCC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_MEM_INFO_S *pstDst, bool bInstant) {
   if (pstSrc1->enType != IVE_IMAGE_TYPE_U8C1) {
@@ -3107,11 +3071,28 @@ CVI_S32 CVI_IVE_NCC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 
   CVI_IVE_BufRequest(pIveHandle, pstSrc1);
   CVI_IVE_BufRequest(pIveHandle, pstSrc2);
-  float *ptr = (float *)pstDst->pu8VirAddr;
-  float rt = cal_norm_cc((uint8_t *)pstSrc1->pu8VirAddr[0], (uint8_t *)pstSrc2->pu8VirAddr[0],
-                         (int)pstSrc1->u16Width, (int)pstSrc1->u16Height);
 
-  ptr[0] = rt;
+  int step_row = pstSrc1->u16Height;
+  int step_col = pstSrc1->u16Width;
+
+  float xx = 0, yy = 0, xy = 0;
+  for (auto row = 0; row < step_row; row++) {
+    int offset_templ = row * pstSrc1->u16Stride[0];
+    int offset_match = row * pstSrc2->u16Stride[0];
+    for (auto col = 0; col < step_col; col++) {
+      CVI_U8 *pval_templ = pstSrc1->pu8VirAddr[0] + offset_templ + col;
+      CVI_U8 *pval_match = pstSrc2->pu8VirAddr[0] + offset_match + col;
+      int val1 = (int)(*pval_templ);
+      int val2 = (int)(*pval_match);
+      xx += (1.0 * val1 * val1);
+      yy += (1.0 * val2 * val2);
+      xy += (1.0 * val1 * val2);
+    }
+  }
+  float dd = sqrt((xx * yy)) + 1;
+  float result = xy / dd;
+  float *ptr = (float *)pstDst->pu8VirAddr;
+  ptr[0] = result;
 
   CVI_IVE_BufFlush(pIveHandle, pstSrc1);
   CVI_IVE_BufFlush(pIveHandle, pstSrc2);

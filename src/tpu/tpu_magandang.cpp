@@ -38,12 +38,13 @@ int IveTPUMagAndAng::init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) {
   }
 
   if (!m_export_ang) {
-    total_tls -= 3;
+    total_tls -= 2;
     total_table -= 5;
     if (m_dist_method == 0) {
       total_tls -= 1;
     }
   }
+
   m_slice_info.nums_of_tl = total_tls * 2;
   m_slice_info.nums_of_table = total_table * 2;
   m_kernel_info.nums_of_kernel = 0;  // 2 BF16 kernels
@@ -70,8 +71,8 @@ int IveTPUMagAndAng::runSetup(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   auto *tl_buf =
       (m_dist_method == 1 || m_export_ang) ? allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1) : NULL;
   cvk_tl_t *tl_buf2 = NULL, *tl_buf3 = NULL, *tl_buf4 = NULL, *tl_buf5 = NULL, *tl_buf6 = NULL;
+  tl_buf2 = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1);
   if (m_export_ang) {
-    tl_buf2 = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1);
     tl_buf3 = allocTLMem(cvk_ctx, tl_shape, CVK_FMT_BF16, 1);
   }
 
