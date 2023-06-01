@@ -3058,6 +3058,101 @@ CVI_S32 CVI_IVE_EqualizeHist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
   return CVI_SUCCESS;
 }
 
+#ifdef __ARM_ARCH_7A__
+uint32_t sum_uint32x4(uint32x4_t vec) {
+  uint32x2_t sum_lane = vadd_u32(vget_low_u32(vec), vget_high_u32(vec));
+  sum_lane = vpadd_u32(sum_lane, sum_lane);
+  uint32_t sum;
+  vst1_lane_u32(&sum, sum_lane, 0);
+  return sum;
+}
+#endif
+inline float cal_norm_cc(unsigned char *psrc1, unsigned char *psrc2, int srcw, int srch,
+                         int stride) {
+  uint t1, t2, t3;
+  float rtv = 0;
+  double d1, d2, d3;
+
+  if (srcw < 1 || srch < 1) {
+    return (0.0);
+  }
+  t1 = 0;
+  t2 = 0;
+  t3 = 0;
+
+#ifdef __ARM_ARCH_7A__
+  int nn = srcw & 0xfffffff8;
+  int remain = srcw - nn;
+  uint32x4_t mul_acc_1_x = vdupq_n_u32(0);
+  uint32x4_t mul_acc_2_x = vdupq_n_u32(0);
+  uint32x4_t mul_acc_3_x = vdupq_n_u32(0);
+  uint16x8_t mul_ret1 = vdupq_n_u16(0);
+  uint16x8_t mul_ret2 = vdupq_n_u16(0);
+  uint16x8_t mul_ret3 = vdupq_n_u16(0);
+
+  for (int i = 0; i < srch; i++) {
+    for (int j = 0; j < nn; j += 8) {
+      int pixel = i * stride + j;
+      uint8x8_t vec_1 = vld1_u8(psrc1 + pixel);
+      uint8x8_t vec_2 = vld1_u8(psrc2 + pixel);
+
+      mul_ret1 = vmull_u8(vec_1, vec_2);
+      mul_ret2 = vmull_u8(vec_1, vec_1);
+      mul_ret3 = vmull_u8(vec_2, vec_2);
+
+      mul_acc_1_x =
+          vaddq_u32(vaddl_u16(vget_low_u16(mul_ret1), vget_high_u16(mul_ret1)), mul_acc_1_x);
+      mul_acc_2_x =
+          vaddq_u32(vaddl_u16(vget_low_u16(mul_ret2), vget_high_u16(mul_ret2)), mul_acc_2_x);
+      mul_acc_3_x =
+          vaddq_u32(vaddl_u16(vget_low_u16(mul_ret3), vget_high_u16(mul_ret3)), mul_acc_3_x);
+    }
+
+    if (remain > 0) {
+      int shift = i * stride + nn;
+      for (int x = 0; x < remain; x++) {
+        int pixel = shift + x;
+        unsigned char src1 = psrc1[pixel];
+        unsigned char src2 = psrc2[pixel];
+        t1 += (src1 * src2);
+        t2 += (src1 * src1);
+        t3 += (src2 * src2);
+      }
+    }
+  }
+
+  t1 += sum_uint32x4(mul_acc_1_x);
+  t2 += sum_uint32x4(mul_acc_2_x);
+  t3 += sum_uint32x4(mul_acc_3_x);
+  if (t2 < 1 || t3 < 1) {
+    return (0.0);
+  }
+
+#else
+
+  for (int i = 0; i < srch; i++) {
+    for (int j = 0; j < srcw; j++) {
+      int pixel = i * stride + j;
+      unsigned char src1 = psrc1[pixel];
+      unsigned char src2 = psrc2[pixel];
+      t1 += (src1 * src2);
+      t2 += (src1 * src1);
+      t3 += (src2 * src2);
+    }
+  }
+  if (t2 < 1 || t3 < 1) {
+    return (0.0);
+  }
+
+#endif
+  d1 = (double)(t1);
+  d2 = sqrt((double)t2) * sqrt((double)t3);
+  d3 = d1 / (d2 + 1);
+  rtv = (float)(d3);
+
+  return rtv;
+}
+
 CVI_S32 CVI_IVE_NCC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_MEM_INFO_S *pstDst, bool bInstant) {
   if (pstSrc1->enType != IVE_IMAGE_TYPE_U8C1) {
@@ -3068,34 +3163,19 @@ CVI_S32 CVI_IVE_NCC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     LOGE("Input 2 only accepts U8C1 image format.\n");
     return CVI_FAILURE;
   }
-
-  CVI_IVE_BufRequest(pIveHandle, pstSrc1);
-  CVI_IVE_BufRequest(pIveHandle, pstSrc2);
-
-  int step_row = pstSrc1->u16Height;
-  int step_col = pstSrc1->u16Width;
-
-  float xx = 0, yy = 0, xy = 0;
-  for (auto row = 0; row < step_row; row++) {
-    int offset_templ = row * pstSrc1->u16Stride[0];
-    int offset_match = row * pstSrc2->u16Stride[0];
-    for (auto col = 0; col < step_col; col++) {
-      CVI_U8 *pval_templ = pstSrc1->pu8VirAddr[0] + offset_templ + col;
-      CVI_U8 *pval_match = pstSrc2->pu8VirAddr[0] + offset_match + col;
-      int val1 = (int)(*pval_templ);
-      int val2 = (int)(*pval_match);
-      xx += (1.0 * val1 * val1);
-      yy += (1.0 * val2 * val2);
-      xy += (1.0 * val1 * val2);
-    }
+  if (bInstant) {
+    CVI_IVE_BufRequest(pIveHandle, pstSrc1);
+    CVI_IVE_BufRequest(pIveHandle, pstSrc2);
   }
-  float dd = sqrt((xx * yy)) + 1;
-  float result = xy / dd;
   float *ptr = (float *)pstDst->pu8VirAddr;
-  ptr[0] = result;
-
-  CVI_IVE_BufFlush(pIveHandle, pstSrc1);
-  CVI_IVE_BufFlush(pIveHandle, pstSrc2);
+  float rt =
+      cal_norm_cc((uint8_t *)pstSrc1->pu8VirAddr[0], (uint8_t *)pstSrc2->pu8VirAddr[0],
+                  (int)pstSrc1->u16Width, (int)pstSrc1->u16Height, (int)pstSrc1->u16Stride[0]);
+  ptr[0] = rt;
+  if (bInstant) {
+    CVI_IVE_BufFlush(pIveHandle, pstSrc1);
+    CVI_IVE_BufFlush(pIveHandle, pstSrc2);
+  }
 
   return CVI_SUCCESS;
 }
