@@ -41,6 +41,46 @@ const std::string g_ive_version = std::string(
     std::regex_replace(std::string(__DATE__), std::regex{" "}, std::string{"-"}) + "-" + __TIME__);
 #define IVE_VERSION g_ive_version.c_str()
 
+static CviImg *ExtractYuvPlane(IVE_IMAGE_S *src, int plane) {
+  CVIIMGTYPE img_type = CVIIMGTYPE::CVI_GRAY;
+  if (src->enType != IVE_IMAGE_TYPE_YUV420P) {
+    return nullptr;
+  }
+  cvk_fmt_t fmt = CVK_FMT_U8;
+  std::vector<uint32_t> heights;
+  uint16_t new_height = src->u16Height;
+  uint16_t new_width = src->u16Width;
+  if (plane > 0) {
+    new_height = new_height / 2;
+    new_width = new_width / 2;
+  }
+
+  heights.push_back(new_height);
+
+  std::vector<uint32_t> strides, u32_length;
+  strides.push_back(src->u16Stride[plane]);
+  CviImg *orig_cpp = reinterpret_cast<CviImg *>(src->tpu_block);
+
+  if (Is4096Workaound(orig_cpp->GetImgType())) {
+    LOGD("to extract uv plane:%d,size:%d,size1:%d,stride:%d,newheight:%d\n", (int)plane,
+         orig_cpp->GetImgCOffsets()[plane + 1] - orig_cpp->GetImgCOffsets()[plane],
+         src->u16Stride[plane] * new_height, (int)src->u16Stride[plane], (int)new_height);
+    u32_length.push_back(orig_cpp->GetImgCOffsets()[plane + 1] - orig_cpp->GetImgCOffsets()[plane]);
+  } else {
+    u32_length.push_back(src->u16Stride[plane] * new_height);
+  }
+
+  auto *cpp_img = new CviImg(new_height, new_width, strides, heights, u32_length,
+                             src->pu8VirAddr[plane], src->u64PhyAddr[plane], img_type, fmt);
+
+  if (!cpp_img->IsInit()) {
+    LOGE("Failed to init IVE_IMAGE_S.\n");
+    delete cpp_img;
+    return nullptr;
+  }
+  return cpp_img;
+}
+
 IVE_HANDLE CVI_IVE_CreateHandle() {
   IVE_HANDLE_CTX *handle_ctx = new IVE_HANDLE_CTX;
   if (createHandle(&handle_ctx->rt_handle, &handle_ctx->cvk_ctx) != CVI_SUCCESS) {
@@ -373,6 +413,7 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   auto *src_img = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   auto *cpp_img = new CviImg(handle_ctx->rt_handle, *src_img, u16X1, u16Y1, u16X2, u16Y2);
   if (cpp_img->GetVAddr() == nullptr) {
+    LOGE("generate sub image failed\n");
     delete cpp_img;
     return CVI_FAILURE;
   }
@@ -383,13 +424,20 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   pstDst->u16Height = cpp_img->m_tg.shape.h;
   pstDst->u16Reserved = pstSrc->u16Reserved;
 
-  for (size_t i = 0; i < cpp_img->m_tg.shape.c; i++) {
+  size_t num_plane = cpp_img->GetImgCOffsets().size() - 1;
+  LOGD("channel:%d,numplane:%d\n", (int)cpp_img->m_tg.shape.c, (int)num_plane);
+  for (size_t i = 0; i < num_plane; i++) {
     pstDst->pu8VirAddr[i] = cpp_img->GetVAddr() + cpp_img->GetImgCOffsets()[i];
     pstDst->u64PhyAddr[i] = cpp_img->GetPAddr() + cpp_img->GetImgCOffsets()[i];
     pstDst->u16Stride[i] = cpp_img->GetImgStrides()[i];
+    LOGD("updatesubimg ,plane:%d,coffset:%d\n", (int)i, (int)cpp_img->GetImgCOffsets()[i]);
   }
 
-  for (size_t i = cpp_img->m_tg.shape.c; i < 3; i++) {
+  LOGD("subimg planeoffset:%d,%d,%d\n", (int)(pstDst->u64PhyAddr[0] - pstSrc->u64PhyAddr[0]),
+       (int)(pstDst->u64PhyAddr[1] - pstSrc->u64PhyAddr[1]),
+       (int)(pstDst->u64PhyAddr[2] - pstSrc->u64PhyAddr[2]));
+
+  for (size_t i = num_plane; i < 3; i++) {
     pstDst->pu8VirAddr[i] = NULL;
     pstDst->u64PhyAddr[i] = 0;
     pstDst->u16Stride[i] = 0;
@@ -799,7 +847,7 @@ CVI_S32 CVI_SYS_FreeM(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo) {
 
 CVI_S32 CVI_SYS_FreeI(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
   if (pstImg->tpu_block == NULL) {
-    LOGI("Image tpu block is freed.\n");
+    LOGD("Image tpu block is freed.\n");
     return CVI_SUCCESS;
   }
   auto *cpp_img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
@@ -848,7 +896,7 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
     CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
     // std::vector<CviImg*> inputs = {cpp_src};
     // std::vector<CviImg*> outputs = {cpp_dst};
-
+    LOGD("use IVE_DMA_MODE_DIRECT_COPY\n");
     ret = IveTPUCopyDirect::run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, cpp_src, cpp_dst);
 #endif
   } else if (pstDmaCtrl->enMode == IVE_DMA_MODE_INTERVAL_COPY) {
@@ -1030,6 +1078,18 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
 CVI_S32 CVI_IVE_ConstFill(IVE_HANDLE pIveHandle, const CVI_FLOAT value, IVE_DST_IMAGE_S *pstDst,
                           bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
+  if (IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_YUV420P)) {
+    int ret = CVI_SUCCESS;
+    IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+    for (int i = 0; i < 3; i++) {
+      CviImg *planei = ExtractYuvPlane(pstDst, i);
+      std::vector<CviImg *> outputs = {planei};
+      ret |= handle_ctx->t_h.t_const_fill.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, value,
+                                              outputs);
+      delete planei;
+    }
+    return ret;
+  }
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
                         IVE_IMAGE_TYPE_BF16C1)) {
     return CVI_FAILURE;
@@ -1155,7 +1215,13 @@ static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
   std::vector<uint32_t> heights;
   uint16_t new_height;
   if (src->enType == IVE_IMAGE_TYPE_YUV420P) {
-    new_height = src->u16Height + src->u16Height / 2;
+    int halfh = src->u16Height / 2;
+    int u_plane_size = src->u16Stride[1] * halfh;
+    int v_plane_size = src->u16Stride[2] * halfh;
+    int added_h = (u_plane_size + v_plane_size) / src->u16Stride[0];
+    LOGD("ViewAsU8C1 stride0:%d,%d,%d,addedh:%d\n", (int)src->u16Stride[0], (int)src->u16Stride[1],
+         (int)src->u16Stride[2], added_h);
+    new_height = src->u16Height + added_h;
   } else if (src->enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
     new_height = src->u16Height * 3;
   } else {
@@ -1622,13 +1688,18 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   return ret;
 }
 
-CVI_S32 CVI_IVE_DOWNSAMPLE(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
-                           IVE_DOWNSAMPLE_CTRL_S *pstdsCtrl, bool bInstant) {
-  ScopedTrace t(__PRETTY_FUNCTION__);
-  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
+static void release_cviimage(std::vector<CviImg *> &imgs) {
+  for (auto pimg : imgs) {
+    delete pimg;
+  }
+}
+CVI_S32 CVI_IVE_DOWNSAMPLE_420P(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
+                                IVE_DST_IMAGE_S *pstDst, IVE_DOWNSAMPLE_CTRL_S *pstdsCtrl,
+                                bool bInstant) {
+  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_YUV420P)) {
     return CVI_FAILURE;
   }
-  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
+  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_YUV420P)) {
     return CVI_FAILURE;
   }
 
@@ -1647,17 +1718,66 @@ CVI_S32 CVI_IVE_DOWNSAMPLE(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_D
   }
 
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
+  std::vector<CviImg *> inputs = {ExtractYuvPlane(pstSrc, 0)};
+  std::vector<CviImg *> outputs = {ExtractYuvPlane(pstDst, 0)};
+
+  int ret = CVI_FAILURE;
+  handle_ctx->t_h.t_downsample.setCellSize(u32CellSize, inputs[0]->m_tg.shape.c);
+  handle_ctx->t_h.t_downsample.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+  handle_ctx->t_h.t_downsample.set_force_alignment(true);
+  ret = handle_ctx->t_h.t_downsample.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
+                                         outputs, true);
+  std::vector<CviImg *> inputs1 = {ExtractYuvPlane(pstSrc, 1), ExtractYuvPlane(pstSrc, 2)};
+  std::vector<CviImg *> outputs1 = {ExtractYuvPlane(pstDst, 1), ExtractYuvPlane(pstDst, 2)};
+
+  ret = handle_ctx->t_h.t_downsample.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs1,
+                                         outputs1, true);
+
+  release_cviimage(inputs);
+  release_cviimage(outputs);
+  release_cviimage(inputs1);
+  release_cviimage(outputs1);
+
+  return ret;
+}
+
+CVI_S32 CVI_IVE_DOWNSAMPLE(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                           IVE_DOWNSAMPLE_CTRL_S *pstdsCtrl, bool bInstant) {
+  ScopedTrace t(__PRETTY_FUNCTION__);
+  if ((pstSrc->enType == IVE_IMAGE_TYPE_YUV420P) && (pstDst->enType == IVE_IMAGE_TYPE_YUV420P)) {
+    return CVI_IVE_DOWNSAMPLE_420P(pIveHandle, pstSrc, pstDst, pstdsCtrl, bInstant);
+  }
+
+  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
+    return CVI_FAILURE;
+  }
+  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
+    return CVI_FAILURE;
+  }
+  CVI_U32 u32CellSize = pstdsCtrl->u8KnerlSize;
+  if (pstDst->u16Width != (pstSrc->u16Width / u32CellSize) ||
+      (pstSrc->u16Width % u32CellSize != 0)) {
+    LOGE("Dst downsample width not match! Src: %u, Dst: %u. Cell size :%u\n", pstSrc->u16Width,
+         pstDst->u16Width, u32CellSize);
+    return CVI_FAILURE;
+  }
+  if (pstDst->u16Height != (pstSrc->u16Height / u32CellSize) ||
+      (pstSrc->u16Height % u32CellSize != 0)) {
+    LOGE("Dst downsample height not match! Src: %u, Dst: %u. Cell size :%u\n", pstSrc->u16Height,
+         pstDst->u16Height, u32CellSize);
+    return CVI_FAILURE;
+  }
+  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
   std::vector<CviImg *> inputs = {cpp_src};
   std::vector<CviImg *> outputs = {cpp_dst};
+
   int ret = CVI_FAILURE;
-  if (cpp_src->m_tg.fmt == CVK_FMT_U8 && cpp_dst->m_tg.fmt == CVK_FMT_U8) {
-    handle_ctx->t_h.t_downsample.setCellSize(u32CellSize, cpp_src->m_tg.shape.c);
-    handle_ctx->t_h.t_downsample.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-    ret = handle_ctx->t_h.t_downsample.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                           outputs, true);
-  }
+  handle_ctx->t_h.t_downsample.setCellSize(u32CellSize, cpp_src->m_tg.shape.c);
+  handle_ctx->t_h.t_downsample.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
+  ret = handle_ctx->t_h.t_downsample.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
+                                         outputs, true);
   return ret;
 }
 
@@ -3731,6 +3851,18 @@ CVI_S32 CVI_IVE_CMP_S8_BINARY(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
 
   handle_ctx->t_h.t_cmp_sat.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   ret = handle_ctx->t_h.t_cmp_sat.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+  return ret;
+}
+
+CVI_S32 CVI_IVE_Zero(IVE_HANDLE pIveHandle, IVE_DST_IMAGE_S *pstDst) {
+  int ret = CVI_IVE_BufRequest(pIveHandle, pstDst);
+  CviImg *p_img = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+  std::vector<uint32_t> img_coffsets = p_img->GetImgCOffsets();
+  for (size_t i = 0; i < img_coffsets.size() - 1; i++) {
+    uint32_t plane_size = img_coffsets[i + 1] - img_coffsets[i];
+    memset(pstDst->pu8VirAddr[i], 0, plane_size);
+  }
+  ret |= CVI_IVE_BufFlush(pIveHandle, pstDst);
   return ret;
 }
 #endif

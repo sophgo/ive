@@ -35,6 +35,8 @@ void IveTPUDownSample::GetSliceUnitProperty(const uint32_t length, const uint32_
 
   unit->turn = ((int64_t)length - unit->slice) / unit->skip + 1;
   int64_t result = (int64_t)length - (int64_t)((unit->turn) * unit->slice);
+  LOGD("GetSliceUnitProperty,length:%d,slice:%d,ksize:%d,dstride:%d,res:%d\n", (int)length,
+       (int)slice, (int)kernel_sz, (int)default_stride, (int)result);
   if (result >= kernel_sz) {
     // x + (x - 1) * default_stride
     int res_left = result - kernel_sz;

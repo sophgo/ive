@@ -44,10 +44,10 @@ static int getFmtSize(cvk_fmt_t fmt) {
  *
  */
 struct sliceUnit {
-  uint32_t slice;
-  uint32_t skip;
-  uint32_t turn;
-  uint32_t left;
+  uint32_t slice;  // rounded length
+  uint32_t skip;   // like stride
+  uint32_t turn;   // rounded loop
+  uint32_t left;   // left
   uint32_t c_multiplier = 1;
 };
 
@@ -401,6 +401,8 @@ class CviImg {
   }
   bool IsNullMem() { return m_rtmem == NULL; }
   int GetMagicNum() { return m_magic_num; }
+
+  const uint64_t GetAddrOffset(int plane, uint64_t cur_addr);
   cvk_tg_t m_tg;
 
  private:

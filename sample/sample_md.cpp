@@ -519,7 +519,6 @@ int main(int argc, char **argv) {
   // for align
   uint32_t im_width = background_img.u16Width;
   uint32_t im_height = background_img.u16Height;
-  Padding m_padding;
   m_padding.left = getAlignedWidth(1);
   m_padding.right = 1;
   m_padding.top = 1;

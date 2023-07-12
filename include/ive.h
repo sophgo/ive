@@ -737,6 +737,15 @@ CVI_S32 CVI_IVE_FilterAndCSC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
 CVI_S32 CVI_IVE_CMP_S8_BINARY(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
                               IVE_SRC_IMAGE_S *pstSrc2, IVE_DST_IMAGE_S *pstDst);
 
+/**
+ * @brief set image value to zero
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstDst Output result. U8C1 type
+ * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Zero(IVE_HANDLE pIveHandle, IVE_DST_IMAGE_S *pstDst);
+
 #ifdef __cplusplus
 }
 #endif

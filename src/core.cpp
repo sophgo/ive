@@ -369,7 +369,11 @@ int IveCore::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
   }
   int ret = CVI_SUCCESS;
   if (legacy_mode) {
-    ret = runSingleSizeKernel(rt_handle, cvk_ctx, input, output);
+    if (m_force_addr_align_ && input.size() > 1) {
+      ret = runSingleSizeKernelMultiBatch(rt_handle, cvk_ctx, input, output);
+    } else {
+      ret = runSingleSizeKernel(rt_handle, cvk_ctx, input, output);
+    }
   } else {
     bool use_ext = false;
     if (input.size() > 1 && output.size() > 1) {
@@ -801,6 +805,273 @@ int IveCore::runSingleSizeKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx
   return ret;
 }
 
+int IveCore::runSingleSizeKernelMultiBatch(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                                           const std::vector<CviImg *> &input,
+                                           std::vector<CviImg *> &output, bool enable_min_max) {
+  // FIXME: Support later
+  if (m_slice_info.ping_pong_size != 1) {
+    LOGD("Currently runSingleSizeKernel does not support ping pong.\n");
+    m_slice_info.ping_pong_size = 1;
+  }
+  uint32_t batch = (uint32_t)input.size();
+  uint32_t channel = 1;
+  uint32_t height = input[0]->m_tg.shape.h;
+  uint32_t width = input[0]->m_tg.shape.w;
+
+  // Insert extra tl
+  uint32_t nums_of_tl = m_slice_info.nums_of_tl;
+  uint32_t fix_lmem_size = m_slice_info.fix_lmem_size;
+
+  // FIXME: Move to constructor if possible.
+  cvk_tl_shape_t tl_table_s;
+  uint64_t result = cvm_lut_tbl_bytesize(cvk_ctx, &tl_table_s, CVK_FMT_U8);  // cv180:512
+  m_table_per_channel_size = result / m_chip_info.npu_num;                   // cv180:256
+  LOGD("localmemsize:%d,npu:%d,numbernpu:%d\n", (int)result, (int)m_chip_info.npu_num,
+       (int)m_table_per_channel_size);
+  SliceRes slice_res;
+  int ret = getSlice(nums_of_tl, m_slice_info.nums_of_table, fix_lmem_size, 1, channel, height,
+                     width, m_table_per_channel_size, m_kernel_info, m_chip_info.npu_num,
+                     &slice_res.h, &slice_res.w, false);
+  if (ret != CVI_SUCCESS) {
+    return CVI_FAILURE;
+  }
+
+  SliceRes in_slice_res, out_slice_res;
+  sliceSetup(slice_res, &in_slice_res, &out_slice_res);
+  if (in_slice_res.h.turn != out_slice_res.h.turn) {
+    LOGE("Input/ output h slice turn are not the same %u, %u.\n", in_slice_res.h.turn,
+         out_slice_res.h.turn);
+  }
+  if (in_slice_res.w.turn != out_slice_res.w.turn) {
+    LOGE("Input/ output w slice turn are not the same %u, %u.\n", in_slice_res.w.turn,
+         out_slice_res.w.turn);
+  }
+
+  // Setup slice input/ output shapes and left shapes
+  std::vector<cvk_tg_shape_t> s_in_vec, s_out_vec;
+  for (size_t k = 0; k < 1; k++) {
+    s_in_vec.push_back({1, channel, in_slice_res.h.slice, in_slice_res.w.slice});
+  }
+  for (size_t k = 0; k < 1; k++) {
+    s_out_vec.push_back({1, channel, out_slice_res.h.slice, out_slice_res.w.slice});
+  }
+  LOGD("in hslice:%d,in_w_slice:%d,out_hslice:%d,out_w_slice:%d\n", (int)in_slice_res.h.slice,
+       (int)in_slice_res.w.slice, (int)out_slice_res.h.slice, out_slice_res.w.slice);
+  std::vector<cvk_tg_shape_t> s_in_left_vec, s_out_left_vec;
+  for (size_t k = 0; k < 1; k++) {
+    s_in_left_vec.push_back({1, channel, in_slice_res.h.left, in_slice_res.w.left});
+  }
+  for (size_t k = 0; k < 1; k++) {
+    s_out_left_vec.push_back({1, channel, out_slice_res.h.left, out_slice_res.w.left});
+  }
+
+  // allocate tl shape and get input/ output indices.
+  std::vector<uint32_t> tl_in_idx, tl_out_idx;
+  runSetup(rt_handle, cvk_ctx, s_in_vec, s_out_vec, &tl_in_idx, &tl_out_idx, false);
+  if (m_allocate_failed_) {
+    LOGE("allocate ive local mem failed\n");
+    freeTLMems(cvk_ctx);
+    return CVI_FAILURE;
+  }
+  // Dummy check, can be turned off in official release
+  if (tl_in_idx.size() != input.size()) {
+    LOGW("runSingleSizeKernelMultiBatch Input tl size not match input image num %u, %u\n",
+         (uint32_t)tl_in_idx.size(), (uint32_t)input.size());
+  }
+  if (tl_out_idx.size() != output.size()) {
+    LOGW("runSingleSizeKernelMultiBatch Output tl size not match input image num %u, %u\n",
+         (uint32_t)tl_out_idx.size(), (uint32_t)output.size());
+  }
+  // Dummy check end
+  // Category tl shapes
+  std::vector<std::pair<int, cvk_tl_t *>> tl_in_shape_lmem_vec, tl_out_shape_lmem_vec;
+  categoryIOTLShape(m_tl_vec, s_in_vec, s_out_vec, &tl_in_shape_lmem_vec, &tl_out_shape_lmem_vec);
+
+  // Find and create input/ output fmt size pair.
+  TLInfo tl_in_info, tl_out_info;
+  getTLInfo(m_tl_vec, tl_in_idx, tl_out_idx, &tl_in_info, &tl_out_info);
+
+  // Get device memory start offset
+  BMAddrInfo bm_src_info, bm_dest_info;
+  getBMAddrInfo(input, output, m_kernel_info.pad[0], m_kernel_info.pad[2], &bm_src_info,
+                &bm_dest_info);
+
+  // Create tg block
+  cvk_tg_t tg_in;
+  tg_in.base_reg_index = 0;
+  cvk_tg_t tg_out;
+  tg_out.base_reg_index = 0;
+
+  std::vector<uint64_t> bm_src_addr_bk = bm_src_info.addr_vec;
+  std::vector<uint64_t> bm_dst_addr_bk = bm_dest_info.addr_vec;
+
+  std::vector<uint64_t> processed_src_addr_bk = bm_src_info.addr_vec;
+  std::vector<uint64_t> processed_dest_addr_bk = bm_dest_info.addr_vec;
+  // Main for loop
+  for (uint32_t b = 0; b < batch; b++) {
+    LOGD("process yuv batch:%d,src_addr:%lx,dst_addr:%lx\n", (int)b, bm_src_addr_bk[b],
+         bm_dst_addr_bk[b]);
+    bm_src_info.addr_vec = {bm_src_addr_bk[b]};
+    bm_dest_info.addr_vec = {bm_dst_addr_bk[b]};
+    for (uint32_t i = 0; i < slice_res.h.turn; i++) {
+      // Re-assign head address to w.
+      std::vector<uint64_t> bm_src_addr_w = bm_src_info.addr_vec;
+      std::vector<uint64_t> bm_dest_addr_w = bm_dest_info.addr_vec;
+      // Change H TL size to fit left shape in last turn
+      for (size_t k = 0; k < tl_in_shape_lmem_vec.size(); k++) {
+        int &index = tl_in_shape_lmem_vec[k].first;
+        auto *lmem = tl_in_shape_lmem_vec[k].second;
+        if (s_in_left_vec[index].h != 0) {
+          if (i == 0) {
+            lmem->shape.h = s_in_vec[index].h;
+            lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
+          } else if (i == in_slice_res.h.turn - 1) {
+            lmem->shape.h = s_in_left_vec[index].h;
+            lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
+          }
+        }
+      }
+      for (size_t k = 0; k < tl_out_shape_lmem_vec.size(); k++) {
+        int &index = tl_out_shape_lmem_vec[k].first;
+        auto *lmem = tl_out_shape_lmem_vec[k].second;
+        if (s_out_left_vec[index].h != 0) {
+          if (i == 0) {
+            lmem->shape.h = s_out_vec[index].h;
+            lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
+          } else if (i == out_slice_res.h.turn - 1) {
+            lmem->shape.h = s_out_left_vec[index].h;
+            lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
+          }
+        }
+      }
+
+      for (uint32_t j = 0; j < slice_res.w.turn; j++) {
+        // Change W TL size to fit left shape in last turn
+        for (size_t k = 0; k < tl_in_shape_lmem_vec.size(); k++) {
+          int &index = tl_in_shape_lmem_vec[k].first;
+          auto *lmem = tl_in_shape_lmem_vec[k].second;
+          if (s_in_left_vec[index].w != 0) {
+            if (j == 0) {
+              lmem->shape.w = s_in_vec[index].w;
+              lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
+            } else if (j == in_slice_res.w.turn - 1) {
+              lmem->shape.w = s_in_left_vec[index].w;
+              lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
+            }
+          }
+        }
+        for (size_t k = 0; k < tl_out_shape_lmem_vec.size(); k++) {
+          int &index = tl_out_shape_lmem_vec[k].first;
+          auto *lmem = tl_out_shape_lmem_vec[k].second;
+          if (s_out_left_vec[index].w != 0) {
+            if (j == 0) {
+              lmem->shape.w = s_out_vec[index].w;
+              lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
+            } else if (j == out_slice_res.w.turn - 1) {
+              lmem->shape.w = s_out_left_vec[index].w;
+              lmem->stride = cvk_ctx->ops->tl_default_stride(cvk_ctx, lmem->shape, lmem->fmt, 1);
+            }
+          }
+        }
+
+        // tg2tl
+        for (size_t k = 0; k < tl_in_info.lmem_vec.size(); k++) {
+          tg_in.start_address = bm_src_addr_w[k];
+          tg_in.shape.n = tl_in_info.lmem_vec[k]->shape.n;
+          tg_in.shape.c = tl_in_info.lmem_vec[k]->shape.c;
+          tg_in.shape.h = tl_in_info.lmem_vec[k]->shape.h;
+          tg_in.shape.w = tl_in_info.lmem_vec[k]->shape.w;
+          tg_in.fmt = bm_src_info.fns_vec[k].getFmt();
+          tg_in.stride = input[k]->m_tg.stride;
+          cvk_tdma_g2l_tensor_copy_param_t p_copy_in;
+          memset(&p_copy_in, 0, sizeof(cvk_tdma_g2l_tensor_copy_param_t));
+          p_copy_in.src = &tg_in;
+          p_copy_in.dst = tl_in_info.lmem_vec[k];
+          cvk_ctx->ops->tdma_g2l_bf16_tensor_copy(cvk_ctx, &p_copy_in);
+
+          // Change src head addr
+          bm_src_addr_w[k] += 1 * in_slice_res.w.skip * bm_src_info.fns_vec[k].getSize();
+        }
+
+        operation(rt_handle, cvk_ctx, 0);
+
+        // tl2tg
+        for (size_t k = 0; k < tl_out_info.lmem_vec.size(); k++) {
+          tg_out.start_address = bm_dest_addr_w[k];
+          tg_out.fmt = bm_dest_info.fns_vec[k].getFmt();
+          tg_out.shape.n = tl_out_info.lmem_vec[k]->shape.n;
+          tg_out.shape.c = tl_out_info.lmem_vec[k]->shape.c;
+          tg_out.shape.h =
+              tl_out_info.lmem_vec[k]->shape.h - (m_kernel_info.pad[2] + m_kernel_info.pad[3]);
+          tg_out.shape.w =
+              tl_out_info.lmem_vec[k]->shape.w - (m_kernel_info.pad[0] + m_kernel_info.pad[1]);
+          tg_out.stride = output[k]->m_tg.stride;
+          cvk_tl_t out_shape;
+          auto &tl_out = tl_out_info.lmem_vec;
+          // printf("st addr%d, tg st addr %lu\n", tl_out[k]->start_address, bm_dest_addr_w[k]);
+          out_shape.start_address = tl_out[k]->start_address +
+                                    (1 * tl_out[k]->stride.h * m_kernel_info.pad[2]) +
+                                    (m_kernel_info.pad[0] * tl_out_info.fns_vec[k].getSize());
+          out_shape.fmt = tl_out[k]->fmt;
+          out_shape.cmprs_fmt = tl_out[k]->cmprs_fmt;
+          out_shape.shape = tl_out[k]->shape;
+          out_shape.shape.h = tg_out.shape.h;
+          out_shape.shape.w = tg_out.shape.w;
+          out_shape.stride = tl_out[k]->stride;
+          cvk_tdma_l2g_tensor_copy_param_t p_copy_out;
+          memset(&p_copy_out, 0, sizeof(cvk_tdma_l2g_tensor_copy_param_t));
+          p_copy_out.src = &out_shape;
+          p_copy_out.dst = &tg_out;
+          cvk_ctx->ops->tdma_l2g_bf16_tensor_copy(cvk_ctx, &p_copy_out);
+
+          // Change dest head addr
+          bm_dest_addr_w[k] += 1 * out_slice_res.w.skip * bm_dest_info.fns_vec[k].getSize();
+        }
+      }
+      // Change src/ dest head addr
+      for (size_t k = 0; k < bm_src_info.addr_vec.size(); k++) {
+        uint32_t jump_val = 0;
+        if (i == in_slice_res.h.turn - 1) {
+          jump_val = in_slice_res.h.left == 0 ? in_slice_res.h.slice : in_slice_res.h.left;
+        } else {
+          jump_val = in_slice_res.h.skip;
+        }
+        bm_src_info.addr_vec[k] += 1 * input[k]->m_tg.stride.h * jump_val;
+      }
+      for (size_t k = 0; k < bm_dest_info.addr_vec.size(); k++) {
+        uint32_t jump_val = 0;
+        if (i == out_slice_res.h.turn - 1) {
+          jump_val = out_slice_res.h.left == 0 ? out_slice_res.h.slice : out_slice_res.h.left;
+        } else {
+          jump_val = out_slice_res.h.skip;
+        }
+        bm_dest_info.addr_vec[k] += 1 * output[k]->m_tg.stride.h * jump_val;
+      }
+    }
+    processed_src_addr_bk[b] = bm_src_info.addr_vec[0];
+    processed_dest_addr_bk[b] = bm_dest_info.addr_vec[0];
+  }
+  // after batch process
+  LOGD("Slice info:\n");
+  LOGD("{ h_slice, h_turn, h_skip, h_left} = { %d, %d, %d, %d}\n", in_slice_res.h.slice,
+       in_slice_res.h.turn, in_slice_res.h.skip, in_slice_res.h.left);
+  LOGD("{ w_slice, w_turn, w_skip, w_left} = { %d, %d, %d, %d}\n", in_slice_res.w.slice,
+       in_slice_res.w.turn, in_slice_res.w.skip, in_slice_res.w.left);
+
+  beforeSubmit(rt_handle, cvk_ctx, input, output);
+  bm_src_info.addr_vec = processed_src_addr_bk;
+  bm_dest_info.addr_vec = processed_dest_addr_bk;
+
+  ret |= checkIsBufferOverflow(input, output, bm_src_info, bm_dest_info, m_kernel_info.pad[0],
+                               m_kernel_info.pad[2], false, true);
+  if (ret == CVI_SUCCESS) {
+    CVI_RT_Submit(cvk_ctx);
+  }
+
+  freeTLMems(cvk_ctx);
+  postProcess(rt_handle);
+  return ret;
+}
 int IveCore::runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                                     const std::vector<CviImg *> &input,
                                     std::vector<CviImg *> &output, bool enable_min_max) {
