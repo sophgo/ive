@@ -41,6 +41,7 @@ const std::string g_ive_version = std::string(
     std::regex_replace(std::string(__DATE__), std::regex{" "}, std::string{"-"}) + "-" + __TIME__);
 #define IVE_VERSION g_ive_version.c_str()
 
+#ifndef SIMPLY_LIB
 static CviImg *ExtractYuvPlane(IVE_IMAGE_S *src, int plane) {
   CVIIMGTYPE img_type = CVIIMGTYPE::CVI_GRAY;
   if (src->enType != IVE_IMAGE_TYPE_YUV420P) {
@@ -80,6 +81,7 @@ static CviImg *ExtractYuvPlane(IVE_IMAGE_S *src, int plane) {
   }
   return cpp_img;
 }
+#endif
 
 IVE_HANDLE CVI_IVE_CreateHandle() {
   IVE_HANDLE_CTX *handle_ctx = new IVE_HANDLE_CTX;
@@ -590,6 +592,7 @@ CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S 
   return CVI_SUCCESS;
 }
 
+#ifndef SIMPLY_LIB
 IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAGE_TYPE_E enType,
                                CVI_BOOL invertPackage) {
   int desiredNChannels = -1;
@@ -838,6 +841,7 @@ CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAG
   }
   return CVI_SUCCESS;
 }
+#endif
 
 CVI_S32 CVI_SYS_FreeM(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo) {
   delete[] pstMemInfo->pu8VirAddr;
@@ -913,6 +917,7 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
   return ret;
 }
 
+#ifndef SIMPLY_LIB
 CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                                  IVE_DST_IMAGE_S *pstDst, IVE_ITC_CRTL_S *pstItcCtrl,
                                  bool bInstant) {
@@ -1208,6 +1213,7 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   }
   return ret;
 }
+#endif
 
 static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
   CVIIMGTYPE img_type = CVIIMGTYPE::CVI_GRAY;
@@ -1251,6 +1257,7 @@ static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
   return cpp_img;
 }
 
+#ifndef SIMPLY_LIB
 CVI_S32 CVI_IVE_Blend(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                       IVE_DST_IMAGE_S *pstDst, IVE_BLEND_CTRL_S *pstBlendCtrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
@@ -1780,7 +1787,7 @@ CVI_S32 CVI_IVE_DOWNSAMPLE(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_D
                                          outputs, true);
   return ret;
 }
-
+#endif
 CVI_S32 CVI_IVE_Dilate(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_DILATE_CTRL_S *pstDilateCtrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
@@ -1850,7 +1857,7 @@ CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   kernel.img.Free(handle_ctx->rt_handle);
   return ret;
 }
-
+#ifndef SIMPLY_LIB
 CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                        IVE_FILTER_CTRL_S *pstFltCtrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
@@ -2703,7 +2710,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   }
   return ret;
 }
-
+#endif
 CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
                     IVE_DST_IMAGE_S *pstDst, IVE_SUB_CTRL_S *ctrl, bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
@@ -2808,7 +2815,7 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   }
   return ret;
 }
-
+#ifndef SIMPLY_LIB
 CVI_S32 CVI_IVE_Thresh_S16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
                            IVE_THRESH_S16_CTRL_S *pstThrS16Ctrl, bool bInstant) {
 #ifndef CV180X
@@ -3865,4 +3872,5 @@ CVI_S32 CVI_IVE_Zero(IVE_HANDLE pIveHandle, IVE_DST_IMAGE_S *pstDst) {
   ret |= CVI_IVE_BufFlush(pIveHandle, pstDst);
   return ret;
 }
+#endif
 #endif

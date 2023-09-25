@@ -13,6 +13,23 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/middleware/include
 )
 
+if(DEFINED SIMPLY_LIB)
+set(SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/core.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ive.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/kernel_generator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/table_manager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu_data.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_copy_direct.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_copy_interval.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_filter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_morph.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sub_abs.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sub.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_threshold_high_low.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_threshold_slope.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_threshold.cpp)
+else()
 set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/core.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ive.cpp
@@ -54,9 +71,12 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_cmp_sat.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_downsample.cpp
 )
+endif()
 
+if(NOT DEFINED SIMPLY_LIB)
 set(DRAWSRC ${CMAKE_CURRENT_SOURCE_DIR}/ive_draw.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/2ddraw/tpu_draw_rect.cpp)
+endif()
 
 add_library(cvi_ive_tpu SHARED ${SRC} ${DRAWSRC})
 
