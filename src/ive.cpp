@@ -1215,11 +1215,24 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
 }
 #endif
 
+static void ViewAsYuv420(IVE_IMAGE_S *src) {
+  int w = src->u16Stride[0];
+  int w1 = src->u16Stride[1];
+  int w2 = src->u16Stride[1];
+  int h = src->u16Height;
+  int h2 = src->u16Height / 2;
+
+  memcpy(src->pu8VirAddr[2], src->pu8VirAddr[0] + w * h + w1 * h2, w2 * h2);
+  memcpy(src->pu8VirAddr[1], src->pu8VirAddr[0] + w * h, w1 * h2);
+}
+
 static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
   CVIIMGTYPE img_type = CVIIMGTYPE::CVI_GRAY;
   cvk_fmt_t fmt = CVK_FMT_U8;
   std::vector<uint32_t> heights;
   uint16_t new_height;
+  CviImg *orig_cpp = reinterpret_cast<CviImg *>(src->tpu_block);
+
   if (src->enType == IVE_IMAGE_TYPE_YUV420P) {
     int halfh = src->u16Height / 2;
     int u_plane_size = src->u16Stride[1] * halfh;
@@ -1228,6 +1241,13 @@ static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
     LOGD("ViewAsU8C1 stride0:%d,%d,%d,addedh:%d\n", (int)src->u16Stride[0], (int)src->u16Stride[1],
          (int)src->u16Stride[2], added_h);
     new_height = src->u16Height + added_h;
+
+    if (orig_cpp->IsSubImg()) {
+      std::copy(src->pu8VirAddr[1], src->pu8VirAddr[1] + u_plane_size,
+                src->pu8VirAddr[0] + src->u16Stride[0] * src->u16Height);
+      std::copy(src->pu8VirAddr[2], src->pu8VirAddr[2] + v_plane_size,
+                src->pu8VirAddr[0] + src->u16Stride[0] * src->u16Height + u_plane_size);
+    }
   } else if (src->enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
     new_height = src->u16Height * 3;
   } else {
@@ -1239,7 +1259,6 @@ static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
 
   std::vector<uint32_t> strides, u32_length;
   strides.push_back(src->u16Stride[0]);
-  CviImg *orig_cpp = reinterpret_cast<CviImg *>(src->tpu_block);
 
   if (Is4096Workaound(orig_cpp->GetImgType())) {
     u32_length.push_back(orig_cpp->GetImgCOffsets()[3]);
@@ -1424,6 +1443,12 @@ CVI_S32 CVI_IVE_Blend_Pixel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
   handle_ctx->t_h.t_blend_pixel.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   ret = handle_ctx->t_h.t_blend_pixel.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
                                           outputs);
+  if (pstDst->enType == IVE_IMAGE_TYPE_YUV420P) {
+    CviImg *orig_cpp = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+    if (orig_cpp->IsSubImg()) {
+      ViewAsYuv420(pstDst);
+    }
+  }
   return ret;
 }
 
