@@ -1,4 +1,3 @@
-// clang-format off
 #ifndef TRACER_H
 #define TRACER_H
 /*
@@ -88,4 +87,3 @@ class ScopedTrace {
   }
 };
 #endif  // TRACER_H
-// clang-format on

@@ -6,7 +6,6 @@
 #else
 #include "cvi_comm_video.h"
 #endif
-
 #ifndef __cplusplus
 #include <stdbool.h>
 #endif
@@ -84,12 +83,12 @@ CVI_S32 CVI_IVE_CreateMemInfo(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo,
  * @param pIveHandle Ive instance handler.
  * @param pstImg The input image stucture.
  * @param enType The image type. e.g. IVE_IMAGE_TYPE_U8C1.
- * @param u16Width The image width.
- * @param u16Height The image height.
+ * @param u32Width The image width.
+ * @param u32Height The image height.
  * @return CVI_S32 Return CVI_SUCCESS if operation succeed.
  */
 CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
-                            CVI_U16 u16Width, CVI_U16 u16Height);
+                            CVI_U32 u32Width, CVI_U32 u32Height);
 
 /**
  * @brief Create an IVE_IMAGE_S with a given buffer from another IVE_IMAGE_S.
@@ -97,13 +96,13 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
  * @param pIveHandle Ive instance handler.
  * @param pstImg The input image stucture.
  * @param enType The image type. e.g. IVE_IMAGE_TYPE_U8C1.
- * @param u16Width The image width.
- * @param u16Height The image height.
+ * @param u32Width The image width.
+ * @param u32Height The image height.
  * @param pstBuffer Use another IVE_IMAGE_S as buffer.
  * @return CVI_S32 Return CVI_SUCCESS if operation succeed.
  */
 CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
-                             CVI_U16 u16Width, CVI_U16 u16Height, IVE_IMAGE_S *pstBuffer);
+                             CVI_U32 u32Width, CVI_U32 u32Height, IVE_IMAGE_S *pstBuffer);
 /**
  * @brief Get the sub image from an image with the given coordiantes. The data is shared without
  * copy.
@@ -130,8 +129,7 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
  * order.
  * @return CVI_S32 Return CVI_SUCCESS if operation succeeded.
  */
-CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *pstVFIDst,
-                                     CVI_BOOL invertPackage);
+CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *pstVFIDst);
 
 /**
  * @brief Convert VIDEO_FRAME_INFO_S to IVE_IMAGE_S. Note that this function does not map or unmap
@@ -427,8 +425,8 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
 /**
  * @brief Get size of the HOG histogram.
  *
- * @param u16Width Input image width.
- * @param u16Height Input image height.
+ * @param u32Width Input image width.
+ * @param u32Height Input image height.
  * @param u8BinSize Bin size.
  * @param u16CellSize Cell size.
  * @param u16BlkSizeInCell  Block size.
@@ -437,7 +435,7 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
  * @param u32HogSize Output HOG size (length * sizeof(uint32_t)).
  * @return CVI_S32 Return CVI_SUCCESS if succeed.
  */
-CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U16 u16Width, CVI_U16 u16Height, CVI_U8 u8BinSize,
+CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U32 u32Width, CVI_U32 u32Height, CVI_U8 u8BinSize,
                              CVI_U16 u16CellSize, CVI_U16 u16BlkSizeInCell, CVI_U16 u16BlkStepX,
                              CVI_U16 u16BlkStepY, CVI_U32 *u32HogSize);
 

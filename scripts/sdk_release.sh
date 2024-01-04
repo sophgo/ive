@@ -15,11 +15,9 @@ elif [[ "$SDK_VER" == "64bit" ]]; then
 elif [[ "$SDK_VER" == "32bit" ]]; then
     TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-gnueabihf-linux.cmake
 elif [[ "$SDK_VER" == "musl_riscv64" ]]; then
-    KERNEL_HEADER_PATH="${KERNEL_PATH}"/build/"${PROJECT_FULLNAME}"/riscv/usr/
     TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-riscv64-musl.cmake
 elif [[ "$SDK_VER" == "glibc_riscv64" ]]; then
     TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-riscv64-linux.cmake
-    KERNEL_HEADER_PATH="${KERNEL_PATH}"/build/"${PROJECT_FULLNAME}"/riscv/usr/
 else
     echo "Wrong SDK_VER=$SDK_VER"
     exit 1
@@ -34,18 +32,16 @@ echo "repo user : $REPO_USER"
 echo "CHIP_ARCH:" $CHIP_ARCH
 echo "TOOLCHAIN:" $TOOLCHAIN_FILE
 echo "HOST_TOOL_PATH:" $HOST_TOOL_PATH
-cmake -G Ninja $IVE_ROOT -DCVI_TARGET=soc \
-                            -DCVI_PLATFORM=$CHIP_ARCH \
-                            -DENABLE_SYSTRACE=OFF \
-                            -DCMAKE_BUILD_TYPE=SDKRelease \
-                            -DKERNEL_HEADERS_ROOT=$KERNEL_HEADER_PATH \
-                            -DMLIR_SDK_ROOT=$TPU_SDK_INSTALL_PATH \
-                            -DMIDDLEWARE_SDK_ROOT=$MW_PATH \
-                            -DCMAKE_INSTALL_PREFIX=$IVE_SDK_INSTALL_PATH \
-                            -DTOOLCHAIN_ROOT_DIR=$HOST_TOOL_PATH \
-                            -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE \
-                            -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
-                            -DREPO_USER=$REPO_USER
+cmake -G Ninja $IVE_ROOT -DCVI_PLATFORM=$CHIP_ARCH \
+                         -DCMAKE_BUILD_TYPE=SDKRelease \
+                         -DKERNEL_HEADERS_ROOT=$KERNEL_HEADER_PATH \
+                         -DMLIR_SDK_ROOT=$TPU_SDK_INSTALL_PATH \
+                         -DMIDDLEWARE_SDK_ROOT=$MW_PATH \
+                         -DCMAKE_INSTALL_PREFIX=$IVE_SDK_INSTALL_PATH \
+                         -DTOOLCHAIN_ROOT_DIR=$HOST_TOOL_PATH \
+                         -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE \
+                         -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+                         -DREPO_USER=$REPO_USER
 
 ninja -j8 || exit 1
 ninja install || exit 1

@@ -1,31 +1,17 @@
 function(buildninstall_test FNAME)
   add_executable(${FNAME} ${FNAME}.c)
   target_link_libraries(${FNAME} cvi_ive_tpu -lm)
-  if(ENABLE_SYSTRACE)
-  set_target_properties(${FNAME} PROPERTIES LINK_FLAGS "-L ${TRACER_LIB_DIR}")
-  endif()
   install(TARGETS ${FNAME} DESTINATION bin)
   install(FILES ${FNAME}.c DESTINATION sample)
 endfunction()
 
-function(buildninstall_testcpp FNAME)
-  add_executable(${FNAME} ${FNAME}.cpp)
-  target_link_libraries(${FNAME} cvi_ive_tpu -lm)
-  if(ENABLE_SYSTRACE)
-  set_target_properties(${FNAME} PROPERTIES LINK_FLAGS "-L ${TRACER_LIB_DIR}")
-  endif()
-  install(TARGETS ${FNAME} DESTINATION bin)
-  install(FILES ${FNAME}.cpp DESTINATION sample)
-endfunction()
-
 project(sample)
 include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${MLIR_INCLUDES}
     ${MIDDLEWARE_INCLUDES}
-    ${CMAKE_SOURCE_DIR}/include
 )
 
-buildninstall_testcpp(sample_md)
 buildninstall_test(sample_add)
 buildninstall_test(sample_and)
 buildninstall_test(sample_block)

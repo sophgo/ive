@@ -371,15 +371,11 @@ class CviImg {
    * @return int return 0 if success.
    */
   int Flush(CVI_RT_HANDLE rt_handle) {
-#ifdef CVI_SOC
     if (m_rtmem != NULL) {
       return CVI_RT_MemFlush(rt_handle, m_rtmem) == CVI_RC_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
     } else {
       return CVI_SUCCESS;
     }
-#else
-    return CVI_SUCCESS;
-#endif
   }
 
   /**
@@ -389,15 +385,11 @@ class CviImg {
    * @return int return 0 if success.
    */
   int Invld(CVI_RT_HANDLE rt_handle) {
-#ifdef CVI_SOC
     if (m_rtmem != NULL) {
       return CVI_RT_MemInvld(rt_handle, m_rtmem) == CVI_RC_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
     } else {
       return CVI_SUCCESS;
     }
-#else
-    return CVI_SUCCESS;
-#endif
   }
   bool IsNullMem() { return m_rtmem == NULL; }
   int GetMagicNum() { return m_magic_num; }

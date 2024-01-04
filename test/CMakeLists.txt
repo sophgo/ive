@@ -1,9 +1,6 @@
 function(build_test FNAME)
   add_executable(${FNAME} ${FNAME}.c)
   target_link_libraries(${FNAME} cvi_ive_tpu -lm)
-  if(ENABLE_SYSTRACE)
-  set_target_properties(${FNAME} PROPERTIES LINK_FLAGS "-L ${TRACER_LIB_DIR}")
-  endif()
   install(TARGETS ${FNAME} DESTINATION bin)
 endfunction()
 
@@ -12,7 +9,6 @@ include_directories(
     ${MLIR_INCLUDES}
     ${MIDDLEWARE_INCLUDES}
     ${CMAKE_SOURCE_DIR}/3rdparty
-    ${CMAKE_SOURCE_DIR}/include
 )
 
 build_test(test_add_c)

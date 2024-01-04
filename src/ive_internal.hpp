@@ -1,7 +1,7 @@
 #pragma once
 #include "version.hpp"
 
-#include "ive.h"
+#include "cvi_ive.h"
 #include "ive_experimental.h"
 
 #include "tracer/tracer.h"
@@ -10,13 +10,6 @@
 #include "table_manager.hpp"
 #include "tpu_data.hpp"
 
-#ifdef SIMPLY_LIB
-#include "tpu/tpu_copy.hpp"
-#include "tpu/tpu_filter.hpp"
-#include "tpu/tpu_morph.hpp"
-#include "tpu/tpu_sub.hpp"
-#include "tpu/tpu_threshold.hpp"
-#else
 #include "ive_draw.h"
 #include "tpu/tpu_add.hpp"
 #include "tpu/tpu_alpha_blend.hpp"
@@ -46,7 +39,6 @@
 #include "tpu/tpu_xor.hpp"
 
 #include "2ddraw/tpu_draw.hpp"
-#endif
 
 #include <stdarg.h>
 #include <cmath>
@@ -111,18 +103,6 @@ inline bool IsSignedImageType(IVE_IMAGE_S *pstImg) {
     return false;
 }
 struct TPU_HANDLE {
-#ifdef SIMPLY_LIB
-  TblMgr t_tblmgr;
-  IveTPUSub t_sub;
-  IveTPUCopyInterval t_copy_int;
-  IveTPUThreshold t_thresh;
-  IveTPUThresholdHighLow t_thresh_hl;
-  IveTPUThresholdSlope t_thresh_s;
-  IveTPUFilter t_filter;
-  IveTPUFilterBF16 t_filter_bf16;
-  IveTPUErode t_erode;
-  IveTPUSubAbs t_sub_abs;
-#else
   TblMgr t_tblmgr;
   IveTPUAdd t_add;
   IveTPUAddSigned t_add_signed;
@@ -160,7 +140,6 @@ struct TPU_HANDLE {
   IveTPUBlendPixelAB t_blend_pixel_ab;
   IveTPUConvertScaleAbs t_convert_scale_abs;
   IveTPUCmpSat t_cmp_sat;
-#endif
 };
 
 struct IVE_HANDLE_CTX {

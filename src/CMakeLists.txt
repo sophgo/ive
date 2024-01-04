@@ -4,32 +4,13 @@ configure_file(version.hpp.in version.hpp @ONLY)
 
 include_directories(
     ${CMAKE_CURRENT_BINARY_DIR}
-    ${MLIR_INCLUDES}
-    ${CVIMATH_INCLUDES}
-    ${MIDDLEWARE_INCLUDES}
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/middleware/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty
+    ${MLIR_INCLUDES}
+    ${MIDDLEWARE_INCLUDES}
+    ${KERNEL_HEADERS_ROOT}/include
 )
 
-if(DEFINED SIMPLY_LIB)
-set(SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/core.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/ive.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/kernel_generator.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/table_manager.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tpu_data.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_copy_direct.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_copy_interval.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_filter.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_morph.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sub_abs.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_sub.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_threshold_high_low.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_threshold_slope.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_threshold.cpp)
-else()
 set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/core.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ive.cpp
@@ -71,35 +52,19 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_cmp_sat.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tpu/tpu_downsample.cpp
 )
-endif()
 
-if(NOT DEFINED SIMPLY_LIB)
 set(DRAWSRC ${CMAKE_CURRENT_SOURCE_DIR}/ive_draw.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/2ddraw/tpu_draw_rect.cpp)
-endif()
 
 add_library(cvi_ive_tpu SHARED ${SRC} ${DRAWSRC})
-
-if (ENABLE_SYSTRACE)
-add_dependencies(cvi_ive_tpu tracer)
-target_link_libraries(cvi_ive_tpu cvitracer ${MLIR_LIBS})
-set_target_properties(cvi_ive_tpu PROPERTIES LINK_FLAGS "-L ${TRACER_LIB_DIR}")
-else()
 target_link_libraries(cvi_ive_tpu ${MLIR_LIBS})
-endif()
 
-
-add_library(cvi_ive_tpu-static ${SRC} ${DRAWSRC})
-
-if (ENABLE_SYSTRACE)
-add_dependencies(cvi_ive_tpu-static tracer)
-target_link_libraries(cvi_ive_tpu-static cvitracer ${MLIR_LIBS})
-set_target_properties(cvi_ive_tpu PROPERTIES LINK_FLAGS "-L ${TRACER_LIB_DIR}")
-endif()
+add_library(cvi_ive_tpu-static STATIC ${SRC} ${DRAWSRC})
+SET_TARGET_PROPERTIES(cvi_ive_tpu-static PROPERTIES OUTPUT_NAME "cvi_ive_tpu")
 
 install(TARGETS cvi_ive_tpu DESTINATION lib)
 install(TARGETS cvi_ive_tpu-static DESTINATION lib)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/cvi_comm_ive.h DESTINATION include/ive)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/cvi_draw_ive.h DESTINATION include/ive)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/ive.h DESTINATION include/ive)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/ive_draw.h DESTINATION include/ive)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/cvi_comm_ive.h DESTINATION include)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/cvi_draw_ive.h DESTINATION include)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/cvi_ive.h DESTINATION include)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/ive_draw.h DESTINATION include)
