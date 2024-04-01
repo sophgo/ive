@@ -11,6 +11,16 @@ else()
   message(FATAL_ERROR "${MIDDLEWARE_SDK_ROOT} is not a valid folder.")
 endif()
 
-set(MIDDLEWARE_INCLUDES
+
+if ("${CVI_PLATFORM}" STREQUAL "CV180X"  OR "${CVI_PLATFORM}" STREQUAL "CV181X")
+  set(MIDDLEWARE_INCLUDES 
+    ${KERNEL_ROOT}/include/
+    )
+else()
+  set(MIDDLEWARE_INCLUDES 
     ${MIDDLEWARE_SDK_ROOT}/include/
-)
+    )
+endif()
+
+message("MIDDLEWARE_INCLUDES " ${MIDDLEWARE_INCLUDES})
+include_directories(${MIDDLEWARE_INCLUDES})

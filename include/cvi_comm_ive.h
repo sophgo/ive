@@ -1,6 +1,10 @@
 #ifndef _CVI_COMM_IVE_H_
 #define _CVI_COMM_IVE_H_
+#ifdef CV180X
+#include "linux/cvi_type.h"
+#else
 #include "cvi_type.h"
+#endif
 
 #define CVI_IVE2_LENGTH_ALIGN 1
 
@@ -433,4 +437,5 @@ typedef struct cviIVE_FILTER_AND_CSC_CTRL_S {
   CVI_U16 u16Norm;       /*Normalization parameter, by right shift*/
 } IVE_FILTER_AND_CSC_CTRL_S;
 
+// }
 #endif  // End of _CVI_COMM_IVE.h

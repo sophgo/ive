@@ -1,5 +1,9 @@
 #pragma once
+#ifdef CV180X
+#include "linux/cvi_type.h"
+#else
 #include "cvi_type.h"
+#endif
 #include "ive_log.hpp"
 
 #include <cvikernel/cvikernel.h>
