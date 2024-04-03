@@ -5,10 +5,12 @@ function(build_test FNAME)
 endfunction()
 
 project(test-c)
+
 include_directories(
-    ${MLIR_INCLUDES}
-    ${MIDDLEWARE_INCLUDES}
-    ${CMAKE_SOURCE_DIR}/3rdparty
+  ${CMAKE_CURRENT_SOURCE_DIR}/../include
+  ${MLIR_INCLUDES}
+  ${MIDDLEWARE_INCLUDES}
+  ${CMAKE_SOURCE_DIR}/3rdparty
 )
 
 build_test(test_add_c)
@@ -49,3 +51,4 @@ build_test(test_filter_csc_c)
 build_test(test_blend_s8_c)
 build_test(test_blend_u8_ab_c)
 build_test(test_s8_cmp_c)
+build_test(test_blend_y)

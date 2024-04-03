@@ -1,5 +1,5 @@
 #include "cvi_ive.h"
-#include "cvi_sys.h"
+// #include "cvi_sys.h"
 
 #include <stdio.h>
 #include <stdlib.h>

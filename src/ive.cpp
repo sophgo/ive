@@ -3883,4 +3883,115 @@ CVI_S32 CVI_IVE_Zero(IVE_HANDLE pIveHandle, IVE_DST_IMAGE_S *pstDst) {
   ret |= CVI_IVE_BufFlush(pIveHandle, pstDst);
   return ret;
 }
+
+CVI_S32 VideoFrameYInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S *pstIIDst) {
+  CviImg *cpp_img = nullptr;
+  if (pstIIDst->tpu_block != NULL) {
+    cpp_img = reinterpret_cast<CviImg *>(pstIIDst->tpu_block);
+    if (!cpp_img->IsNullMem()) {
+      LOGE("pstIIDst->tpu_block->m_rtmem is not NULL");
+      return CVI_FAILURE;
+    }
+    if (cpp_img->GetMagicNum() != CVI_IMG_VIDEO_FRM_MAGIC_NUM) {
+      printf("pstIIDst->tpu_block is not constructed from VIDEO_FRAME_INFO_S");
+      return CVI_FAILURE;
+    }
+  }
+  VIDEO_FRAME_S *pstVFSrc = &pstVFISrc->stVFrame;
+  size_t c = 1;
+  CVIIMGTYPE img_type = CVIIMGTYPE::CVI_GRAY;
+  cvk_fmt_t fmt = CVK_FMT_U8;
+  std::vector<uint32_t> heights;
+  switch (pstVFSrc->enPixelFormat) {
+    case PIXEL_FORMAT_YUV_400:
+    case PIXEL_FORMAT_NV21:
+    case PIXEL_FORMAT_NV12:
+    case PIXEL_FORMAT_YUV_PLANAR_420: {
+      pstIIDst->enType = IVE_IMAGE_TYPE_U8C1;
+      heights.push_back(pstVFSrc->u32Height);
+    } break;
+    default: {
+      LOGE("Unsupported conversion type: %u.\n", pstVFSrc->enPixelFormat);
+      return CVI_FAILURE;
+    } break;
+  }
+  std::vector<uint32_t> strides, u32_length;
+  for (size_t i = 0; i < c; i++) {
+    strides.push_back(pstVFSrc->u32Stride[i]);
+    u32_length.push_back(pstVFSrc->u32Length[i]);
+  }
+  if (cpp_img == nullptr) {
+    cpp_img = new CviImg(pstVFSrc->u32Height, pstVFSrc->u32Width, strides, heights, u32_length,
+                         pstVFSrc->pu8VirAddr[0], pstVFSrc->u64PhyAddr[0], img_type, fmt);
+  } else {
+    cpp_img->ReInit(pstVFSrc->u32Height, pstVFSrc->u32Width, strides, heights, u32_length,
+                    pstVFSrc->pu8VirAddr[0], pstVFSrc->u64PhyAddr[0], img_type, fmt);
+  }
+
+  if (!cpp_img->IsInit()) {
+    LOGE("Failed to init IVE_IMAGE_S.\n");
+    return CVI_FAILURE;
+  }
+
+  pstIIDst->tpu_block = reinterpret_cast<CVI_IMG *>(cpp_img);
+  pstIIDst->u32Width = cpp_img->GetImgWidth();
+  pstIIDst->u32Height = cpp_img->GetImgHeight();
+  pstIIDst->u16Reserved = getFmtSize(fmt);
+
+  size_t i_limit = cpp_img->GetImgChannel();
+  for (size_t i = 0; i < i_limit; i++) {
+    pstIIDst->pu8VirAddr[i] = cpp_img->GetVAddr() + cpp_img->GetImgCOffsets()[i];
+    pstIIDst->u64PhyAddr[i] = cpp_img->GetPAddr() + cpp_img->GetImgCOffsets()[i];
+    pstIIDst->u16Stride[i] = cpp_img->GetImgStrides()[i];
+  }
+
+  for (size_t i = i_limit; i < 3; i++) {
+    pstIIDst->pu8VirAddr[i] = NULL;
+    pstIIDst->u64PhyAddr[i] = 0;
+    pstIIDst->u16Stride[i] = 0;
+  }
+  return CVI_SUCCESS;
+}
+
+CVI_S32 CVI_IVE_Blend_Pixel_Y(IVE_HANDLE pIveHandle, VIDEO_FRAME_INFO_S *pstSrc1,
+                              VIDEO_FRAME_INFO_S *pstSrc2_dst, VIDEO_FRAME_INFO_S *pstAlpha) {
+  IVE_IMAGE_S src1, src2, alpha, dst;
+  memset(&src1, 0, sizeof(IVE_IMAGE_S));
+  memset(&src2, 0, sizeof(IVE_IMAGE_S));
+  memset(&alpha, 0, sizeof(IVE_IMAGE_S));
+  memset(&dst, 0, sizeof(IVE_IMAGE_S));
+
+  CVI_S32 ret = CVI_SUCCESS;
+  ret = VideoFrameYInfo2Image(pstSrc1, &src1);
+  if (ret != CVI_SUCCESS) {
+    LOGE("pstSrc1 type not supported,could not extract Y plane");
+    return ret;
+  }
+
+  ret = VideoFrameYInfo2Image(pstSrc2_dst, &src2);
+  if (ret != CVI_SUCCESS) {
+    LOGE("pstSrc2_dst type not supported,could not extract Y plane");
+    return ret;
+  }
+
+  ret = VideoFrameYInfo2Image(pstAlpha, &alpha);
+  if (ret != CVI_SUCCESS) {
+    LOGE("pstAlpha type not supported,could not extract Y plane");
+    return ret;
+  }
+
+  ret = VideoFrameYInfo2Image(pstSrc2_dst, &dst);
+  if (ret != CVI_SUCCESS) {
+    LOGE("pstSrc2 type not supported,could not extract Y plane");
+    return ret;
+  }
+
+  CVI_IVE_Blend_Pixel(pIveHandle, &src1, &src2, &alpha, &dst, true);
+
+  CVI_SYS_FreeI(pIveHandle, &src1);
+  CVI_SYS_FreeI(pIveHandle, &src2);
+  CVI_SYS_FreeI(pIveHandle, &alpha);
+  CVI_SYS_FreeI(pIveHandle, &dst);
+  return ret;
+}
 #endif
