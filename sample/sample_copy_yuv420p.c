@@ -1,4 +1,4 @@
-#include "ive.h"
+#include "cvi_ive.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,7 +32,6 @@ void readYUV420P(IVE_HANDLE handle, const char *filename, const uint16_t width,
 
 void writeYUV420P(IVE_HANDLE handle, const char *filename, const uint16_t width,
                   const uint16_t height, IVE_DST_IMAGE_S *img) {
-  CVI_IVE_BufRequest(handle, img);
   CVI_IVE_BufRequest(handle, img);
   FILE *yuv = fopen(filename, "wb");
   for (int i = 0; i < height; i++) {
@@ -132,6 +131,7 @@ int main(int argc, char **argv) {
   CVI_SYS_FreeI(handle, &dst3_3);
   CVI_SYS_FreeI(handle, &dst3_4);
   CVI_SYS_FreeI(handle, &dst3);
+
   CVI_IVE_DestroyHandle(handle);
 
   return ret;

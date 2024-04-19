@@ -1,7 +1,7 @@
 #pragma once
 #include "version.hpp"
 
-#include "ive.h"
+#include "cvi_ive.h"
 #include "ive_experimental.h"
 
 #include "tracer/tracer.h"
@@ -21,6 +21,7 @@
 #include "tpu/tpu_cmp_sat.hpp"
 #include "tpu/tpu_convert_scale_abs.hpp"
 #include "tpu/tpu_copy.hpp"
+#include "tpu/tpu_downsample.hpp"
 #include "tpu/tpu_fill.hpp"
 #include "tpu/tpu_filter.hpp"
 #include "tpu/tpu_magandang.hpp"
@@ -111,6 +112,7 @@ struct TPU_HANDLE {
   IveTPUBlockBF16 t_block_bf16;
   IveTPUConstFill t_const_fill;
   IveTPUCopyInterval t_copy_int;
+  IveTPUDownSample t_downsample;
   IveTPUErode t_erode;
   IveTPUFilter t_filter;
   IveTPUFilterBF16 t_filter_bf16;

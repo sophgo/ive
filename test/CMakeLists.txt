@@ -1,18 +1,16 @@
 function(build_test FNAME)
   add_executable(${FNAME} ${FNAME}.c)
   target_link_libraries(${FNAME} cvi_ive_tpu -lm)
-  if(ENABLE_SYSTRACE)
-  set_target_properties(${FNAME} PROPERTIES LINK_FLAGS "-L ${TRACER_LIB_DIR}")
-  endif()
   install(TARGETS ${FNAME} DESTINATION bin)
 endfunction()
 
 project(test-c)
+
 include_directories(
-    ${MLIR_INCLUDES}
-    ${MIDDLEWARE_INCLUDES}
-    ${CMAKE_SOURCE_DIR}/3rdparty
-    ${CMAKE_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../include
+  ${MLIR_INCLUDES}
+  ${MIDDLEWARE_INCLUDES}
+  ${CMAKE_SOURCE_DIR}/3rdparty
 )
 
 build_test(test_add_c)
@@ -53,3 +51,4 @@ build_test(test_filter_csc_c)
 build_test(test_blend_s8_c)
 build_test(test_blend_u8_ab_c)
 build_test(test_s8_cmp_c)
+build_test(test_blend_y)
