@@ -1,8 +1,8 @@
 #include <string.h>
 #include "tpu/tpu_copy.hpp"
+
 inline void DirectCopyWrapper(cvk_context_t *cvk_ctx, const cvk_tg_t &in, const cvk_tg_t &out) {
   cvk_tdma_g2g_tensor_copy_param_t copy_param;
-  LOGD("h:%d,w:%d,strideh:%d\n", (int)in.shape.h, (int)in.shape.w, (int)in.stride.h);
   if (in.shape.w > 4096 || in.shape.h > 4096) {
     cvk_tg_t tmp_in = in;
     cvk_tg_t tmp_out = out;
@@ -30,18 +30,15 @@ inline void DirectCopyWrapper(cvk_context_t *cvk_ctx, const cvk_tg_t &in, const 
 int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, const CviImg *input,
                           CviImg *output) {
   if (input == NULL) {
-    LOGE("IveTPUCopyDirect::run input is null\n");
+    printf("IveTPUCopyDirect::run input is null\n");
     assert(0);
   }
   if (output == NULL) {
-    LOGE("IveTPUCopyDirect::run output is null\n");
+    printf("IveTPUCopyDirect::run output is null\n");
     assert(0);
   }
-  LOGD("input is planar:%d,strideeq:%d,H:%d,W:%d\n", (int)input->IsStideCEQ(), input->IsPlanar(),
-       (int)input->m_tg.shape.h, (int)input->m_tg.shape.w);
   // Special case handling for YUV sub-images
   if (input->IsStideCEQ() && input->IsPlanar() && output->IsStideCEQ() && output->IsPlanar()) {
-    LOGD("go DirectCopyWrapper ");
     DirectCopyWrapper(cvk_ctx, input->m_tg, output->m_tg);
   } else {
     if (input->GetImgType() == CVI_YUV422P) {
@@ -75,7 +72,6 @@ int IveTPUCopyDirect::run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, const
         LOGE("Currently does not support odd height for YUV 420\n");
         return CVI_FAILURE;
       }
-      LOGD("copy with 3 loop\n");
       uint8_t div[3] = {1, 2, 2};
       cvk_tg_t in, out;
       memset(&in, 0, sizeof(cvk_tg_t));

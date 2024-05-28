@@ -10,6 +10,7 @@ else()
   message(FATAL_ERROR "${IVE_SDK_ROOT} is not a valid folder.")
 endif()
 
+project(ive-sdk)
 set(IVE_INCLUDES
     ${IVE_SDK_ROOT}/include/
 )
@@ -18,5 +19,7 @@ set(IVE_LIBS
     ${IVE_SDK_ROOT}/lib/libcvi_ive_tpu.so
 )
 
-install(DIRECTORY ${IVE_SDK_ROOT}/include/ DESTINATION ${CMAKE_INSTALL_PREFIX}/include/)
-install(FILES ${IVE_LIBS} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/)
+if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "SDKRelease")
+  install(DIRECTORY ${IVE_SDK_ROOT}/include/ DESTINATION ${CMAKE_INSTALL_PREFIX}/include/)
+  install(FILES ${IVE_LIBS} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/)
+endif()

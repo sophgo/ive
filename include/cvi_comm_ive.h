@@ -1,10 +1,6 @@
 #ifndef _CVI_COMM_IVE_H_
 #define _CVI_COMM_IVE_H_
-#ifdef CV180X
-#include "linux/cvi_type.h"
-#else
 #include "cvi_type.h"
-#endif
 
 #define CVI_IVE2_LENGTH_ALIGN 1
 
@@ -48,11 +44,11 @@ typedef struct IVE_DATA {
   CVI_U32 u32PhyAddr;
   CVI_U8 *pu8VirAddr;
 
-  CVI_U32 u32Stride;
-  CVI_U32 u32Width;
-  CVI_U32 u32Height;
+  CVI_U16 u16Stride;
+  CVI_U16 u16Width;
+  CVI_U16 u16Height;
 
-  CVI_U32 u32Reserved;
+  CVI_U16 u16Reserved;
   CVI_IMG_S *tpu_block;
 } IVE_DATA_S;
 
@@ -100,8 +96,8 @@ typedef struct IVE_IMAGE {
   CVI_U8 *pu8VirAddr[3];
 
   CVI_U16 u16Stride[3];
-  CVI_U32 u32Width;
-  CVI_U32 u32Height;
+  CVI_U16 u16Width;
+  CVI_U16 u16Height;
 
   CVI_U16 u16Reserved;
   CVI_IMG_S *tpu_block;
@@ -150,10 +146,6 @@ typedef struct IVE_FILTER_CTRL {
   CVI_S8 as8Mask[169];
   CVI_U32 u32Norm;
 } IVE_FILTER_CTRL_S;
-
-typedef struct IVE_DOWNSAMPLE_CTRL {
-  CVI_U8 u8KnerlSize;
-} IVE_DOWNSAMPLE_CTRL_S;
 
 typedef struct IVE_HOG_CTRL {
   CVI_U8 u8BinSize;
@@ -437,5 +429,4 @@ typedef struct cviIVE_FILTER_AND_CSC_CTRL_S {
   CVI_U16 u16Norm;       /*Normalization parameter, by right shift*/
 } IVE_FILTER_AND_CSC_CTRL_S;
 
-// }
 #endif  // End of _CVI_COMM_IVE.h

@@ -1,15 +1,18 @@
 function(buildninstall_test FNAME)
   add_executable(${FNAME} ${FNAME}.c)
   target_link_libraries(${FNAME} cvi_ive_tpu -lm)
+  if(ENABLE_SYSTRACE)
+  set_target_properties(${FNAME} PROPERTIES LINK_FLAGS "-L ${TRACER_LIB_DIR}")
+  endif()
   install(TARGETS ${FNAME} DESTINATION bin)
   install(FILES ${FNAME}.c DESTINATION sample)
 endfunction()
 
 project(sample)
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${MLIR_INCLUDES}
     ${MIDDLEWARE_INCLUDES}
+    ${CMAKE_SOURCE_DIR}/include
 )
 
 buildninstall_test(sample_add)
@@ -39,7 +42,6 @@ buildninstall_test(sample_xor)
 buildninstall_test(sample_alpha_blend)
 buildninstall_test(sample_alpha_blend_pixel)
 buildninstall_test(sample_alpha_blend_pixel_yuv420)
-buildninstall_test(sample_alpha_blend_pixel_yuv420_roi)
 buildninstall_test(sample_convert_scale_abs)
 buildninstall_test(sample_average)
 

@@ -309,11 +309,6 @@ const bool CviImg::IsStideCEQ() const { return m_is_stride_ceq; }
 
 const bool CviImg::IsPlanar() const { return m_is_planar; }
 
-const uint64_t CviImg::GetAddrOffset(int plane, uint64_t cur_addr) {
-  uint64_t plane_addr = this->m_paddr + this->m_coffsets[plane];
-  uint64_t offset = cur_addr - plane_addr;
-  return offset;
-}
 int CviImg::AllocateDevice(CVI_RT_HANDLE rt_handle) {
   if (this->m_rtmem == NULL) {
     this->m_rtmem = CVI_RT_MemAlloc(rt_handle, this->m_size);
