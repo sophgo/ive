@@ -1,5 +1,9 @@
 #pragma once
+#ifdef CV180X
+#include "linux/cvi_type.h"
+#else
 #include "cvi_type.h"
+#endif
 #include "ive_log.hpp"
 
 #include <cvikernel/cvikernel.h>
@@ -44,10 +48,10 @@ static int getFmtSize(cvk_fmt_t fmt) {
  *
  */
 struct sliceUnit {
-  uint32_t slice;
-  uint32_t skip;
-  uint32_t turn;
-  uint32_t left;
+  uint32_t slice;  // rounded length
+  uint32_t skip;   // like stride
+  uint32_t turn;   // rounded loop
+  uint32_t left;   // left
   uint32_t c_multiplier = 1;
 };
 
@@ -371,15 +375,11 @@ class CviImg {
    * @return int return 0 if success.
    */
   int Flush(CVI_RT_HANDLE rt_handle) {
-#ifdef CVI_SOC
     if (m_rtmem != NULL) {
       return CVI_RT_MemFlush(rt_handle, m_rtmem) == CVI_RC_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
     } else {
       return CVI_SUCCESS;
     }
-#else
-    return CVI_SUCCESS;
-#endif
   }
 
   /**
@@ -389,18 +389,16 @@ class CviImg {
    * @return int return 0 if success.
    */
   int Invld(CVI_RT_HANDLE rt_handle) {
-#ifdef CVI_SOC
     if (m_rtmem != NULL) {
       return CVI_RT_MemInvld(rt_handle, m_rtmem) == CVI_RC_SUCCESS ? CVI_SUCCESS : CVI_FAILURE;
     } else {
       return CVI_SUCCESS;
     }
-#else
-    return CVI_SUCCESS;
-#endif
   }
   bool IsNullMem() { return m_rtmem == NULL; }
   int GetMagicNum() { return m_magic_num; }
+
+  const uint64_t GetAddrOffset(int plane, uint64_t cur_addr);
   cvk_tg_t m_tg;
 
  private:

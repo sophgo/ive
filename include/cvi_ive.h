@@ -6,7 +6,6 @@
 #else
 #include "cvi_comm_video.h"
 #endif
-
 #ifndef __cplusplus
 #include <stdbool.h>
 #endif
@@ -19,6 +18,8 @@ inline CVI_U16 CVI_CalcStride(CVI_U16 width, CVI_U16 align) {
   return stride;
 }
 
+// using namespace tpuive
+// namespace tpuive {
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -84,12 +85,12 @@ CVI_S32 CVI_IVE_CreateMemInfo(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo,
  * @param pIveHandle Ive instance handler.
  * @param pstImg The input image stucture.
  * @param enType The image type. e.g. IVE_IMAGE_TYPE_U8C1.
- * @param u16Width The image width.
- * @param u16Height The image height.
+ * @param u32Width The image width.
+ * @param u32Height The image height.
  * @return CVI_S32 Return CVI_SUCCESS if operation succeed.
  */
 CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
-                            CVI_U16 u16Width, CVI_U16 u16Height);
+                            CVI_U32 u32Width, CVI_U32 u32Height);
 
 /**
  * @brief Create an IVE_IMAGE_S with a given buffer from another IVE_IMAGE_S.
@@ -97,13 +98,13 @@ CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAG
  * @param pIveHandle Ive instance handler.
  * @param pstImg The input image stucture.
  * @param enType The image type. e.g. IVE_IMAGE_TYPE_U8C1.
- * @param u16Width The image width.
- * @param u16Height The image height.
+ * @param u32Width The image width.
+ * @param u32Height The image height.
  * @param pstBuffer Use another IVE_IMAGE_S as buffer.
  * @return CVI_S32 Return CVI_SUCCESS if operation succeed.
  */
 CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
-                             CVI_U16 u16Width, CVI_U16 u16Height, IVE_IMAGE_S *pstBuffer);
+                             CVI_U32 u32Width, CVI_U32 u32Height, IVE_IMAGE_S *pstBuffer);
 /**
  * @brief Get the sub image from an image with the given coordiantes. The data is shared without
  * copy.
@@ -130,8 +131,7 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
  * order.
  * @return CVI_S32 Return CVI_SUCCESS if operation succeeded.
  */
-CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *pstVFIDst,
-                                     CVI_BOOL invertPackage);
+CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *pstVFIDst);
 
 /**
  * @brief Convert VIDEO_FRAME_INFO_S to IVE_IMAGE_S. Note that this function does not map or unmap
@@ -317,6 +317,19 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
                       IVE_BLOCK_CTRL_S *pstBlkCtrl, bool bInstant);
 
 /**
+ * @brief Calculate the average of the sliced cells of an image. The output image size will be \
+ *        (input_w / u32CellSize, output_h / u32CellSize)
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc Input image. Only accepts U8C1.
+ * @param pstDst Output result.
+ * @param IVE_DOWNSAMPLE_CTRL_S downsample control parameter.
+ * @param bInstant Dummy variable.
+ * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_DOWNSAMPLE(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
+                           IVE_DOWNSAMPLE_CTRL_S *pstdsCtrl, bool bInstant);
+/**
  * @brief Dilate a gray scale image.
  *
  * @param pIveHandle Ive instance handler.
@@ -370,6 +383,7 @@ CVI_S32 CVI_IVE_Blend(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_I
 CVI_S32 CVI_IVE_Blend_Pixel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
                             IVE_SRC_IMAGE_S *pstSrc2, IVE_SRC_IMAGE_S *pstAlpha,
                             IVE_DST_IMAGE_S *pstDst, bool bInstant);
+
 /**
  * @brief Pixel-wise alpha blending for two images.clip(s8_a*u8_w + s8_b*(255-u8_w),-128,127)
  *
@@ -413,8 +427,8 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
 /**
  * @brief Get size of the HOG histogram.
  *
- * @param u16Width Input image width.
- * @param u16Height Input image height.
+ * @param u32Width Input image width.
+ * @param u32Height Input image height.
  * @param u8BinSize Bin size.
  * @param u16CellSize Cell size.
  * @param u16BlkSizeInCell  Block size.
@@ -423,7 +437,7 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
  * @param u32HogSize Output HOG size (length * sizeof(uint32_t)).
  * @return CVI_S32 Return CVI_SUCCESS if succeed.
  */
-CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U16 u16Width, CVI_U16 u16Height, CVI_U8 u8BinSize,
+CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U32 u32Width, CVI_U32 u32Height, CVI_U8 u8BinSize,
                              CVI_U16 u16CellSize, CVI_U16 u16BlkSizeInCell, CVI_U16 u16BlkStepX,
                              CVI_U16 u16BlkStepY, CVI_U32 *u32HogSize);
 
@@ -723,8 +737,30 @@ CVI_S32 CVI_IVE_FilterAndCSC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
 CVI_S32 CVI_IVE_CMP_S8_BINARY(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
                               IVE_SRC_IMAGE_S *pstSrc2, IVE_DST_IMAGE_S *pstDst);
 
+/**
+ * @brief set image value to zero
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstDst Output result. U8C1 type
+ * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Zero(IVE_HANDLE pIveHandle, IVE_DST_IMAGE_S *pstDst);
+
+/**
+ * @brief Blend Y channel of input frame, pstSrc2_dst->y = pstSrc1->y*alpha +
+ * (255-alpha)*pstSrc2_dst->y
+ *
+ * @param pIveHandle Ive instance handler.
+ * @param pstSrc1 Input frame1
+ * @param pstSrc2_dst Input frame2 and output frame,the blended Y would be written to pstSrc2_dst->y
+ * @param pstAlpha Blend weight
+ * @return CVI_S32 CVI_S32 Return CVI_SUCCESS if succeed.
+ */
+CVI_S32 CVI_IVE_Blend_Pixel_Y(IVE_HANDLE pIveHandle, VIDEO_FRAME_INFO_S *pstSrc1,
+                              VIDEO_FRAME_INFO_S *pstSrc2_dst, VIDEO_FRAME_INFO_S *pstAlpha);
+
 #ifdef __cplusplus
 }
 #endif
-
+// } // namespace tpuive
 #endif  // End of _IVE_H

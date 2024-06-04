@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.2.2)
 project(ive_project)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Options
-option(ENABLE_SYSTRACE "Use systrace" OFF)
 # Get current commit
 execute_process(COMMAND git show --oneline -s WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE CURRENT_COMMIT)
 execute_process(COMMAND git rev-parse --abbrev-ref HEAD WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE LATEST_BRANCH)
@@ -48,43 +46,17 @@ set(WORKAROUND_FLAGS_STR "")
 if("${CVI_PLATFORM}" STREQUAL "CV183X")
   add_definitions(-DWORKAROUND_SCALAR_4096_ALIGN_BUG)
   set(WORKAROUND_FLAGS_STR "${WORKAROUND_FLAGS_STR} WORKAROUND_SCALAR_4096_ALIGN_BUG")
-elseif ("${CVI_PLATFORM}" STREQUAL "CV180X")
+elseif ("${CVI_PLATFORM}" STREQUAL "CV180X"  OR "${CVI_PLATFORM}" STREQUAL "CV181X")
   add_definitions(-DCV180X)
 endif()
 
-if("${CVI_TARGET}" STREQUAL "soc")
-  add_definitions(-DCVI_SOC)
-  if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
-    set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/install_soc")
-  endif()
-  # Find toolchain cmake file and toolchain folder
-  if("${CMAKE_TOOLCHAIN_FILE}" STREQUAL "")
-    message(FATAL_ERROR "CMAKE_TOOLCHAIN_FILE is not set. Aborting.")
-  endif()
-  set(USE_TOOLCHAIN "true")
-  set(SSE_FLAGS "")
-  set(GCC_STRIP_FLAG "-s")
-else()
-  set(CVI_TARGET "cmodel")
-  if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
-    set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/install")
-  endif()
-  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-  set(USE_TOOLCHAIN "false")
-  set(SSE_FLAGS "-mssse3 -msse4.1 -mavx2 -mfma")
-  set(GCC_STRIP_FLAG "")
+if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
+  set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/install_soc")
 endif()
-
-if (ENABLE_SYSTRACE)
-  add_definitions(-DENABLE_TRACE)
+# Find toolchain cmake file and toolchain folder
+if("${CMAKE_TOOLCHAIN_FILE}" STREQUAL "")
+  message(FATAL_ERROR "CMAKE_TOOLCHAIN_FILE is not set. Aborting.")
 endif()
-set(TRACER_ROOT ${CMAKE_SOURCE_DIR}/3rdparty/tracer)
-message("use tracerroot:" ${TRACER_ROOT})
-execute_process(COMMAND git remote -v
-                WORKING_DIRECTORY ${TRACER_ROOT}
-                OUTPUT_VARIABLE TRACER_REMOTE_URL)
-include(cmake/tracer.cmake)
 
 # Check if MLIR SDK exists.
 include(cmake/mlir.cmake)
@@ -92,20 +64,14 @@ include(cmake/mlir.cmake)
 # Check if middleware exists.
 include (cmake/middleware.cmake)
 
-#include sysroot/include
-include_directories(${CMAKE_SYSROOT}/include)
-
-# include kernel headers for user space
-include_directories(${KERNEL_HEADERS_ROOT}/include)
-
-set(CMAKE_C_INIT "-fsigned-char -Werror=all -fdiagnostics-color=always ${SSE_FLAGS}")
-set(CMAKE_CXX_INIT "-fsigned-char -fPIC -Werror=all -fdiagnostics-color=always -std=gnu++11 ${SSE_FLAGS}")
+set(CMAKE_C_INIT "-fsigned-char -Werror=all -fdiagnostics-color=always")
+set(CMAKE_CXX_INIT "-fsigned-char -fPIC -Werror=all -fdiagnostics-color=always -std=gnu++11")
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
     set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_C_INIT} ${CMAKE_C_FLAGS_RELEASE}" )
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_INIT} ${CMAKE_CXX_FLAGS_RELEASE}" )
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "SDKRelease")
-    set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_C_INIT} ${CMAKE_C_FLAGS_RELEASE} ${GCC_STRIP_FLAG}" )
-    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_INIT} ${CMAKE_CXX_FLAGS_RELEASE} ${GCC_STRIP_FLAG}" )
+    set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_C_INIT} ${CMAKE_C_FLAGS_RELEASE} -s" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_INIT} ${CMAKE_CXX_FLAGS_RELEASE} -s" )
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
     set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_C_INIT} ${CMAKE_C_FLAGS_DEBUG}" )
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_INIT} ${CMAKE_CXX_FLAGS_DEBUG}" )
@@ -139,11 +105,6 @@ message("")
 message("Workaround flags ${WORKAROUND_FLAGS_STR}")
 message("==================================================")
 
-# add_subdirectory(tpu_math)
 add_subdirectory(src)
 add_subdirectory(sample)
-#if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "SDKRelease")
-  add_subdirectory(test)
-#endif()
-# Install cmake file
-install(FILES cmake/ive.cmake DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/)
+add_subdirectory(test)

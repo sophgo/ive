@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 
+
 enum IVETLType { DATA, KERNEL, TABLE };
 
 class IveCore {
@@ -16,6 +17,7 @@ class IveCore {
   virtual int init(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx) = 0;
   int run(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx, const std::vector<CviImg *> &input,
           std::vector<CviImg *> &output, bool legacy_mode = false);
+  void set_force_alignment(bool alignment) { m_force_addr_align_ = alignment; }
 
  protected:
   cvk_tl_t *allocTLMem(cvk_context_t *cvk_ctx, cvk_tl_shape_t tl_shape, cvk_fmt_t fmt, int eu_align,
@@ -55,6 +57,9 @@ class IveCore {
   int runSingleSizeExtKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                              const std::vector<CviImg *> &input, std::vector<CviImg *> &output,
                              bool enable_min_max = false);
+  int runSingleSizeKernelMultiBatch(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
+                                    const std::vector<CviImg *> &input,
+                                    std::vector<CviImg *> &output, bool enable_min_max = false);
   int runNoKernel(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                   const std::vector<CviImg *> &input, std::vector<CviImg *> &output,
                   bool enable_min_max = false);
@@ -62,4 +67,5 @@ class IveCore {
   bool m_write_cmdbuf = false;
   cvk_chip_info_t m_chip_info;
   uint32_t m_table_per_channel_size = 0;
+  bool m_force_addr_align_ = false;
 };
