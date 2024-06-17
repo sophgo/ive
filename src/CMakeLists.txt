@@ -84,7 +84,7 @@ install(TARGETS cvi_ive_tpu DESTINATION lib)
 install(TARGETS cvi_ive_tpu-static DESTINATION lib)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/cvi_comm_ive.h DESTINATION include)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/cvi_draw_ive.h DESTINATION include)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/cvi_ive.h DESTINATION include)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/ive.h DESTINATION include)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/ive_draw.h DESTINATION include)
 
 

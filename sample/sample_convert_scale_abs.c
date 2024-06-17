@@ -4,7 +4,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
-#include "cvi_ive.h"
+#include "ive.h"
 
 #define TEST_W 1920
 #define TEST_H 1080
