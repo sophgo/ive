@@ -59,7 +59,6 @@ set(DRAWSRC ${CMAKE_CURRENT_SOURCE_DIR}/ive_draw.cpp
 add_library(cvi_ive_tpu SHARED ${SRC} ${DRAWSRC})
 target_link_libraries(cvi_ive_tpu ${MLIR_LIBS})
 add_library(cvi_ive_tpu-static STATIC ${SRC} ${DRAWSRC})
-SET_TARGET_PROPERTIES(cvi_ive_tpu-static PROPERTIES OUTPUT_NAME "cvi_ive_tpu")
 
 set(EX_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/core.cpp

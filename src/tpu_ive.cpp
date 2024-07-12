@@ -50,50 +50,50 @@ CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc) {
   std::vector<uint32_t> heights;
   switch (pstSrc->enType) {
     case IVE_IMAGE_TYPE_U8C1: {
-      heights.push_back(pstSrc->u32Height);
+      heights.push_back(pstSrc->u16Height);
     } break;
     case IVE_IMAGE_TYPE_S8C1: {
-      heights.push_back(pstSrc->u32Height);
+      heights.push_back(pstSrc->u16Height);
       fmt = CVK_FMT_I8;
     } break;
     case IVE_IMAGE_TYPE_YUV420SP: {
       c = 2;
       img_type = CVIIMGTYPE::CVI_YUV420SP;
-      heights.push_back(pstSrc->u32Height);
-      heights.push_back(pstSrc->u32Height >> 1);
+      heights.push_back(pstSrc->u16Height);
+      heights.push_back(pstSrc->u16Height >> 1);
     } break;
     case IVE_IMAGE_TYPE_YUV420P: {
       c = 3;
       img_type = CVIIMGTYPE::CVI_YUV420P;
-      heights.push_back(pstSrc->u32Height);
-      heights.push_back(pstSrc->u32Height >> 1);
-      heights.push_back(pstSrc->u32Height >> 1);
+      heights.push_back(pstSrc->u16Height);
+      heights.push_back(pstSrc->u16Height >> 1);
+      heights.push_back(pstSrc->u16Height >> 1);
     } break;
     case IVE_IMAGE_TYPE_YUV422P: {
       c = 3;
       img_type = CVIIMGTYPE::CVI_YUV422P;
-      heights.resize(3, pstSrc->u32Height);
+      heights.resize(3, pstSrc->u16Height);
     } break;
     case IVE_IMAGE_TYPE_U8C3_PACKAGE: {
       c = 1;
       img_type = CVIIMGTYPE::CVI_RGB_PACKED;
-      heights.push_back(pstSrc->u32Height);
+      heights.push_back(pstSrc->u16Height);
     } break;
     case IVE_IMAGE_TYPE_S8C3_PACKAGE: {
       c = 1;
       img_type = CVIIMGTYPE::CVI_RGB_PACKED;
-      heights.push_back(pstSrc->u32Height);
+      heights.push_back(pstSrc->u16Height);
       fmt = CVK_FMT_I8;
     } break;
     case IVE_IMAGE_TYPE_U8C3_PLANAR: {
       c = 3;
       img_type = CVIIMGTYPE::CVI_RGB_PLANAR;
-      heights.resize(c, pstSrc->u32Height);
+      heights.resize(c, pstSrc->u16Height);
     } break;
     case IVE_IMAGE_TYPE_S8C3_PLANAR: {
       c = 3;
       img_type = CVIIMGTYPE::CVI_RGB_PLANAR;
-      heights.resize(c, pstSrc->u32Height);
+      heights.resize(c, pstSrc->u16Height);
       fmt = CVK_FMT_I8;
     } break;
     default: {
@@ -106,7 +106,7 @@ CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc) {
     strides.push_back(pstSrc->u16Stride[i]);
     u32_length.push_back(pstSrc->u16Stride[i] * heights[i]);
   }
-  auto *cpp_img = new CviImg(pstSrc->u32Height, pstSrc->u32Width, strides, heights, u32_length,
+  auto *cpp_img = new CviImg(pstSrc->u16Height, pstSrc->u16Width, strides, heights, u32_length,
                              pstSrc->pu8VirAddr[0], pstSrc->u64PhyAddr[0], img_type, fmt);
   if (!cpp_img->IsInit()) {
     LOGE("Failed to init IVE_IMAGE_S.\n");
@@ -121,8 +121,8 @@ static void ViewAsYuv420(IVE_IMAGE_S *src) {
   int w = src->u16Stride[0];
   int w1 = src->u16Stride[1];
   int w2 = src->u16Stride[1];
-  int h = src->u32Height;
-  int h2 = src->u32Height / 2;
+  int h = src->u16Height;
+  int h2 = src->u16Height / 2;
 
   memcpy(src->pu8VirAddr[2], src->pu8VirAddr[0] + w * h + w1 * h2, w2 * h2);
   memcpy(src->pu8VirAddr[1], src->pu8VirAddr[0] + w * h, w1 * h2);
@@ -136,22 +136,22 @@ static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
   CviImg *orig_cpp = reinterpret_cast<CviImg *>(src->tpu_block);
 
   if (src->enType == IVE_IMAGE_TYPE_YUV420P) {
-    int halfh = src->u32Height / 2;
+    int halfh = src->u16Height / 2;
     int u_plane_size = src->u16Stride[1] * halfh;
     int v_plane_size = src->u16Stride[2] * halfh;
     int added_h = (u_plane_size + v_plane_size) / src->u16Stride[0];
     LOGD("ViewAsU8C1 stride0:%d,%d,%d,addedh:%d\n", (int)src->u16Stride[0], (int)src->u16Stride[1],
          (int)src->u16Stride[2], added_h);
-    new_height = src->u32Height + added_h;
+    new_height = src->u16Height + added_h;
 
     if (orig_cpp->IsSubImg()) {
       std::copy(src->pu8VirAddr[1], src->pu8VirAddr[1] + u_plane_size,
-                src->pu8VirAddr[0] + src->u16Stride[0] * src->u32Height);
+                src->pu8VirAddr[0] + src->u16Stride[0] * src->u16Height);
       std::copy(src->pu8VirAddr[2], src->pu8VirAddr[2] + v_plane_size,
-                src->pu8VirAddr[0] + src->u16Stride[0] * src->u32Height + u_plane_size);
+                src->pu8VirAddr[0] + src->u16Stride[0] * src->u16Height + u_plane_size);
     }
   } else if (src->enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
-    new_height = src->u32Height * 3;
+    new_height = src->u16Height * 3;
   } else {
     LOGE("Only support IVE_IMAGE_TYPE_YUV420P or IVE_IMAGE_TYPE_U8C3_PLANAR.\n");
     return nullptr;
@@ -168,7 +168,7 @@ static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
     u32_length.push_back(src->u16Stride[0] * new_height);
   }
 
-  auto *cpp_img = new CviImg(new_height, src->u32Width, strides, heights, u32_length,
+  auto *cpp_img = new CviImg(new_height, src->u16Width, strides, heights, u32_length,
                              src->pu8VirAddr[0], src->u64PhyAddr[0], img_type, fmt);
   if (!cpp_img->IsInit()) {
     LOGE("Failed to init IVE_IMAGE_S.\n");
@@ -328,8 +328,8 @@ CVI_S32 VideoFrameYInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S *pstIID
   }
 
   pstIIDst->tpu_block = reinterpret_cast<CVI_IMG *>(cpp_img);
-  pstIIDst->u32Width = cpp_img->GetImgWidth();
-  pstIIDst->u32Height = cpp_img->GetImgHeight();
+  pstIIDst->u16Width = cpp_img->GetImgWidth();
+  pstIIDst->u16Height = cpp_img->GetImgHeight();
   pstIIDst->u16Reserved = getFmtSize(fmt);
 
   size_t i_limit = cpp_img->GetImgChannel();
