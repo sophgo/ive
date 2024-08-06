@@ -1,6 +1,6 @@
 #ifndef _CVI_COMM_IVE_H_
 #define _CVI_COMM_IVE_H_
-#include "cvi_type.h"
+#include <linux/cvi_type.h>
 
 #define CVI_IVE2_LENGTH_ALIGN 1
 
