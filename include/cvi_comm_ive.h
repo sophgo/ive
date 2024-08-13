@@ -1,10 +1,6 @@
 #ifndef _CVI_COMM_IVE_H_
 #define _CVI_COMM_IVE_H_
-#ifdef CV180X
 #include "linux/cvi_type.h"
-#else
-#include "cvi_type.h"
-#endif
 
 #define CVI_IVE2_LENGTH_ALIGN 1
 
