@@ -49,6 +49,7 @@ if("${CVI_PLATFORM}" STREQUAL "CV183X")
 # elseif ("${CVI_PLATFORM}" STREQUAL "CV180X")
 elseif ("${CVI_PLATFORM}" STREQUAL "CV180X"  OR "${CVI_PLATFORM}" STREQUAL "CV181X")
   add_definitions(-DCV180X)
+  add_definitions(-D__CV180X__)
 endif()
 
 if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
