@@ -1,9 +1,9 @@
-#include "ive.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include "cvi_tpu_ive.h"
+#include "ive.h"
 
 int cpu_ref(int width, int height, int stride, uint8_t *src_img1, uint8_t *src_img2,
             uint8_t *alpha_img, uint8_t *dst_img);

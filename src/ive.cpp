@@ -3954,45 +3954,4 @@ CVI_S32 VideoFrameYInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S *pstIID
   return CVI_SUCCESS;
 }
 
-CVI_S32 CVI_IVE_Blend_Pixel_Y(IVE_HANDLE pIveHandle, VIDEO_FRAME_INFO_S *pstSrc1,
-                              VIDEO_FRAME_INFO_S *pstSrc2_dst, VIDEO_FRAME_INFO_S *pstAlpha) {
-  IVE_IMAGE_S src1, src2, alpha, dst;
-  memset(&src1, 0, sizeof(IVE_IMAGE_S));
-  memset(&src2, 0, sizeof(IVE_IMAGE_S));
-  memset(&alpha, 0, sizeof(IVE_IMAGE_S));
-  memset(&dst, 0, sizeof(IVE_IMAGE_S));
-
-  CVI_S32 ret = CVI_SUCCESS;
-  ret = VideoFrameYInfo2Image(pstSrc1, &src1);
-  if (ret != CVI_SUCCESS) {
-    LOGE("pstSrc1 type not supported,could not extract Y plane");
-    return ret;
-  }
-
-  ret = VideoFrameYInfo2Image(pstSrc2_dst, &src2);
-  if (ret != CVI_SUCCESS) {
-    LOGE("pstSrc2_dst type not supported,could not extract Y plane");
-    return ret;
-  }
-
-  ret = VideoFrameYInfo2Image(pstAlpha, &alpha);
-  if (ret != CVI_SUCCESS) {
-    LOGE("pstAlpha type not supported,could not extract Y plane");
-    return ret;
-  }
-
-  ret = VideoFrameYInfo2Image(pstSrc2_dst, &dst);
-  if (ret != CVI_SUCCESS) {
-    LOGE("pstSrc2 type not supported,could not extract Y plane");
-    return ret;
-  }
-
-  CVI_IVE_Blend_Pixel(pIveHandle, &src1, &src2, &alpha, &dst, true);
-
-  CVI_SYS_FreeI(pIveHandle, &src1);
-  CVI_SYS_FreeI(pIveHandle, &src2);
-  CVI_SYS_FreeI(pIveHandle, &alpha);
-  CVI_SYS_FreeI(pIveHandle, &dst);
-  return ret;
-}
 #endif
