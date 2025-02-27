@@ -66,8 +66,8 @@ int main(int argc, char **argv) {
   IVE_HANDLE handle = CVI_IVE_CreateHandle();
 
   IVE_IMAGE_S src_u8c1 = CVI_IVE_ReadImage(handle, file_name1, IVE_IMAGE_TYPE_U8C1);
-  int width = src_u8c1.u16Width;
-  int height = src_u8c1.u16Height;
+  CVI_U16 width = src_u8c1.u16Width;
+  CVI_U16 height = src_u8c1.u16Height;
 
   IVE_IMAGE_S src, dst;
   CVI_IVE_CreateImage(handle, &src, IVE_IMAGE_TYPE_BF16C1, width, height);

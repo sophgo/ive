@@ -5,12 +5,11 @@ function(build_test FNAME)
 endfunction()
 
 project(test-c)
-
 include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/../include
-  ${MLIR_INCLUDES}
-  ${MIDDLEWARE_INCLUDES}
-  ${CMAKE_SOURCE_DIR}/3rdparty
+    ${MLIR_INCLUDES}
+    ${MIDDLEWARE_INCLUDES}
+    ${CMAKE_SOURCE_DIR}/3rdparty
+    ${CMAKE_SOURCE_DIR}/include
 )
 
 build_test(test_add_c)
@@ -32,6 +31,7 @@ build_test(test_sad_c)
 build_test(test_sad_stereo_c)
 build_test(test_sigmoid_c)
 build_test(test_sobel_grad_c)
+build_test(test_sub_c)
 build_test(test_table_c)
 build_test(test_threshold_c)
 build_test(test_thresholds16_c)
@@ -48,16 +48,5 @@ build_test(test_lbp_c)
 build_test(test_resize_c)
 build_test(test_csc_c)
 build_test(test_filter_csc_c)
-build_test(test_blend_s8_c)
+build_test(test_sub_clip_c)
 build_test(test_blend_u8_ab_c)
-build_test(test_s8_cmp_c)
-# build_test(test_blend_y)
-
-add_executable(test_blend_y test_blend_y.c)
-target_link_libraries(test_blend_y cvi_ive_tpu_ex cvi_ive_tpu)
-# target_link_libraries(test_blend_y  cvi_ive_tpu cvi_ive_tpu_ex)
-install(TARGETS test_blend_y DESTINATION bin)
-
-add_executable(test_blend_nv21_roi test_blend_nv21_roi.c)
-target_link_libraries(test_blend_nv21_roi  cvi_ive_tpu_ex cvi_ive_tpu)
-install(TARGETS test_blend_nv21_roi DESTINATION bin)

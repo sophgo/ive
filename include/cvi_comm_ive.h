@@ -1,10 +1,6 @@
 #ifndef _CVI_COMM_IVE_H_
 #define _CVI_COMM_IVE_H_
-#ifdef CV180X
-#include "linux/cvi_type.h"
-#else
 #include "cvi_type.h"
-#endif
 
 #define CVI_IVE2_LENGTH_ALIGN 1
 
@@ -86,9 +82,6 @@ typedef enum IVE_IMAGE_TYPE {
   IVE_IMAGE_TYPE_BF16C1 = 0x10,
   IVE_IMAGE_TYPE_FP32C1 = 0x11,
 
-  IVE_IMAGE_TYPE_S8C3_PACKAGE,
-  IVE_IMAGE_TYPE_S8C3_PLANAR,
-
   IVE_IMAGE_TYPE_BUTT
 
 } IVE_IMAGE_TYPE_E;
@@ -150,10 +143,6 @@ typedef struct IVE_FILTER_CTRL {
   CVI_S8 as8Mask[169];
   CVI_U32 u32Norm;
 } IVE_FILTER_CTRL_S;
-
-typedef struct IVE_DOWNSAMPLE_CTRL {
-  CVI_U8 u8KnerlSize;
-} IVE_DOWNSAMPLE_CTRL_S;
 
 typedef struct IVE_HOG_CTRL {
   CVI_U8 u8BinSize;
@@ -437,5 +426,4 @@ typedef struct cviIVE_FILTER_AND_CSC_CTRL_S {
   CVI_U16 u16Norm;       /*Normalization parameter, by right shift*/
 } IVE_FILTER_AND_CSC_CTRL_S;
 
-// }
 #endif  // End of _CVI_COMM_IVE.h

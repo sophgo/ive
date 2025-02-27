@@ -15,8 +15,7 @@ class IveTPUMulSum : public IveCore {
   virtual void operation(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
                          uint32_t ping_idx) override;
   virtual void beforeSubmit(CVI_RT_HANDLE rt_handle, cvk_context_t *cvk_ctx,
-                            const std::vector<CviImg *> &input,
-                            std::vector<CviImg *> &output) override;
+                            std::vector<CviImg> &input, std::vector<CviImg> *output) override;
   virtual int postProcess(CVI_RT_HANDLE rt_handle) override;
 
  private:

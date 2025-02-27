@@ -7,7 +7,6 @@
 
 #include <iostream>
 #include <memory>
-// using namespace tpuive;
 /**
  * @brief String array of IVE_IMAGE_S enType.
  *
@@ -41,46 +40,6 @@ const std::string g_ive_version = std::string(
     std::string(CVIIVE_TAG) + "_" +
     std::regex_replace(std::string(__DATE__), std::regex{" "}, std::string{"-"}) + "-" + __TIME__);
 #define IVE_VERSION g_ive_version.c_str()
-
-static CviImg *ExtractYuvPlane(IVE_IMAGE_S *src, int plane) {
-  CVIIMGTYPE img_type = CVIIMGTYPE::CVI_GRAY;
-  if (src->enType != IVE_IMAGE_TYPE_YUV420P) {
-    return nullptr;
-  }
-  cvk_fmt_t fmt = CVK_FMT_U8;
-  std::vector<uint32_t> heights;
-  uint32_t new_height = src->u16Height;
-  uint32_t new_width = src->u16Width;
-  if (plane > 0) {
-    new_height = new_height / 2;
-    new_width = new_width / 2;
-  }
-
-  heights.push_back(new_height);
-
-  std::vector<uint32_t> strides, u32_length;
-  strides.push_back(src->u16Stride[plane]);
-  CviImg *orig_cpp = reinterpret_cast<CviImg *>(src->tpu_block);
-
-  if (Is4096Workaound(orig_cpp->GetImgType())) {
-    LOGD("to extract uv plane:%d,size:%d,size1:%d,stride:%d,newheight:%d\n", (int)plane,
-         orig_cpp->GetImgCOffsets()[plane + 1] - orig_cpp->GetImgCOffsets()[plane],
-         src->u16Stride[plane] * new_height, (int)src->u16Stride[plane], (int)new_height);
-    u32_length.push_back(orig_cpp->GetImgCOffsets()[plane + 1] - orig_cpp->GetImgCOffsets()[plane]);
-  } else {
-    u32_length.push_back(src->u16Stride[plane] * new_height);
-  }
-
-  auto *cpp_img = new CviImg(new_height, new_width, strides, heights, u32_length,
-                             src->pu8VirAddr[plane], src->u64PhyAddr[plane], img_type, fmt);
-
-  if (!cpp_img->IsInit()) {
-    LOGE("Failed to init IVE_IMAGE_S.\n");
-    delete cpp_img;
-    return nullptr;
-  }
-  return cpp_img;
-}
 
 IVE_HANDLE CVI_IVE_CreateHandle() {
   IVE_HANDLE_CTX *handle_ctx = new IVE_HANDLE_CTX;
@@ -135,7 +94,7 @@ CVI_S32 CVI_IVE_CreateMemInfo(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo,
 }
 
 CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
-                             uint32_t u16Width, uint32_t u16Height, IVE_IMAGE_S *pstBuffer) {
+                             uint16_t u16Width, uint16_t u16Height, IVE_IMAGE_S *pstBuffer) {
   if (u16Width == 0 || u16Height == 0) {
     LOGE("Image width or height cannot be 0.\n");
     pstImg->tpu_block = NULL;
@@ -158,7 +117,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
   std::vector<uint32_t> heights;
   switch (enType) {
     case IVE_IMAGE_TYPE_S8C1: {
-      img_type = CVI_GRAY;
+      img_type = CVI_SINGLE;
       const uint32_t stride = WidthAlign(u16Width, DEFAULT_ALIGN);
       strides.push_back(stride);
       heights.push_back(u16Height);
@@ -204,25 +163,11 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
       strides.push_back(stride);
       heights.push_back(u16Height);
     } break;
-    case IVE_IMAGE_TYPE_S8C3_PACKAGE: {
-      img_type = CVI_RGB_PACKED;
-      const uint32_t stride = WidthAlign(u16Width * 3, DEFAULT_ALIGN);
-      strides.push_back(stride);
-      heights.push_back(u16Height);
-      fmt = CVK_FMT_I8;
-    } break;
     case IVE_IMAGE_TYPE_U8C3_PLANAR: {
       img_type = CVI_RGB_PLANAR;
       const uint32_t stride = WidthAlign(u16Width, DEFAULT_ALIGN);
       strides.resize(3, stride);
       heights.resize(3, u16Height);
-    } break;
-    case IVE_IMAGE_TYPE_S8C3_PLANAR: {
-      img_type = CVI_RGB_PLANAR;
-      const uint32_t stride = WidthAlign(u16Width, DEFAULT_ALIGN);
-      strides.resize(3, stride);
-      heights.resize(3, u16Height);
-      fmt = CVK_FMT_I8;
     } break;
     case IVE_IMAGE_TYPE_BF16C1: {
       img_type = CVI_SINGLE;
@@ -305,7 +250,7 @@ CVI_S32 CVI_IVE_CreateImage2(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMA
 }
 
 CVI_S32 CVI_IVE_CreateImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, IVE_IMAGE_TYPE_E enType,
-                            CVI_U32 u16Width, CVI_U32 u16Height) {
+                            CVI_U16 u16Width, CVI_U16 u16Height) {
   return CVI_IVE_CreateImage2(pIveHandle, pstImg, enType, u16Width, u16Height, NULL);
 }
 
@@ -320,10 +265,6 @@ CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc) {
   switch (pstSrc->enType) {
     case IVE_IMAGE_TYPE_U8C1: {
       heights.push_back(pstSrc->u16Height);
-    } break;
-    case IVE_IMAGE_TYPE_S8C1: {
-      heights.push_back(pstSrc->u16Height);
-      fmt = CVK_FMT_I8;
     } break;
     case IVE_IMAGE_TYPE_YUV420SP: {
       c = 2;
@@ -348,22 +289,10 @@ CVI_S32 CVI_IVE_ImageInit(IVE_IMAGE_S *pstSrc) {
       img_type = CVIIMGTYPE::CVI_RGB_PACKED;
       heights.push_back(pstSrc->u16Height);
     } break;
-    case IVE_IMAGE_TYPE_S8C3_PACKAGE: {
-      c = 1;
-      img_type = CVIIMGTYPE::CVI_RGB_PACKED;
-      heights.push_back(pstSrc->u16Height);
-      fmt = CVK_FMT_I8;
-    } break;
     case IVE_IMAGE_TYPE_U8C3_PLANAR: {
       c = 3;
       img_type = CVIIMGTYPE::CVI_RGB_PLANAR;
       heights.resize(c, pstSrc->u16Height);
-    } break;
-    case IVE_IMAGE_TYPE_S8C3_PLANAR: {
-      c = 3;
-      img_type = CVIIMGTYPE::CVI_RGB_PLANAR;
-      heights.resize(c, pstSrc->u16Height);
-      fmt = CVK_FMT_I8;
     } break;
     default: {
       LOGE("Unsupported conversion type: %u.\n", pstSrc->enType);
@@ -414,7 +343,6 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   auto *src_img = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   auto *cpp_img = new CviImg(handle_ctx->rt_handle, *src_img, u16X1, u16Y1, u16X2, u16Y2);
   if (cpp_img->GetVAddr() == nullptr) {
-    LOGE("generate sub image failed\n");
     delete cpp_img;
     return CVI_FAILURE;
   }
@@ -425,20 +353,13 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   pstDst->u16Height = cpp_img->m_tg.shape.h;
   pstDst->u16Reserved = pstSrc->u16Reserved;
 
-  size_t num_plane = cpp_img->GetImgCOffsets().size() - 1;
-  LOGD("channel:%d,numplane:%d\n", (int)cpp_img->m_tg.shape.c, (int)num_plane);
-  for (size_t i = 0; i < num_plane; i++) {
+  for (size_t i = 0; i < cpp_img->m_tg.shape.c; i++) {
     pstDst->pu8VirAddr[i] = cpp_img->GetVAddr() + cpp_img->GetImgCOffsets()[i];
     pstDst->u64PhyAddr[i] = cpp_img->GetPAddr() + cpp_img->GetImgCOffsets()[i];
     pstDst->u16Stride[i] = cpp_img->GetImgStrides()[i];
-    LOGD("updatesubimg ,plane:%d,coffset:%d\n", (int)i, (int)cpp_img->GetImgCOffsets()[i]);
   }
 
-  LOGD("subimg planeoffset:%d,%d,%d\n", (int)(pstDst->u64PhyAddr[0] - pstSrc->u64PhyAddr[0]),
-       (int)(pstDst->u64PhyAddr[1] - pstSrc->u64PhyAddr[1]),
-       (int)(pstDst->u64PhyAddr[2] - pstSrc->u64PhyAddr[2]));
-
-  for (size_t i = num_plane; i < 3; i++) {
+  for (size_t i = cpp_img->m_tg.shape.c; i < 3; i++) {
     pstDst->pu8VirAddr[i] = NULL;
     pstDst->u64PhyAddr[i] = 0;
     pstDst->u16Stride[i] = 0;
@@ -446,7 +367,8 @@ CVI_S32 CVI_IVE_SubImage(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   return CVI_SUCCESS;
 }
 
-CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *pstVFIDst) {
+CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *pstVFIDst,
+                                     CVI_BOOL invertPackage) {
   pstVFIDst->u32PoolId = -1;
   VIDEO_FRAME_S *pstVFDst = &pstVFIDst->stVFrame;
   memset(pstVFDst, 0, sizeof(VIDEO_FRAME_S));
@@ -464,7 +386,7 @@ CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *
       pstVFDst->enPixelFormat = PIXEL_FORMAT_YUV_PLANAR_422;
     } break;
     case IVE_IMAGE_TYPE_U8C3_PACKAGE: {
-      pstVFDst->enPixelFormat = PIXEL_FORMAT_RGB_888;
+      pstVFDst->enPixelFormat = invertPackage ? PIXEL_FORMAT_BGR_888 : PIXEL_FORMAT_RGB_888;
     } break;
     case IVE_IMAGE_TYPE_U8C3_PLANAR: {
       pstVFDst->enPixelFormat = PIXEL_FORMAT_RGB_888_PLANAR;
@@ -490,17 +412,12 @@ CVI_S32 CVI_IVE_Image2VideoFrameInfo(IVE_IMAGE_S *pstIISrc, VIDEO_FRAME_INFO_S *
 }
 
 CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S *pstIIDst) {
-  CviImg *cpp_img = nullptr;
   if (pstIIDst->tpu_block != NULL) {
-    cpp_img = reinterpret_cast<CviImg *>(pstIIDst->tpu_block);
+    CviImg *cpp_img = reinterpret_cast<CviImg *>(pstIIDst->tpu_block);
     if (!cpp_img->IsNullMem()) {
       LOGE("pstIIDst->tpu_block->m_rtmem is not NULL");
-      return CVI_FAILURE;
     }
-    if (cpp_img->GetMagicNum() != CVI_IMG_VIDEO_FRM_MAGIC_NUM) {
-      printf("pstIIDst->tpu_block is not constructed from VIDEO_FRAME_INFO_S");
-      return CVI_FAILURE;
-    }
+    delete cpp_img;
   }
   VIDEO_FRAME_S *pstVFSrc = &pstVFISrc->stVFrame;
   size_t c = 1;
@@ -557,14 +474,8 @@ CVI_S32 CVI_IVE_VideoFrameInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S 
     strides.push_back(pstVFSrc->u32Stride[i]);
     u32_length.push_back(pstVFSrc->u32Length[i]);
   }
-  if (cpp_img == nullptr) {
-    cpp_img = new CviImg(pstVFSrc->u32Height, pstVFSrc->u32Width, strides, heights, u32_length,
-                         pstVFSrc->pu8VirAddr[0], pstVFSrc->u64PhyAddr[0], img_type, fmt);
-  } else {
-    cpp_img->ReInit(pstVFSrc->u32Height, pstVFSrc->u32Width, strides, heights, u32_length,
-                    pstVFSrc->pu8VirAddr[0], pstVFSrc->u64PhyAddr[0], img_type, fmt);
-  }
-
+  auto *cpp_img = new CviImg(pstVFSrc->u32Height, pstVFSrc->u32Width, strides, heights, u32_length,
+                             pstVFSrc->pu8VirAddr[0], pstVFSrc->u64PhyAddr[0], img_type, fmt);
   if (!cpp_img->IsInit()) {
     LOGE("Failed to init IVE_IMAGE_S.\n");
     return CVI_FAILURE;
@@ -594,15 +505,12 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
                                CVI_BOOL invertPackage) {
   int desiredNChannels = -1;
   switch (enType) {
-    case IVE_IMAGE_TYPE_S8C1:
     case IVE_IMAGE_TYPE_U8C1:
       desiredNChannels = STBI_grey;
       break;
-    case IVE_IMAGE_TYPE_S8C3_PLANAR:
     case IVE_IMAGE_TYPE_U8C3_PLANAR:
       desiredNChannels = STBI_rgb;
       break;
-    case IVE_IMAGE_TYPE_S8C3_PACKAGE:
     case IVE_IMAGE_TYPE_U8C3_PACKAGE:
       desiredNChannels = STBI_rgb;
       break;
@@ -610,7 +518,6 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
       LOGE("Not support channel %s.\n", cviIveImgEnTypeStr[enType]);
       break;
   }
-  LOGI("to read image:%s,type:%d,channels:%d", filename, enType, desiredNChannels);
   IVE_IMAGE_S img;
   memset(&img, 0, sizeof(IVE_IMAGE_S));
   if (desiredNChannels >= 0) {
@@ -620,10 +527,9 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
       LOGE("Image %s read failed.\n", filename);
       return img;
     }
-    LOGI("to create cviimage,channels, width, height: %d %d %d\n", desiredNChannels, width, height);
     CVI_IVE_CreateImage(pIveHandle, &img, enType, width, height);
     LOGI("desiredNChannels, width, height: %d %d %d\n", desiredNChannels, width, height);
-    if (enType == IVE_IMAGE_TYPE_U8C3_PLANAR || enType == IVE_IMAGE_TYPE_S8C3_PLANAR) {
+    if (enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
       for (size_t i = 0; i < (size_t)height; i++) {
         for (size_t j = 0; j < (size_t)width; j++) {
           size_t stb_idx = (i * width + j) * 3;
@@ -634,8 +540,7 @@ IVE_IMAGE_S CVI_IVE_ReadImage2(IVE_HANDLE pIveHandle, const char *filename, IVE_
         }
       }
     } else {
-      if (invertPackage &&
-          (enType == IVE_IMAGE_TYPE_U8C3_PACKAGE || enType == IVE_IMAGE_TYPE_S8C3_PACKAGE)) {
+      if (invertPackage && enType == IVE_IMAGE_TYPE_U8C3_PACKAGE) {
         for (size_t i = 0; i < (size_t)height; i++) {
           uint32_t stb_stride = i * width * 3;
           uint32_t image_stride = (i * img.u16Stride[0]);
@@ -667,7 +572,7 @@ IVE_IMAGE_S CVI_IVE_ReadImage(IVE_HANDLE pIveHandle, const char *filename,
 }
 #if 1
 CVI_S32 CVI_IVE_ReadRawImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, const char *filename,
-                             IVE_IMAGE_TYPE_E enType, CVI_U16 u16Width, CVI_U16 u16Height) {
+                             IVE_IMAGE_TYPE_E enType, CVI_U16 u32Width, CVI_U16 u32Height) {
   float desiredNChannels = -1;
 
   switch (enType) {
@@ -693,7 +598,7 @@ CVI_S32 CVI_IVE_ReadRawImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, const c
   }
 
   if (desiredNChannels > 0) {
-    int buf_size = (int)((float)u16Width * (float)u16Height * (float)desiredNChannels);
+    int buf_size = (int)((float)u32Width * (float)u32Height * (float)desiredNChannels);
     char buffer[buf_size];
     FILE *fp;
 
@@ -706,45 +611,45 @@ CVI_S32 CVI_IVE_ReadRawImage(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, const c
     }
     fclose(fp);
 
-    CVI_IVE_ReadImageArray(pIveHandle, pstImg, buffer, enType, u16Width, u16Height);
+    CVI_IVE_ReadImageArray(pIveHandle, pstImg, buffer, enType, u32Width, u32Height);
     return CVI_SUCCESS;
   }
   return CVI_FAILURE;
 }
 
 CVI_S32 CVI_IVE_ReadImageArray(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, char *pBuffer,
-                               IVE_IMAGE_TYPE_E enType, CVI_U16 u16Width, CVI_U16 u16Height) {
+                               IVE_IMAGE_TYPE_E enType, CVI_U16 u32Width, CVI_U16 u32Height) {
   char *ptr = NULL;
 
   memset(pstImg, 0, sizeof(IVE_IMAGE_S));
 
-  CVI_IVE_CreateImage(pIveHandle, pstImg, enType, u16Width, u16Height);
+  CVI_IVE_CreateImage(pIveHandle, pstImg, enType, u32Width, u32Height);
 
   if (enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
     ptr = pBuffer;
-    for (size_t j = 0; j < (size_t)u16Height; j++) {
+    for (size_t j = 0; j < (size_t)u32Height; j++) {
       memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[0] + (j * pstImg->u16Stride[0])), ptr,
-             u16Width);
-      ptr += u16Width;
+             u32Width);
+      ptr += u32Width;
     }
     for (size_t j = 0; j < (size_t)pstImg->u16Height; j++) {
       memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[1] + (j * pstImg->u16Stride[1])), ptr,
-             u16Width);
-      ptr += u16Width;
+             u32Width);
+      ptr += u32Width;
     }
     for (size_t j = 0; j < (size_t)pstImg->u16Height; j++) {
       memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[2] + (j * pstImg->u16Stride[2])), ptr,
-             u16Width);
-      ptr += u16Width;
+             u32Width);
+      ptr += u32Width;
     }
   } else if (enType == IVE_IMAGE_TYPE_U8C3_PACKAGE) {
     // yyy... uuu... vvv... to yyy... uuu... vvv...
     ptr = pBuffer;
-    for (size_t i = 0; i < (size_t)u16Height; i++) {
-      uint32_t stb_stride = i * u16Width * 3;
+    for (size_t i = 0; i < (size_t)u32Height; i++) {
+      uint32_t stb_stride = i * u32Width * 3;
       uint32_t image_stride = (i * pstImg->u16Stride[0]);
 
-      for (size_t j = 0; j < (size_t)u16Width; j++) {
+      for (size_t j = 0; j < (size_t)u32Width; j++) {
         uint32_t buf_idx = stb_stride + (j * 3);
         uint32_t img_idx = image_stride + (j * 3);
         ((char *)(uintptr_t)pstImg->pu8VirAddr[0])[img_idx] = ptr[buf_idx];
@@ -754,46 +659,47 @@ CVI_S32 CVI_IVE_ReadImageArray(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, char 
     }
   } else if (enType == IVE_IMAGE_TYPE_YUV420SP) {
     ptr = pBuffer;
-    for (size_t j = 0; j < (size_t)u16Height; j++) {
+    for (size_t j = 0; j < (size_t)u32Height; j++) {
       memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[0] + (j * pstImg->u16Stride[0])), ptr,
-             u16Width);
-      ptr += u16Width;
+             u32Width);
+      ptr += u32Width;
     }
     for (size_t j = 0; j < (size_t)pstImg->u16Height / 2; j++) {
       memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[1] + (j * pstImg->u16Stride[1])), ptr,
-             u16Width);
-      ptr += u16Width;
+             u32Width);
+      ptr += u32Width;
     }
   } else if (enType == IVE_IMAGE_TYPE_YUV422SP) {
     ptr = pBuffer;
-    for (size_t j = 0; j < (size_t)u16Height; j++) {
+    for (size_t j = 0; j < (size_t)u32Height; j++) {
       memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[0] + (j * pstImg->u16Stride[0])), ptr,
-             u16Width);
-      ptr += u16Width;
+             u32Width);
+      ptr += u32Width;
     }
     for (size_t j = 0; j < (size_t)pstImg->u16Height; j++) {
       memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[1] + (j * pstImg->u16Stride[1])), ptr,
-             u16Width);
-      ptr += u16Width;
+             u32Width);
+      ptr += u32Width;
     }
   } else if (enType == IVE_IMAGE_TYPE_U16C1 || enType == IVE_IMAGE_TYPE_S16C1) {
     ptr = pBuffer;
-    for (size_t j = 0; j < (size_t)u16Height; j++) {
+    for (size_t j = 0; j < (size_t)u32Height; j++) {
       memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[0] + (j * pstImg->u16Stride[0])), ptr,
-             u16Width * (sizeof(uint16_t)));
-      ptr += u16Width * (sizeof(uint16_t));
+             u32Width * (sizeof(uint16_t)));
+      ptr += u32Width * (sizeof(uint16_t));
     }
   } else {
     ptr = pBuffer;
-    for (size_t j = 0; j < (size_t)u16Height; j++) {
+    for (size_t j = 0; j < (size_t)u32Height; j++) {
       memcpy((char *)(uintptr_t)(pstImg->pu8VirAddr[0] + (j * pstImg->u16Stride[0])), ptr,
-             u16Width);
-      ptr += u16Width;
+             u32Width);
+      ptr += u32Width;
     }
   }
 
   return CVI_SUCCESS;
 }
+#endif
 
 CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAGE_S *pstImg) {
   int desiredNChannels = -1;
@@ -837,7 +743,6 @@ CVI_S32 CVI_IVE_WriteImage(IVE_HANDLE pIveHandle, const char *filename, IVE_IMAG
   }
   return CVI_SUCCESS;
 }
-#endif
 
 CVI_S32 CVI_SYS_FreeM(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo) {
   delete[] pstMemInfo->pu8VirAddr;
@@ -847,7 +752,7 @@ CVI_S32 CVI_SYS_FreeM(IVE_HANDLE pIveHandle, IVE_MEM_INFO_S *pstMemInfo) {
 
 CVI_S32 CVI_SYS_FreeI(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg) {
   if (pstImg->tpu_block == NULL) {
-    LOGD("Image tpu block is freed.\n");
+    LOGI("Image tpu block is freed.\n");
     return CVI_SUCCESS;
   }
   auto *cpp_img = reinterpret_cast<CviImg *>(pstImg->tpu_block);
@@ -894,21 +799,21 @@ CVI_S32 CVI_IVE_DMA(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAG
 #else
     CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
     CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-    // std::vector<CviImg*> inputs = {cpp_src};
-    // std::vector<CviImg*> outputs = {cpp_dst};
-    LOGD("use IVE_DMA_MODE_DIRECT_COPY\n");
-    ret = IveTPUCopyDirect::run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, cpp_src, cpp_dst);
+    std::vector<CviImg> inputs = {*cpp_src};
+    std::vector<CviImg> outputs = {*cpp_dst};
+
+    ret = IveTPUCopyDirect::run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
 #endif
   } else if (pstDmaCtrl->enMode == IVE_DMA_MODE_INTERVAL_COPY) {
     handle_ctx->t_h.t_copy_int.setInvertal(pstDmaCtrl->u8HorSegSize, pstDmaCtrl->u8VerSegRows);
     handle_ctx->t_h.t_copy_int.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
     CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-    std::vector<CviImg *> inputs = {cpp_src};
-    std::vector<CviImg *> outputs = {cpp_dst};
+    std::vector<CviImg> inputs = {*cpp_src};
+    std::vector<CviImg> outputs = {*cpp_dst};
 
     ret = handle_ctx->t_h.t_copy_int.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                         outputs, true);
+                                         &outputs, true);
   }
   return ret;
 }
@@ -1005,9 +910,9 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
       handle_ctx->t_h.t_norm.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
       CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
       CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-      std::vector<CviImg *> inputs = {cpp_src};
-      std::vector<CviImg *> outputs = {cpp_dst};
-      handle_ctx->t_h.t_norm.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+      std::vector<CviImg> inputs = {*cpp_src};
+      std::vector<CviImg> outputs = {*cpp_dst};
+      handle_ctx->t_h.t_norm.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
     }
   } else if (pstItcCtrl->enType == IVE_ITC_SATURATE) {
     if (cpp_src->m_tg.fmt == CVK_FMT_BF16 && cpp_dst->m_tg.fmt == CVK_FMT_F32) {
@@ -1058,8 +963,10 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
                 cpp_dst->m_tg.fmt == CVK_FMT_I8)) {
       CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
       CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
+      std::vector<CviImg> inputs = {*cpp_src};
+      std::vector<CviImg> outputs = {*cpp_dst};
 
-      IveTPUCopyDirect::run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, cpp_src, cpp_dst);
+      IveTPUCopyDirect::run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
     } else {
       LOGE("Unsupported input output image type ( %u, %u).\n", cpp_src->m_tg.fmt,
            cpp_dst->m_tg.fmt);
@@ -1078,18 +985,6 @@ CVI_S32 CVI_IVE_ImageTypeConvert(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
 CVI_S32 CVI_IVE_ConstFill(IVE_HANDLE pIveHandle, const CVI_FLOAT value, IVE_DST_IMAGE_S *pstDst,
                           bool bInstant) {
   ScopedTrace t(__PRETTY_FUNCTION__);
-  if (IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_YUV420P)) {
-    int ret = CVI_SUCCESS;
-    IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-    for (int i = 0; i < 3; i++) {
-      CviImg *planei = ExtractYuvPlane(pstDst, i);
-      std::vector<CviImg *> outputs = {planei};
-      ret |= handle_ctx->t_h.t_const_fill.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, value,
-                                              outputs);
-      delete planei;
-    }
-    return ret;
-  }
   if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
                         IVE_IMAGE_TYPE_BF16C1)) {
     return CVI_FAILURE;
@@ -1097,9 +992,9 @@ CVI_S32 CVI_IVE_ConstFill(IVE_HANDLE pIveHandle, const CVI_FLOAT value, IVE_DST_
 
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> outputs = {cpp_dst};
+  std::vector<CviImg> outputs = {*cpp_dst};
   return handle_ctx->t_h.t_const_fill.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, value,
-                                          outputs);
+                                          &outputs);
 }
 
 CVI_S32 CVI_IVE_ConvertScaleAbs(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
@@ -1148,15 +1043,15 @@ CVI_S32 CVI_IVE_ConvertScaleAbs(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
     return CVI_FAILURE;
   }
 
-  std::vector<CviImg *> inputs = {cpp_src.get()};
-  std::vector<CviImg *> outputs = {cpp_dst.get()};
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
   handle_ctx->t_h.t_convert_scale_abs.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
 
   handle_ctx->t_h.t_convert_scale_abs.setAlpha(alpha);
   handle_ctx->t_h.t_convert_scale_abs.setBeta(beta);
   ret = handle_ctx->t_h.t_convert_scale_abs.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                                outputs);
+                                                &outputs);
   return ret;
 }
 
@@ -1181,8 +1076,8 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
   CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src1, cpp_src2};
-  std::vector<CviImg *> outputs = {cpp_dst};
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
   const float &x = ctrl->aX;
   const float &y = ctrl->bY;
@@ -1195,29 +1090,18 @@ CVI_S32 CVI_IVE_Add(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     if (pstSrc2->enType == IVE_IMAGE_TYPE_S8C1) {
       handle_ctx->t_h.t_add_signed.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
       ret = handle_ctx->t_h.t_add_signed.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                             outputs);
+                                             &outputs);
     } else {
       handle_ctx->t_h.t_add.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-      ret = handle_ctx->t_h.t_add.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+      ret = handle_ctx->t_h.t_add.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
     }
   } else {
     handle_ctx->t_h.t_add_bf16.setCoef(x, y);
     handle_ctx->t_h.t_add_bf16.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-    ret =
-        handle_ctx->t_h.t_add_bf16.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+    ret = handle_ctx->t_h.t_add_bf16.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
+                                         &outputs);
   }
   return ret;
-}
-
-static void ViewAsYuv420(IVE_IMAGE_S *src) {
-  int w = src->u16Stride[0];
-  int w1 = src->u16Stride[1];
-  int w2 = src->u16Stride[1];
-  int h = src->u16Height;
-  int h2 = src->u16Height / 2;
-
-  memcpy(src->pu8VirAddr[2], src->pu8VirAddr[0] + w * h + w1 * h2, w2 * h2);
-  memcpy(src->pu8VirAddr[1], src->pu8VirAddr[0] + w * h, w1 * h2);
 }
 
 static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
@@ -1225,23 +1109,8 @@ static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
   cvk_fmt_t fmt = CVK_FMT_U8;
   std::vector<uint32_t> heights;
   uint16_t new_height;
-  CviImg *orig_cpp = reinterpret_cast<CviImg *>(src->tpu_block);
-
   if (src->enType == IVE_IMAGE_TYPE_YUV420P) {
-    int halfh = src->u16Height / 2;
-    int u_plane_size = src->u16Stride[1] * halfh;
-    int v_plane_size = src->u16Stride[2] * halfh;
-    int added_h = (u_plane_size + v_plane_size) / src->u16Stride[0];
-    LOGD("ViewAsU8C1 stride0:%d,%d,%d,addedh:%d\n", (int)src->u16Stride[0], (int)src->u16Stride[1],
-         (int)src->u16Stride[2], added_h);
-    new_height = src->u16Height + added_h;
-
-    if (orig_cpp->IsSubImg()) {
-      std::copy(src->pu8VirAddr[1], src->pu8VirAddr[1] + u_plane_size,
-                src->pu8VirAddr[0] + src->u16Stride[0] * src->u16Height);
-      std::copy(src->pu8VirAddr[2], src->pu8VirAddr[2] + v_plane_size,
-                src->pu8VirAddr[0] + src->u16Stride[0] * src->u16Height + u_plane_size);
-    }
+    new_height = src->u16Height + src->u16Height / 2;
   } else if (src->enType == IVE_IMAGE_TYPE_U8C3_PLANAR) {
     new_height = src->u16Height * 3;
   } else {
@@ -1253,6 +1122,7 @@ static CviImg *ViewAsU8C1(IVE_IMAGE_S *src) {
 
   std::vector<uint32_t> strides, u32_length;
   strides.push_back(src->u16Stride[0]);
+  CviImg *orig_cpp = reinterpret_cast<CviImg *>(src->tpu_block);
 
   if (Is4096Workaound(orig_cpp->GetImgType())) {
     u32_length.push_back(orig_cpp->GetImgCOffsets()[3]);
@@ -1336,12 +1206,12 @@ CVI_S32 CVI_IVE_Blend(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_I
     return CVI_FAILURE;
   }
 
-  std::vector<CviImg *> inputs = {cpp_src1.get(), cpp_src2.get()};
-  std::vector<CviImg *> outputs = {cpp_dst.get()};
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
   handle_ctx->t_h.t_blend.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   handle_ctx->t_h.t_blend.setWeight(pstBlendCtrl->u8Weight);
-  ret = handle_ctx->t_h.t_blend.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+  ret = handle_ctx->t_h.t_blend.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   return ret;
 }
 
@@ -1374,14 +1244,13 @@ CVI_S32 CVI_IVE_Blend_Pixel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
                         IVE_IMAGE_TYPE_YUV420P)) {
     LOGE(
         "image type of pstDst should be one of (IVE_IMAGE_TYPE_U8C1, "
-        "IVE_IMAGE_TYPE_U8C3_PLANAR) \n");
+        "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
     return CVI_FAILURE;
   }
 
   if ((pstDst->enType != pstSrc1->enType) || (pstDst->enType != pstSrc2->enType) ||
       (pstDst->enType != pstAlpha->enType)) {
-    LOGE("source1/source2/dst image pixel format do not match,%d,%d,%d!\n", pstSrc1->enType,
-         pstSrc2->enType, pstDst->enType);
+    LOGE("source1/source2/alpha/dst image pixel format do not match!\n");
     return CVI_FAILURE;
   }
 
@@ -1422,118 +1291,19 @@ CVI_S32 CVI_IVE_Blend_Pixel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
       (cpp_src1->GetImgWidth() != cpp_src2->GetImgWidth()) ||
       (cpp_src1->GetImgWidth() != cpp_dst->GetImgWidth()) ||
       (cpp_src1->GetImgWidth() != cpp_alpha->GetImgWidth()) ||
-      (cpp_src1->GetImgHeight() != cpp_alpha->GetImgHeight()) ||
-      (cpp_src1->GetImgChannel() != cpp_src2->GetImgChannel()) ||
-      (cpp_src1->GetImgChannel() != cpp_alpha->GetImgChannel()) ||
-      (cpp_src1->GetImgChannel() != cpp_dst->GetImgChannel())) {
+      (cpp_src1->GetImgHeight() != cpp_alpha->GetImgHeight())) {
     LOGE("source1/source2/alpha/dst image size do not match!\n");
     return CVI_FAILURE;
   }
 
-  std::vector<CviImg *> inputs = {cpp_src1.get(), cpp_src2.get(), cpp_alpha.get()};
-  std::vector<CviImg *> outputs = {cpp_dst.get()};
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2, *cpp_alpha};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
   handle_ctx->t_h.t_blend_pixel.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   ret = handle_ctx->t_h.t_blend_pixel.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                          outputs);
-  if (pstDst->enType == IVE_IMAGE_TYPE_YUV420P) {
-    CviImg *orig_cpp = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-    if (orig_cpp->IsSubImg()) {
-      ViewAsYuv420(pstDst);
-    }
-  }
+                                          &outputs);
   return ret;
 }
-
-CVI_S32 CVI_IVE_Blend_Pixel_S8_CLIP(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
-                                    IVE_SRC_IMAGE_S *pstSrc2, IVE_SRC_IMAGE_S *pstAlpha,
-                                    IVE_DST_IMAGE_S *pstDst) {
-  if (!IsValidImageType(pstSrc1, STRFY(pstSrc1), IVE_IMAGE_TYPE_S8C1, IVE_IMAGE_TYPE_S8C3_PLANAR)) {
-    LOGE(
-        "image type of pstSrc1 should be one of "
-        "(IVE_IMAGE_TYPE_S8C1,IVE_IMAGE_TYPE_S8C3_PLANAR)\n");
-    return CVI_FAILURE;
-  }
-
-  if (!IsValidImageType(pstSrc2, STRFY(pstSrc2), IVE_IMAGE_TYPE_S8C1, IVE_IMAGE_TYPE_S8C3_PLANAR)) {
-    LOGE(
-        "image type of pstSrc2 should be one of "
-        "(IVE_IMAGE_TYPE_S8C1,IVE_IMAGE_TYPE_S8C3_PLANAR)\n");
-    return CVI_FAILURE;
-  }
-
-  if (!IsValidImageType(pstAlpha, STRFY(pstAlpha), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR,
-                        IVE_IMAGE_TYPE_YUV420P)) {
-    LOGE(
-        "image type of pstDst should be one of (IVE_IMAGE_TYPE_U8C1, "
-        "IVE_IMAGE_TYPE_U8C3_PLANAR)\n");
-    return CVI_FAILURE;
-  }
-
-  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_S8C1, IVE_IMAGE_TYPE_S8C3_PLANAR)) {
-    LOGE("image type of pstDst should be one of IVE_IMAGE_TYPE_S8C1,IVE_IMAGE_TYPE_S8C3_PLANAR)\n");
-    return CVI_FAILURE;
-  }
-
-  if ((pstDst->enType != pstSrc1->enType) || (pstDst->enType != pstSrc2->enType)) {
-    LOGE("source1/source2/dst image pixel format do not match,%d,%d,%d!\n", pstSrc1->enType,
-         pstSrc2->enType, pstDst->enType);
-    return CVI_FAILURE;
-  }
-
-  int ret = CVI_FAILURE;
-  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  std::shared_ptr<CviImg> cpp_src1;
-  std::shared_ptr<CviImg> cpp_src2;
-  std::shared_ptr<CviImg> cpp_alpha;
-  std::shared_ptr<CviImg> cpp_dst;
-
-  if (pstDst->enType == IVE_IMAGE_TYPE_YUV420P) {
-    // NOTE: Computing tpu slice with different stride in different channel is quite complicated.
-    // Instead, we consider YUV420P image as U8C1 with Wx(H + H / 2) image size so that there is
-    // only one channel have to blended.
-    cpp_src1 = std::shared_ptr<CviImg>(ViewAsU8C1(pstSrc1));
-    cpp_src2 = std::shared_ptr<CviImg>(ViewAsU8C1(pstSrc2));
-    cpp_alpha = std::shared_ptr<CviImg>(ViewAsU8C1(pstAlpha));
-    cpp_dst = std::shared_ptr<CviImg>(ViewAsU8C1(pstDst));
-  } else {
-    cpp_src1 =
-        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstSrc1->tpu_block), [](CviImg *) {});
-    cpp_src2 =
-        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstSrc2->tpu_block), [](CviImg *) {});
-    cpp_alpha =
-        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstAlpha->tpu_block), [](CviImg *) {});
-    cpp_dst =
-        std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstDst->tpu_block), [](CviImg *) {});
-  }
-
-  if (cpp_src1 == nullptr || cpp_src2 == nullptr || cpp_alpha == nullptr || cpp_dst == nullptr) {
-    LOGE("Cannot get tpu block\n");
-    return CVI_FAILURE;
-  }
-
-  if ((cpp_src1->GetImgHeight() != cpp_src2->GetImgHeight()) ||
-      (cpp_src1->GetImgHeight() != cpp_dst->GetImgHeight()) ||
-      (cpp_src1->GetImgWidth() != cpp_src2->GetImgWidth()) ||
-      (cpp_src1->GetImgWidth() != cpp_dst->GetImgWidth()) ||
-      (cpp_src1->GetImgWidth() != cpp_alpha->GetImgWidth()) ||
-      (cpp_src1->GetImgHeight() != cpp_alpha->GetImgHeight()) ||
-      (cpp_src1->GetImgChannel() != cpp_src2->GetImgChannel()) ||
-      (cpp_src1->GetImgChannel() != cpp_alpha->GetImgChannel()) ||
-      (cpp_src1->GetImgChannel() != cpp_dst->GetImgChannel())) {
-    LOGE("source1/source2/alpha/dst image size do not match!\n");
-    return CVI_FAILURE;
-  }
-
-  std::vector<CviImg *> inputs = {cpp_src1.get(), cpp_src2.get(), cpp_alpha.get()};
-  std::vector<CviImg *> outputs = {cpp_dst.get()};
-  // handle_ctx->t_h.t_blend_pixel.set_right_shift_bit(0);
-  handle_ctx->t_h.t_blend_pixel.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-  ret = handle_ctx->t_h.t_blend_pixel.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                          outputs);
-  return ret;
-}
-
 CVI_S32 CVI_IVE_Blend_Pixel_U8_AB(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
                                   IVE_SRC_IMAGE_S *pstSrc2, IVE_SRC_IMAGE_S *pstWa,
                                   IVE_SRC_IMAGE_S *pstWb, IVE_DST_IMAGE_S *pstDst) {
@@ -1633,12 +1403,12 @@ CVI_S32 CVI_IVE_Blend_Pixel_U8_AB(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc
     return CVI_FAILURE;
   }
 
-  std::vector<CviImg *> inputs = {cpp_src1.get(), cpp_src2.get(), cpp_alpha.get(), cpp_alphb.get()};
-  std::vector<CviImg *> outputs = {cpp_dst.get()};
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2, *cpp_alpha, *cpp_alphb};
+  std::vector<CviImg> outputs = {*cpp_dst};
   // handle_ctx->t_h.t_blend_pixel.set_right_shift_bit(0);
   handle_ctx->t_h.t_blend_pixel_ab.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   ret = handle_ctx->t_h.t_blend_pixel_ab.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                             outputs);
+                                             &outputs);
   return ret;
 }
 CVI_S32 CVI_IVE_And(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
@@ -1659,10 +1429,10 @@ CVI_S32 CVI_IVE_And(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
   CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src1, cpp_src2};
-  std::vector<CviImg *> outputs = {cpp_dst};
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
-  return handle_ctx->t_h.t_and.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+  return handle_ctx->t_h.t_and.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
 }
 
 CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
@@ -1694,115 +1464,22 @@ CVI_S32 CVI_IVE_BLOCK(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src};
-  std::vector<CviImg *> outputs = {cpp_dst};
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
   int ret = CVI_FAILURE;
   if (cpp_src->m_tg.fmt == CVK_FMT_U8 && cpp_dst->m_tg.fmt == CVK_FMT_U8) {
     handle_ctx->t_h.t_block.setScaleNum(pstBlkCtrl->f32ScaleSize);
     handle_ctx->t_h.t_block.setCellSize(u32CellSize, cpp_src->m_tg.shape.c);
     handle_ctx->t_h.t_block.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-    ret = handle_ctx->t_h.t_block.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs,
+    ret = handle_ctx->t_h.t_block.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs,
                                       true);
   } else {
     handle_ctx->t_h.t_block_bf16.setScaleNum(pstBlkCtrl->f32ScaleSize);
     handle_ctx->t_h.t_block_bf16.setCellSize(u32CellSize, cpp_src->m_tg.shape.c);
     handle_ctx->t_h.t_block_bf16.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     ret = handle_ctx->t_h.t_block_bf16.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                           outputs, true);
+                                           &outputs, true);
   }
-  return ret;
-}
-
-static void release_cviimage(std::vector<CviImg *> &imgs) {
-  for (auto pimg : imgs) {
-    delete pimg;
-  }
-}
-CVI_S32 CVI_IVE_DOWNSAMPLE_420P(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
-                                IVE_DST_IMAGE_S *pstDst, IVE_DOWNSAMPLE_CTRL_S *pstdsCtrl,
-                                bool bInstant) {
-  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_YUV420P)) {
-    return CVI_FAILURE;
-  }
-  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_YUV420P)) {
-    return CVI_FAILURE;
-  }
-
-  CVI_U32 u32CellSize = pstdsCtrl->u8KnerlSize;
-  if (pstDst->u16Width != (pstSrc->u16Width / u32CellSize) ||
-      (pstSrc->u16Width % u32CellSize != 0)) {
-    LOGE("Dst downsample width not match! Src: %u, Dst: %u. Cell size :%u\n", pstSrc->u16Width,
-         pstDst->u16Width, u32CellSize);
-    return CVI_FAILURE;
-  }
-  if (pstDst->u16Height != (pstSrc->u16Height / u32CellSize) ||
-      (pstSrc->u16Height % u32CellSize != 0)) {
-    LOGE("Dst downsample height not match! Src: %u, Dst: %u. Cell size :%u\n", pstSrc->u16Height,
-         pstDst->u16Height, u32CellSize);
-    return CVI_FAILURE;
-  }
-
-  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  std::vector<CviImg *> inputs = {ExtractYuvPlane(pstSrc, 0)};
-  std::vector<CviImg *> outputs = {ExtractYuvPlane(pstDst, 0)};
-
-  int ret = CVI_FAILURE;
-  handle_ctx->t_h.t_downsample.setCellSize(u32CellSize, inputs[0]->m_tg.shape.c);
-  handle_ctx->t_h.t_downsample.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-  handle_ctx->t_h.t_downsample.set_force_alignment(true);
-  ret = handle_ctx->t_h.t_downsample.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                         outputs, true);
-  std::vector<CviImg *> inputs1 = {ExtractYuvPlane(pstSrc, 1), ExtractYuvPlane(pstSrc, 2)};
-  std::vector<CviImg *> outputs1 = {ExtractYuvPlane(pstDst, 1), ExtractYuvPlane(pstDst, 2)};
-
-  ret = handle_ctx->t_h.t_downsample.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs1,
-                                         outputs1, true);
-
-  release_cviimage(inputs);
-  release_cviimage(outputs);
-  release_cviimage(inputs1);
-  release_cviimage(outputs1);
-
-  return ret;
-}
-
-CVI_S32 CVI_IVE_DOWNSAMPLE(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
-                           IVE_DOWNSAMPLE_CTRL_S *pstdsCtrl, bool bInstant) {
-  ScopedTrace t(__PRETTY_FUNCTION__);
-  if ((pstSrc->enType == IVE_IMAGE_TYPE_YUV420P) && (pstDst->enType == IVE_IMAGE_TYPE_YUV420P)) {
-    return CVI_IVE_DOWNSAMPLE_420P(pIveHandle, pstSrc, pstDst, pstdsCtrl, bInstant);
-  }
-
-  if (!IsValidImageType(pstSrc, STRFY(pstSrc), IVE_IMAGE_TYPE_U8C1)) {
-    return CVI_FAILURE;
-  }
-  if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1)) {
-    return CVI_FAILURE;
-  }
-  CVI_U32 u32CellSize = pstdsCtrl->u8KnerlSize;
-  if (pstDst->u16Width != (pstSrc->u16Width / u32CellSize) ||
-      (pstSrc->u16Width % u32CellSize != 0)) {
-    LOGE("Dst downsample width not match! Src: %u, Dst: %u. Cell size :%u\n", pstSrc->u16Width,
-         pstDst->u16Width, u32CellSize);
-    return CVI_FAILURE;
-  }
-  if (pstDst->u16Height != (pstSrc->u16Height / u32CellSize) ||
-      (pstSrc->u16Height % u32CellSize != 0)) {
-    LOGE("Dst downsample height not match! Src: %u, Dst: %u. Cell size :%u\n", pstSrc->u16Height,
-         pstDst->u16Height, u32CellSize);
-    return CVI_FAILURE;
-  }
-  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-  CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
-  CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src};
-  std::vector<CviImg *> outputs = {cpp_dst};
-
-  int ret = CVI_FAILURE;
-  handle_ctx->t_h.t_downsample.setCellSize(u32CellSize, cpp_src->m_tg.shape.c);
-  handle_ctx->t_h.t_downsample.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-  ret = handle_ctx->t_h.t_downsample.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                         outputs, true);
   return ret;
 }
 
@@ -1820,8 +1497,8 @@ CVI_S32 CVI_IVE_Dilate(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   handle_ctx->t_h.t_filter.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src};
-  std::vector<CviImg *> outputs = {cpp_dst};
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
   uint32_t npu_num = handle_ctx->t_h.t_erode.getNpuNum(handle_ctx->cvk_ctx);
   CviImg cimg(handle_ctx->rt_handle, npu_num, 5, 5, CVK_FMT_U8);
@@ -1836,7 +1513,7 @@ CVI_S32 CVI_IVE_Dilate(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_filter.setKernel(kernel);
   int ret =
-      handle_ctx->t_h.t_filter.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+      handle_ctx->t_h.t_filter.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   kernel.img.Free(handle_ctx->rt_handle);
   return ret;
 }
@@ -1855,8 +1532,8 @@ CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   handle_ctx->t_h.t_erode.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src};
-  std::vector<CviImg *> outputs = {cpp_dst};
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
   uint32_t npu_num = handle_ctx->t_h.t_erode.getNpuNum(handle_ctx->cvk_ctx);
   CviImg cimg(handle_ctx->rt_handle, npu_num, 5, 5, CVK_FMT_U8);
@@ -1871,7 +1548,7 @@ CVI_S32 CVI_IVE_Erode(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_erode.setKernel(kernel);
   int ret =
-      handle_ctx->t_h.t_erode.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+      handle_ctx->t_h.t_erode.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   kernel.img.Free(handle_ctx->rt_handle);
   return ret;
 }
@@ -1894,8 +1571,8 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
   handle_ctx->t_h.t_filter.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src};
-  std::vector<CviImg *> outputs = {cpp_dst};
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
   if (pstFltCtrl->u8MaskSize != 3 && pstFltCtrl->u8MaskSize != 5 && pstFltCtrl->u8MaskSize != 13) {
     LOGE("Currently Filter only supports filter size 3, 5, 13.\n");
@@ -1916,7 +1593,7 @@ CVI_S32 CVI_IVE_Filter(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
                                    &kernel.multiplier.shift);
   handle_ctx->t_h.t_filter.setKernel(kernel);
   int ret =
-      handle_ctx->t_h.t_filter.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+      handle_ctx->t_h.t_filter.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   kernel.img.Free(handle_ctx->rt_handle);
   return ret;
 }
@@ -1934,7 +1611,7 @@ inline bool get_hog_feature_info(uint16_t width, uint16_t height, uint16_t u32Ce
   return true;
 }
 
-CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U32 u16Width, CVI_U32 u16Height, CVI_U8 u8BinSize,
+CVI_S32 CVI_IVE_GET_HOG_SIZE(CVI_U16 u16Width, CVI_U16 u16Height, CVI_U8 u8BinSize,
                              CVI_U16 u16CellSize, CVI_U16 u16BlkSizeInCell, CVI_U16 u16BlkStepX,
                              CVI_U16 u16BlkStepY, CVI_U32 *u32HogSize) {
   if (u16BlkStepX == 0) {
@@ -2141,13 +1818,14 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
   if (!IsValidImageType(pstSrcV, STRFY(pstSrcV), IVE_IMAGE_TYPE_BF16C1)) {
     return CVI_FAILURE;
   }
+
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_magandang.setTblMgr(&handle_ctx->t_h.t_tblmgr);
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrcH->tpu_block);
   CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrcV->tpu_block);
   CviImg *cpp_dst = nullptr, *cpp_dst2 = nullptr;
-  std::vector<CviImg *> inputs = {cpp_src1, cpp_src2};
-  std::vector<CviImg *> outputs;
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+  std::vector<CviImg> outputs;
   switch (pstMaaCtrl->enOutCtrl) {
     case IVE_MAG_AND_ANG_OUT_CTRL_MAG: {
       if (!IsValidImageType(pstDstMag, STRFY(pstDstMag), IVE_IMAGE_TYPE_BF16C1)) {
@@ -2155,7 +1833,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
       }
       cpp_dst = reinterpret_cast<CviImg *>(pstDstMag->tpu_block);
       handle_ctx->t_h.t_magandang.exportOption(true, false);
-      outputs.emplace_back(cpp_dst);
+      outputs.emplace_back(*cpp_dst);
     } break;
     case IVE_MAG_AND_ANG_OUT_CTRL_ANG: {
       if (!IsValidImageType(pstDstAng, STRFY(pstDstAng), IVE_IMAGE_TYPE_BF16C1)) {
@@ -2163,7 +1841,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
       }
       cpp_dst = reinterpret_cast<CviImg *>(pstDstAng->tpu_block);
       handle_ctx->t_h.t_magandang.exportOption(false, true);
-      outputs.emplace_back(cpp_dst);
+      outputs.emplace_back(*cpp_dst);
     } break;
     case IVE_MAG_AND_ANG_OUT_CTRL_MAG_AND_ANG: {
       if (!IsValidImageType(pstDstMag, STRFY(pstDstMag), IVE_IMAGE_TYPE_BF16C1)) {
@@ -2175,8 +1853,8 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
       handle_ctx->t_h.t_magandang.exportOption(true, true);
       cpp_dst = reinterpret_cast<CviImg *>(pstDstMag->tpu_block);
       cpp_dst2 = reinterpret_cast<CviImg *>(pstDstAng->tpu_block);
-      outputs.emplace_back(cpp_dst);
-      outputs.emplace_back(cpp_dst2);
+      outputs.emplace_back(*cpp_dst);
+      outputs.emplace_back(*cpp_dst2);
     } break;
     default:
       LOGE("Not supported Mag and Angle type.\n");
@@ -2188,7 +1866,7 @@ CVI_S32 CVI_IVE_MagAndAng(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrcH, IVE_S
   handle_ctx->t_h.t_magandang.magDistMethod(pstMaaCtrl->enDistCtrl);
   handle_ctx->t_h.t_magandang.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   return handle_ctx->t_h.t_magandang.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                         outputs);
+                                         &outputs);
 }
 
 CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO_S *pstMap,
@@ -2218,13 +1896,13 @@ CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO
     CviImg *cpp_src_index = reinterpret_cast<CviImg *>(table_index.tpu_block);
     CviImg *cpp_src = reinterpret_cast<CviImg *>(lookup_index.tpu_block);
     CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-    std::vector<CviImg *> inputs = {cpp_src_index, cpp_src};
-    std::vector<CviImg *> outputs = {cpp_dst};
+    std::vector<CviImg> inputs = {*cpp_src_index, *cpp_src};
+    std::vector<CviImg> outputs = {*cpp_dst};
     handle_ctx->t_h.t_tbl512.setTable(handle_ctx->rt_handle, &handle_ctx->t_h.t_tblmgr,
                                       pstMap->pu8VirAddr);
     handle_ctx->t_h.t_tbl512.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     CVI_S32 ret =
-        handle_ctx->t_h.t_tbl512.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+        handle_ctx->t_h.t_tbl512.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
 
     CVI_SYS_FreeI(pIveHandle, &table_index);
     CVI_SYS_FreeI(pIveHandle, &lookup_index);
@@ -2240,12 +1918,12 @@ CVI_S32 CVI_IVE_Map(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_MEM_INFO
     }
     CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
     CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-    std::vector<CviImg *> inputs = {cpp_src};
-    std::vector<CviImg *> outputs = {cpp_dst};
+    std::vector<CviImg> inputs = {*cpp_src};
+    std::vector<CviImg> outputs = {*cpp_dst};
     handle_ctx->t_h.t_tbl.setTable(handle_ctx->rt_handle, &handle_ctx->t_h.t_tblmgr,
                                    pstMap->pu8VirAddr);
     handle_ctx->t_h.t_tbl.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-    return handle_ctx->t_h.t_tbl.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+    return handle_ctx->t_h.t_tbl.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   }
 #else
   return CVI_FAILURE;
@@ -2274,11 +1952,11 @@ CVI_S32 CVI_IVE_Mask(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IM
   CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
   CviImg *cpp_mask = reinterpret_cast<CviImg *>(pstMask->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src1, cpp_src2, cpp_mask};
-  std::vector<CviImg *> outputs = {cpp_dst};
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2, *cpp_mask};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
   handle_ctx->t_h.t_mask.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-  ret = handle_ctx->t_h.t_mask.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+  ret = handle_ctx->t_h.t_mask.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
 
   return ret;
 }
@@ -2291,11 +1969,11 @@ CVI_S32 CVI_IVE_MulSum(IVE_HANDLE pIveHandle, IVE_IMAGE_S *pstImg, double *sum, 
 
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstImg->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src};
-  std::vector<CviImg *> outputs;
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs;
   handle_ctx->t_h.t_mulsum.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   int ret =
-      handle_ctx->t_h.t_mulsum.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+      handle_ctx->t_h.t_mulsum.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   *sum = handle_ctx->t_h.t_mulsum.getSum();
   return ret;
 }
@@ -2316,8 +1994,8 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   int npu_num = handle_ctx->t_h.t_sobel_gradonly.getNpuNum(handle_ctx->cvk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src};
-  std::vector<CviImg *> outputs;
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs;
   bool do_free = false;
   int ret = CVI_FAILURE;
   if (pstNormGradCtrl->enOutCtrl == IVE_NORM_GRAD_OUT_CTRL_HOR_AND_VER) {
@@ -2335,8 +2013,8 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
                         pstSrc->u16Height);
     CviImg *cpp_dstv = reinterpret_cast<CviImg *>(dstV_BF16.tpu_block);
     CviImg *cpp_dsth = reinterpret_cast<CviImg *>(dstH_BF16.tpu_block);
-    outputs.emplace_back(cpp_dstv);
-    outputs.emplace_back(cpp_dsth);
+    outputs.emplace_back(*cpp_dstv);
+    outputs.emplace_back(*cpp_dsth);
     IveKernel kernel_w =
         createKernel(handle_ctx->rt_handle, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_X);
     IveKernel kernel_h =
@@ -2344,7 +2022,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
     handle_ctx->t_h.t_sobel_gradonly.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     handle_ctx->t_h.t_sobel_gradonly.setKernel(kernel_w, kernel_h);
     ret = handle_ctx->t_h.t_sobel_gradonly.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                               outputs);
+                                               &outputs);
     kernel_w.img.Free(handle_ctx->rt_handle);
     kernel_h.img.Free(handle_ctx->rt_handle);
     IVE_ITC_CRTL_S iveItcCtrl;
@@ -2364,18 +2042,18 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
       CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
                           pstSrc->u16Height);
       CviImg *cpp_dsth = reinterpret_cast<CviImg *>(dst_BF16.tpu_block);
-      outputs.emplace_back(cpp_dsth);
+      outputs.emplace_back(*cpp_dsth);
       do_free = true;
     } else {
       CviImg *cpp_dsth = reinterpret_cast<CviImg *>(pstDstH->tpu_block);
-      outputs.emplace_back(cpp_dsth);
+      outputs.emplace_back(*cpp_dsth);
     }
     IveKernel kernel_h =
         createKernel(handle_ctx->rt_handle, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_filter_bf16.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_h);
     ret = handle_ctx->t_h.t_filter_bf16.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                            outputs);
+                                            &outputs);
     kernel_h.img.Free(handle_ctx->rt_handle);
     if (do_free) {
       IVE_ITC_CRTL_S iveItcCtrl;
@@ -2394,18 +2072,18 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
       CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
                           pstSrc->u16Height);
       CviImg *cpp_dstv = reinterpret_cast<CviImg *>(dst_BF16.tpu_block);
-      outputs.emplace_back(cpp_dstv);
+      outputs.emplace_back(*cpp_dstv);
       do_free = true;
     } else {
       CviImg *cpp_dstv = reinterpret_cast<CviImg *>(pstDstV->tpu_block);
-      outputs.emplace_back(cpp_dstv);
+      outputs.emplace_back(*cpp_dstv);
     }
     IveKernel kernel_w =
         createKernel(handle_ctx->rt_handle, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_X);
     handle_ctx->t_h.t_filter_bf16.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_w);
     ret = handle_ctx->t_h.t_filter_bf16.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                            outputs);
+                                            &outputs);
     kernel_w.img.Free(handle_ctx->rt_handle);
     if (do_free) {
       IVE_ITC_CRTL_S iveItcCtrl;
@@ -2424,11 +2102,11 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
       CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSrc->u16Width,
                           pstSrc->u16Height);
       CviImg *cpp_dsthv = reinterpret_cast<CviImg *>(dst_BF16.tpu_block);
-      outputs.emplace_back(cpp_dsthv);
+      outputs.emplace_back(*cpp_dsthv);
       do_free = true;
     } else {
       CviImg *cpp_dsthv = reinterpret_cast<CviImg *>(pstDstHV->tpu_block);
-      outputs.emplace_back(cpp_dsthv);
+      outputs.emplace_back(*cpp_dsthv);
     }
     IveKernel kernel_w =
         createKernel(handle_ctx->rt_handle, npu_num, kernel_size, kernel_size, IVE_KERNEL::SOBEL_X);
@@ -2439,7 +2117,7 @@ CVI_S32 CVI_IVE_NormGrad(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST
     handle_ctx->t_h.t_sobel.magDistMethod(pstNormGradCtrl->enDistCtrl);
     handle_ctx->t_h.t_sobel.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     handle_ctx->t_h.t_sobel.setKernel(kernel_w, kernel_h);
-    ret = handle_ctx->t_h.t_sobel.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+    ret = handle_ctx->t_h.t_sobel.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
     kernel_w.img.Free(handle_ctx->rt_handle);
     kernel_h.img.Free(handle_ctx->rt_handle);
     if (do_free) {
@@ -2472,10 +2150,10 @@ CVI_S32 CVI_IVE_Or(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAG
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
   CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src1, cpp_src2};
-  std::vector<CviImg *> outputs = {cpp_dst};
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
-  return handle_ctx->t_h.t_or.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+  return handle_ctx->t_h.t_or.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
 }
 
 CVI_S32 CVI_IVE_Average(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, float *average,
@@ -2490,8 +2168,10 @@ CVI_S32 CVI_IVE_Average(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, float *a
   uint64_t accumulate = 0;
   neonU8Accumulate(pstSrc->pu8VirAddr[0], pstSrc->u16Stride[0] * pstSrc->u16Height, &accumulate);
   *average = (float)accumulate / (pstSrc->u16Width * pstSrc->u16Height);
-#endif
   return CVI_SUCCESS;
+#else
+  return CVI_FAILURE;
+#endif
 }
 
 CVI_S32 CVI_IVE_OrdStatFilter(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
@@ -2515,17 +2195,17 @@ CVI_S32 CVI_IVE_OrdStatFilter(IVE_HANDLE *pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src};
-  std::vector<CviImg *> outputs = {cpp_dst};
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
   int ret = CVI_SUCCESS;
   if (pstOrdStatFltCtrl->enMode == IVE_ORD_STAT_FILTER_MODE_MAX) {
     handle_ctx->t_h.t_max.setKernelSize(kz);
     handle_ctx->t_h.t_max.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-    ret |= handle_ctx->t_h.t_max.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+    ret |= handle_ctx->t_h.t_max.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   } else if (pstOrdStatFltCtrl->enMode == IVE_ORD_STAT_FILTER_MODE_MIN) {
     handle_ctx->t_h.t_min.setKernelSize(kz);
     handle_ctx->t_h.t_min.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-    ret |= handle_ctx->t_h.t_min.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+    ret |= handle_ctx->t_h.t_min.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   }
   return ret;
 }
@@ -2544,10 +2224,10 @@ CVI_S32 CVI_IVE_Sigmoid(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_
   handle_ctx->t_h.t_add.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src};
-  std::vector<CviImg *> outputs = {cpp_dst};
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
   handle_ctx->t_h.t_sig.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-  return handle_ctx->t_h.t_sig.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+  return handle_ctx->t_h.t_sig.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
 }
 
 CVI_S32 CVI_IVE_SAD(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
@@ -2612,8 +2292,8 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
   CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
   CviImg *cpp_dst = nullptr;
-  std::vector<CviImg *> inputs = {cpp_src1, cpp_src2};
-  std::vector<CviImg *> outputs;
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+  std::vector<CviImg> outputs;
   IVE_IMAGE_S dst_BF16;
   if (!is_output_u8) {
     ret = CVI_IVE_CreateImage(pIveHandle, &dst_BF16, IVE_IMAGE_TYPE_BF16C1, pstSad->u16Width,
@@ -2629,14 +2309,14 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     }
     CviImg *thresh_dst = reinterpret_cast<CviImg *>(pstThr->tpu_block);
     if (pstSadCtrl->enOutCtrl == IVE_SAD_OUT_CTRL_THRESH) {
-      outputs.emplace_back(thresh_dst);
+      outputs.emplace_back(*thresh_dst);
       handle_ctx->t_h.t_sad.outputThresholdOnly(true);
     } else {
-      outputs.emplace_back(cpp_dst);
-      outputs.emplace_back(thresh_dst);
+      outputs.emplace_back(*cpp_dst);
+      outputs.emplace_back(*thresh_dst);
     }
   } else {
-    outputs.emplace_back(cpp_dst);
+    outputs.emplace_back(*cpp_dst);
   }
   handle_ctx->t_h.t_sad.setTblMgr(&handle_ctx->t_h.t_tblmgr);
   handle_ctx->t_h.t_sad.doThreshold(do_threshold);
@@ -2644,7 +2324,7 @@ CVI_S32 CVI_IVE_SAD(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
                                      pstSadCtrl->u8MaxVal);
   handle_ctx->t_h.t_sad.setWindowSize(window_size);
   handle_ctx->t_h.t_sad.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-  ret = handle_ctx->t_h.t_sad.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+  ret = handle_ctx->t_h.t_sad.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   if (!is_output_u8) {
     IVE_ITC_CRTL_S iveItcCtrl;
     iveItcCtrl.enType = IVE_ITC_SATURATE;
@@ -2664,8 +2344,8 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
   IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
   handle_ctx->t_h.t_sobel.setTblMgr(&handle_ctx->t_h.t_tblmgr);
   CviImg *cpp_src = reinterpret_cast<CviImg *>(pstSrc->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src};
-  std::vector<CviImg *> outputs;
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs;
   uint8_t mask_sz = pstSobelCtrl->u8MaskSize;
   int ret = CVI_FAILURE;
   if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_BOTH) {
@@ -2679,8 +2359,8 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     int npu_num = handle_ctx->t_h.t_sobel_gradonly.getNpuNum(handle_ctx->cvk_ctx);
     CviImg *cpp_dsth = reinterpret_cast<CviImg *>(pstDstH->tpu_block);
     CviImg *cpp_dstv = reinterpret_cast<CviImg *>(pstDstV->tpu_block);
-    outputs.emplace_back(cpp_dstv);
-    outputs.emplace_back(cpp_dsth);
+    outputs.emplace_back(*cpp_dstv);
+    outputs.emplace_back(*cpp_dsth);
     IveKernel kernel_w =
         createKernel(handle_ctx->rt_handle, npu_num, mask_sz, mask_sz, IVE_KERNEL::SOBEL_X);
     IveKernel kernel_h =
@@ -2688,7 +2368,7 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     handle_ctx->t_h.t_sobel_gradonly.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     handle_ctx->t_h.t_sobel_gradonly.setKernel(kernel_w, kernel_h);
     ret = handle_ctx->t_h.t_sobel_gradonly.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                               outputs);
+                                               &outputs);
     kernel_w.img.Free(handle_ctx->rt_handle);
     kernel_h.img.Free(handle_ctx->rt_handle);
   } else if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_HOR) {
@@ -2697,14 +2377,14 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     }
 
     CviImg *cpp_dsth = reinterpret_cast<CviImg *>(pstDstH->tpu_block);
-    outputs.emplace_back(cpp_dsth);
+    outputs.emplace_back(*cpp_dsth);
     int npu_num = handle_ctx->t_h.t_filter_bf16.getNpuNum(handle_ctx->cvk_ctx);
     IveKernel kernel_h =
         createKernel(handle_ctx->rt_handle, npu_num, mask_sz, mask_sz, IVE_KERNEL::SOBEL_Y);
     handle_ctx->t_h.t_filter_bf16.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_h);
     ret = handle_ctx->t_h.t_filter_bf16.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                            outputs);
+                                            &outputs);
     kernel_h.img.Free(handle_ctx->rt_handle);
   } else if (pstSobelCtrl->enOutCtrl == IVE_SOBEL_OUT_CTRL_VER) {
     if (!IsValidImageType(pstDstV, STRFY(pstDstV), IVE_IMAGE_TYPE_BF16C1)) {
@@ -2712,14 +2392,14 @@ CVI_S32 CVI_IVE_Sobel(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IM
     }
 
     CviImg *cpp_dstv = reinterpret_cast<CviImg *>(pstDstV->tpu_block);
-    outputs.emplace_back(cpp_dstv);
+    outputs.emplace_back(*cpp_dstv);
     int npu_num = handle_ctx->t_h.t_filter_bf16.getNpuNum(handle_ctx->cvk_ctx);
     IveKernel kernel_w =
         createKernel(handle_ctx->rt_handle, npu_num, mask_sz, mask_sz, IVE_KERNEL::SOBEL_X);
     handle_ctx->t_h.t_filter_bf16.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     handle_ctx->t_h.t_filter_bf16.setKernel(kernel_w);
     ret = handle_ctx->t_h.t_filter_bf16.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                            outputs);
+                                            &outputs);
     kernel_w.img.Free(handle_ctx->rt_handle);
   } else {
     return ret;
@@ -2753,10 +2433,10 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
     CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
     CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-    std::vector<CviImg *> inputs = {cpp_src1, cpp_src2};
-    std::vector<CviImg *> outputs = {cpp_dst};
+    std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+    std::vector<CviImg> outputs = {*cpp_dst};
 
-    ret = handle_ctx->t_h.t_sub.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+    ret = handle_ctx->t_h.t_sub.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   } else if (ctrl->enMode == IVE_SUB_MODE_ABS || ctrl->enMode == IVE_SUB_MODE_ABS_THRESH ||
              ctrl->enMode == IVE_SUB_MODE_ABS_CLIP) {
     if (!IsValidImageType(pstDst, STRFY(pstDst), IVE_IMAGE_TYPE_U8C1, IVE_IMAGE_TYPE_U8C3_PLANAR)) {
@@ -2770,11 +2450,11 @@ CVI_S32 CVI_IVE_Sub(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
     CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
     CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-    std::vector<CviImg *> inputs = {cpp_src1, cpp_src2};
-    std::vector<CviImg *> outputs = {cpp_dst};
+    std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+    std::vector<CviImg> outputs = {*cpp_dst};
 
     ret =
-        handle_ctx->t_h.t_sub_abs.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+        handle_ctx->t_h.t_sub_abs.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
   }
   return ret;
 }
@@ -2808,26 +2488,26 @@ CVI_S32 CVI_IVE_Thresh(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_I
     return CVI_FAILURE;
   }
 
-  std::vector<CviImg *> inputs = {cpp_src.get()};
-  std::vector<CviImg *> outputs = {cpp_dst.get()};
+  std::vector<CviImg> inputs = {*cpp_src};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
   if (ctrl->enMode == IVE_THRESH_MODE_BINARY) {
     if (ctrl->u8MinVal == 0 && ctrl->u8MaxVal == 255) {
       handle_ctx->t_h.t_thresh.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
       handle_ctx->t_h.t_thresh.setThreshold(ctrl->u8LowThr);
-      ret =
-          handle_ctx->t_h.t_thresh.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+      ret = handle_ctx->t_h.t_thresh.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
+                                         &outputs);
     } else {
       handle_ctx->t_h.t_thresh_hl.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
       handle_ctx->t_h.t_thresh_hl.setThreshold(ctrl->u8LowThr, ctrl->u8MinVal, ctrl->u8MaxVal);
       ret = handle_ctx->t_h.t_thresh_hl.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
-                                            outputs);
+                                            &outputs);
     }
   } else if (ctrl->enMode == IVE_THRESH_MODE_SLOPE) {
     handle_ctx->t_h.t_thresh_s.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
     handle_ctx->t_h.t_thresh_s.setThreshold(ctrl->u8LowThr, ctrl->u8MaxVal);
-    ret =
-        handle_ctx->t_h.t_thresh_s.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+    ret = handle_ctx->t_h.t_thresh_s.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs,
+                                         &outputs);
   }
   return ret;
 }
@@ -2867,8 +2547,10 @@ CVI_S32 CVI_IVE_Thresh_S16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_D
   }
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
   CVI_IVE_BufFlush(pIveHandle, pstDst);
-#endif
   return CVI_SUCCESS;
+#else
+  return CVI_FAILURE;
+#endif
 }
 
 CVI_S32 CVI_IVE_Thresh_U16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_DST_IMAGE_S *pstDst,
@@ -2892,8 +2574,10 @@ CVI_S32 CVI_IVE_Thresh_U16(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc, IVE_D
                         is_mmm);
   CVI_IVE_BufFlush(pIveHandle, pstSrc);
   CVI_IVE_BufFlush(pIveHandle, pstDst);
-#endif
   return CVI_SUCCESS;
+#else
+  return CVI_FAILURE;
+#endif
 }
 
 CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMAGE_S *pstSrc2,
@@ -2914,10 +2598,10 @@ CVI_S32 CVI_IVE_Xor(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
   CviImg *cpp_src1 = reinterpret_cast<CviImg *>(pstSrc1->tpu_block);
   CviImg *cpp_src2 = reinterpret_cast<CviImg *>(pstSrc2->tpu_block);
   CviImg *cpp_dst = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<CviImg *> inputs = {cpp_src1, cpp_src2};
-  std::vector<CviImg *> outputs = {cpp_dst};
+  std::vector<CviImg> inputs = {*cpp_src1, *cpp_src2};
+  std::vector<CviImg> outputs = {*cpp_dst};
 
-  return handle_ctx->t_h.t_xor.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
+  return handle_ctx->t_h.t_xor.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, &outputs);
 }
 
 // ---------------------------------
@@ -3197,17 +2881,8 @@ CVI_S32 CVI_IVE_EqualizeHist(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
   return CVI_SUCCESS;
 }
 
-#ifdef __ARM_ARCH_7A__
-uint32_t sum_uint32x4(uint32x4_t vec) {
-  uint32x2_t sum_lane = vadd_u32(vget_low_u32(vec), vget_high_u32(vec));
-  sum_lane = vpadd_u32(sum_lane, sum_lane);
-  uint32_t sum;
-  vst1_lane_u32(&sum, sum_lane, 0);
-  return sum;
-}
-#endif
-inline float cal_norm_cc(unsigned char *psrc1, unsigned char *psrc2, int srcw, int srch,
-                         int stride) {
+inline float cal_norm_cc(unsigned char *psrc1, unsigned char *psrc2, int srcw, int srch) {
+  int i, wxh;
   uint t1, t2, t3;
   float rtv = 0;
   double d1, d2, d3;
@@ -3218,75 +2893,24 @@ inline float cal_norm_cc(unsigned char *psrc1, unsigned char *psrc2, int srcw, i
   t1 = 0;
   t2 = 0;
   t3 = 0;
-
-#ifdef __ARM_ARCH_7A__
-  int nn = srcw & 0xfffffff8;
-  int remain = srcw - nn;
-  uint32x4_t mul_acc_1_x = vdupq_n_u32(0);
-  uint32x4_t mul_acc_2_x = vdupq_n_u32(0);
-  uint32x4_t mul_acc_3_x = vdupq_n_u32(0);
-  uint16x8_t mul_ret1 = vdupq_n_u16(0);
-  uint16x8_t mul_ret2 = vdupq_n_u16(0);
-  uint16x8_t mul_ret3 = vdupq_n_u16(0);
-
-  for (int i = 0; i < srch; i++) {
-    for (int j = 0; j < nn; j += 8) {
-      int pixel = i * stride + j;
-      uint8x8_t vec_1 = vld1_u8(psrc1 + pixel);
-      uint8x8_t vec_2 = vld1_u8(psrc2 + pixel);
-
-      mul_ret1 = vmull_u8(vec_1, vec_2);
-      mul_ret2 = vmull_u8(vec_1, vec_1);
-      mul_ret3 = vmull_u8(vec_2, vec_2);
-
-      mul_acc_1_x =
-          vaddq_u32(vaddl_u16(vget_low_u16(mul_ret1), vget_high_u16(mul_ret1)), mul_acc_1_x);
-      mul_acc_2_x =
-          vaddq_u32(vaddl_u16(vget_low_u16(mul_ret2), vget_high_u16(mul_ret2)), mul_acc_2_x);
-      mul_acc_3_x =
-          vaddq_u32(vaddl_u16(vget_low_u16(mul_ret3), vget_high_u16(mul_ret3)), mul_acc_3_x);
-    }
-
-    if (remain > 0) {
-      int shift = i * stride + nn;
-      for (int x = 0; x < remain; x++) {
-        int pixel = shift + x;
-        unsigned char src1 = psrc1[pixel];
-        unsigned char src2 = psrc2[pixel];
-        t1 += (src1 * src2);
-        t2 += (src1 * src1);
-        t3 += (src2 * src2);
-      }
-    }
+  wxh = srcw * srch;
+  for (i = 0; i < wxh; i++) {
+    t1 += (psrc1[i] * psrc2[i]);
   }
 
-  t1 += sum_uint32x4(mul_acc_1_x);
-  t2 += sum_uint32x4(mul_acc_2_x);
-  t3 += sum_uint32x4(mul_acc_3_x);
-  if (t2 < 1 || t3 < 1) {
-    return (0.0);
+  for (i = 0; i < wxh; i++) {
+    t2 += (psrc1[i] * psrc1[i]);
   }
-
-#else
-
-  for (int i = 0; i < srch; i++) {
-    for (int j = 0; j < srcw; j++) {
-      int pixel = i * stride + j;
-      unsigned char src1 = psrc1[pixel];
-      unsigned char src2 = psrc2[pixel];
-      t1 += (src1 * src2);
-      t2 += (src1 * src1);
-      t3 += (src2 * src2);
-    }
+  for (i = 0; i < wxh; i++) {
+    t3 += (psrc2[i] * psrc2[i]);
   }
   if (t2 < 1 || t3 < 1) {
     return (0.0);
   }
-
-#endif
   d1 = (double)(t1);
   d2 = sqrt((double)t2) * sqrt((double)t3);
   d3 = d1 / (d2 + 1);
+  // printf("%lf %lf %d %d %d\n", d1, d2, t1, t2, t3);
   rtv = (float)(d3);
 
   return rtv;
@@ -3302,19 +2926,17 @@ CVI_S32 CVI_IVE_NCC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1, IVE_SRC_IMA
     LOGE("Input 2 only accepts U8C1 image format.\n");
     return CVI_FAILURE;
   }
-  if (bInstant) {
-    CVI_IVE_BufRequest(pIveHandle, pstSrc1);
-    CVI_IVE_BufRequest(pIveHandle, pstSrc2);
-  }
+
+  CVI_IVE_BufRequest(pIveHandle, pstSrc1);
+  CVI_IVE_BufRequest(pIveHandle, pstSrc2);
   float *ptr = (float *)pstDst->pu8VirAddr;
-  float rt =
-      cal_norm_cc((uint8_t *)pstSrc1->pu8VirAddr[0], (uint8_t *)pstSrc2->pu8VirAddr[0],
-                  (int)pstSrc1->u16Width, (int)pstSrc1->u16Height, (int)pstSrc1->u16Stride[0]);
+  float rt = cal_norm_cc((uint8_t *)pstSrc1->pu8VirAddr[0], (uint8_t *)pstSrc2->pu8VirAddr[0],
+                         (int)pstSrc1->u16Width, (int)pstSrc1->u16Height);
+
   ptr[0] = rt;
-  if (bInstant) {
-    CVI_IVE_BufFlush(pIveHandle, pstSrc1);
-    CVI_IVE_BufFlush(pIveHandle, pstSrc2);
-  }
+
+  CVI_IVE_BufFlush(pIveHandle, pstSrc1);
+  CVI_IVE_BufFlush(pIveHandle, pstSrc2);
 
   return CVI_SUCCESS;
 }
@@ -3825,132 +3447,6 @@ CVI_S32 CVI_IVE_FilterAndCSC(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc,
 
   CVI_IVE_BufFlush(pIveHandle, pstBuf);
 
-  return CVI_SUCCESS;
-}
-
-CVI_S32 CVI_IVE_CMP_S8_BINARY(IVE_HANDLE pIveHandle, IVE_SRC_IMAGE_S *pstSrc1,
-                              IVE_SRC_IMAGE_S *pstSrc2, IVE_DST_IMAGE_S *pstDst) {
-  if ((pstSrc1->enType != IVE_IMAGE_TYPE_S8C1) || (pstSrc1->enType != pstSrc2->enType) ||
-      pstDst->enType != IVE_IMAGE_TYPE_U8C1) {
-    LOGE("source1/source2/dst image pixel format do not match,%d,%d,%d!\n", pstSrc1->enType,
-         pstSrc2->enType, pstDst->enType);
-    return CVI_FAILURE;
-  }
-
-  int ret = CVI_FAILURE;
-  IVE_HANDLE_CTX *handle_ctx = reinterpret_cast<IVE_HANDLE_CTX *>(pIveHandle);
-
-  std::shared_ptr<CviImg> cpp_src1;
-  std::shared_ptr<CviImg> cpp_src2;
-  std::shared_ptr<CviImg> cpp_dst;
-
-  cpp_src1 =
-      std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstSrc1->tpu_block), [](CviImg *) {});
-  cpp_src2 =
-      std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstSrc2->tpu_block), [](CviImg *) {});
-  cpp_dst = std::shared_ptr<CviImg>(reinterpret_cast<CviImg *>(pstDst->tpu_block), [](CviImg *) {});
-
-  if (cpp_src1 == nullptr || cpp_src2 == nullptr || cpp_dst == nullptr) {
-    LOGE("Cannot get tpu block\n");
-    return CVI_FAILURE;
-  }
-
-  if ((cpp_src1->GetImgHeight() != cpp_src2->GetImgHeight()) ||
-      (cpp_src1->GetImgHeight() != cpp_dst->GetImgHeight()) ||
-      (cpp_src1->GetImgWidth() != cpp_src2->GetImgWidth()) ||
-      (cpp_src1->GetImgWidth() != cpp_dst->GetImgWidth()) ||
-      (cpp_src1->GetImgChannel() != cpp_src2->GetImgChannel()) ||
-      (cpp_src1->GetImgChannel() != cpp_dst->GetImgChannel())) {
-    LOGE("source1/source2/alpha/dst image size do not match!\n");
-    return CVI_FAILURE;
-  }
-
-  std::vector<CviImg *> inputs = {cpp_src1.get(), cpp_src2.get()};
-  std::vector<CviImg *> outputs = {cpp_dst.get()};
-
-  handle_ctx->t_h.t_cmp_sat.init(handle_ctx->rt_handle, handle_ctx->cvk_ctx);
-  ret = handle_ctx->t_h.t_cmp_sat.run(handle_ctx->rt_handle, handle_ctx->cvk_ctx, inputs, outputs);
-  return ret;
-}
-
-CVI_S32 CVI_IVE_Zero(IVE_HANDLE pIveHandle, IVE_DST_IMAGE_S *pstDst) {
-  int ret = CVI_IVE_BufRequest(pIveHandle, pstDst);
-  CviImg *p_img = reinterpret_cast<CviImg *>(pstDst->tpu_block);
-  std::vector<uint32_t> img_coffsets = p_img->GetImgCOffsets();
-  for (size_t i = 0; i < img_coffsets.size() - 1; i++) {
-    uint32_t plane_size = img_coffsets[i + 1] - img_coffsets[i];
-    memset(pstDst->pu8VirAddr[i], 0, plane_size);
-  }
-  ret |= CVI_IVE_BufFlush(pIveHandle, pstDst);
-  return ret;
-}
-
-CVI_S32 VideoFrameYInfo2Image(VIDEO_FRAME_INFO_S *pstVFISrc, IVE_IMAGE_S *pstIIDst) {
-  CviImg *cpp_img = nullptr;
-  if (pstIIDst->tpu_block != NULL) {
-    cpp_img = reinterpret_cast<CviImg *>(pstIIDst->tpu_block);
-    if (!cpp_img->IsNullMem()) {
-      LOGE("pstIIDst->tpu_block->m_rtmem is not NULL");
-      return CVI_FAILURE;
-    }
-    if (cpp_img->GetMagicNum() != CVI_IMG_VIDEO_FRM_MAGIC_NUM) {
-      printf("pstIIDst->tpu_block is not constructed from VIDEO_FRAME_INFO_S");
-      return CVI_FAILURE;
-    }
-  }
-  VIDEO_FRAME_S *pstVFSrc = &pstVFISrc->stVFrame;
-  size_t c = 1;
-  CVIIMGTYPE img_type = CVIIMGTYPE::CVI_GRAY;
-  cvk_fmt_t fmt = CVK_FMT_U8;
-  std::vector<uint32_t> heights;
-  switch (pstVFSrc->enPixelFormat) {
-    case PIXEL_FORMAT_YUV_400:
-    case PIXEL_FORMAT_NV21:
-    case PIXEL_FORMAT_NV12:
-    case PIXEL_FORMAT_YUV_PLANAR_420: {
-      pstIIDst->enType = IVE_IMAGE_TYPE_U8C1;
-      heights.push_back(pstVFSrc->u32Height);
-    } break;
-    default: {
-      LOGE("Unsupported conversion type: %u.\n", pstVFSrc->enPixelFormat);
-      return CVI_FAILURE;
-    } break;
-  }
-  std::vector<uint32_t> strides, u32_length;
-  for (size_t i = 0; i < c; i++) {
-    strides.push_back(pstVFSrc->u32Stride[i]);
-    u32_length.push_back(pstVFSrc->u32Length[i]);
-  }
-  if (cpp_img == nullptr) {
-    cpp_img = new CviImg(pstVFSrc->u32Height, pstVFSrc->u32Width, strides, heights, u32_length,
-                         pstVFSrc->pu8VirAddr[0], pstVFSrc->u64PhyAddr[0], img_type, fmt);
-  } else {
-    cpp_img->ReInit(pstVFSrc->u32Height, pstVFSrc->u32Width, strides, heights, u32_length,
-                    pstVFSrc->pu8VirAddr[0], pstVFSrc->u64PhyAddr[0], img_type, fmt);
-  }
-
-  if (!cpp_img->IsInit()) {
-    LOGE("Failed to init IVE_IMAGE_S.\n");
-    return CVI_FAILURE;
-  }
-
-  pstIIDst->tpu_block = reinterpret_cast<CVI_IMG *>(cpp_img);
-  pstIIDst->u16Width = cpp_img->GetImgWidth();
-  pstIIDst->u16Height = cpp_img->GetImgHeight();
-  pstIIDst->u16Reserved = getFmtSize(fmt);
-
-  size_t i_limit = cpp_img->GetImgChannel();
-  for (size_t i = 0; i < i_limit; i++) {
-    pstIIDst->pu8VirAddr[i] = cpp_img->GetVAddr() + cpp_img->GetImgCOffsets()[i];
-    pstIIDst->u64PhyAddr[i] = cpp_img->GetPAddr() + cpp_img->GetImgCOffsets()[i];
-    pstIIDst->u16Stride[i] = cpp_img->GetImgStrides()[i];
-  }
-
-  for (size_t i = i_limit; i < 3; i++) {
-    pstIIDst->pu8VirAddr[i] = NULL;
-    pstIIDst->u64PhyAddr[i] = 0;
-    pstIIDst->u16Stride[i] = 0;
-  }
   return CVI_SUCCESS;
 }
 
