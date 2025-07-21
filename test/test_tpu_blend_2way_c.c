@@ -91,9 +91,9 @@ static int cmp_yuv420(unsigned char *p_exp, unsigned char *p_got,
 
     if (format == PIXEL_FORMAT_YUV_PLANAR_420) {
         for (int c = 0; c < 2; c++) {
-            for (int y = 0; y < BM_ALIGN(h / 2, 2); y++) {
-                for (int x = 0; x < BM_ALIGN(w / 2, 2); x++) {
-                    int idx = h * w_stride + (c * BM_ALIGN(h / 2, 2) * BM_ALIGN((w_stride / 2), 2)) +
+            for (int y = 0; y < ALIGN(h / 2, 2); y++) {
+                for (int x = 0; x < ALIGN(w / 2, 2); x++) {
+                    int idx = h * w_stride + (c * ALIGN(h / 2, 2) * ALIGN((w_stride / 2), 2)) +
                               y * (w_stride / 2) + x;
                     if ((int)fabs(p_exp[idx] - (int)p_got[ idx]) > delta) {
                         printf("%s abs error at index %d exp %d got %d\n",
@@ -180,7 +180,7 @@ static int get_image_size(int format, int *stride, int height){
     int size = 0;
     switch (format){
         case PIXEL_FORMAT_YUV_PLANAR_420:
-            size = stride[0] * height + BM_ALIGN((height / 2), 2) * stride[1] + BM_ALIGN((height / 2), 2) * stride[2];
+            size = stride[0] * height + ALIGN((height / 2), 2) * stride[1] + ALIGN((height / 2), 2) * stride[2];
             break;
         case PIXEL_FORMAT_RGB_888_PLANAR:
         case PIXEL_FORMAT_BGR_888_PLANAR:
@@ -191,7 +191,7 @@ static int get_image_size(int format, int *stride, int height){
             break;
         case PIXEL_FORMAT_NV12:
         case PIXEL_FORMAT_NV21:
-            size = stride[0] * height + stride[1] * BM_ALIGN(height / 2, 2);
+            size = stride[0] * height + stride[1] * ALIGN(height / 2, 2);
             break;
         default:
             printf("image format error \n");
@@ -218,23 +218,26 @@ int test_tpu_2way_blending(bm_handle_t handle,
                            TPU_BLEND_WGT_MODE wgt_mode,
                            unsigned char *wgt)
 {
+    struct timeval t1, t2;
     int ret = 0, wgt_idx = 0;
     int overlay_w = overlay_rx - overlay_lx + 1;
 
     bm_device_mem_t left_img_mem[3], right_img_mem[3], blend_img_mem[3], wgt_mem[2];
     Image left_img, right_img, blend_img;
 
-    if (set_blend_Image_param(&left_img, img_format, lwidth, lstride, lheight) != 0) {
+    int dsize = sizeof(unsigned char);
+
+    if (set_blend_Image_param(&left_img, img_format, lwidth, lstride, lheight, dsize) != 0) {
         printf("create left image param failed\n");
         return -1;
     }
 
-    if (set_blend_Image_param(&right_img, img_format, rwidth, rstride, rheight) != 0) {
+    if (set_blend_Image_param(&right_img, img_format, rwidth, rstride, rheight, dsize) != 0) {
         printf("create right image param failed\n");
         return -1;
     }
 
-    if (set_blend_Image_param(&blend_img, img_format, bwidth, bstride, bheight) != 0) {
+    if (set_blend_Image_param(&blend_img, img_format, bwidth, bstride, bheight, dsize) != 0) {
         printf("create blend image param failed\n");
         return -1;
     }
@@ -248,9 +251,9 @@ int test_tpu_2way_blending(bm_handle_t handle,
 
         if (wgt_mode == WGT_UV_SHARE) {
             if (img_format == PIXEL_FORMAT_NV12 || img_format == PIXEL_FORMAT_NV21)
-                wgt_size[1] = BM_ALIGN(bheight / 2, 2) * overlay_w;
+                wgt_size[1] = ALIGN(bheight / 2, 2) * overlay_w;
             else if (img_format == PIXEL_FORMAT_YUV_PLANAR_420)
-                wgt_size[1] = BM_ALIGN(overlay_w/2, 2) * BM_ALIGN(bheight/2, 2);
+                wgt_size[1] = ALIGN(overlay_w/2, 2) * ALIGN(bheight/2, 2);
             wgt_idx = 2;
         }
 
@@ -279,26 +282,54 @@ int test_tpu_2way_blending(bm_handle_t handle,
                                         right_input + right_img.channel_stride[0],
                                         right_input + right_img.channel_stride[0] +
                                         right_img.channel_stride[1]};
+    unsigned char *blend_host_ptr[3] = {blend,
+                                        blend + blend_img.channel_stride[0],
+                                        blend + blend_img.channel_stride[0] + blend_img.channel_stride[1]};
 
     for (int c = 0; c < channel; c++) {
         if (BM_SUCCESS != bm_malloc_device_byte(handle, &left_img_mem[c], sizeof(unsigned char) * left_img.channel_stride[c])) {
             printf("[BLEND ERROR] left img malloc device mem failed\n");
+            if (overlay_w != 0) {
+                for (int i = 0; i < wgt_idx; i++)
+                    bm_free_device(handle, wgt_mem[i]);
+            }
             return -1;
         }
 
         if (BM_SUCCESS != bm_malloc_device_byte(handle, &right_img_mem[c], sizeof(unsigned char) * right_img.channel_stride[c])) {
             printf("[BLEND ERROR] right img malloc device mem failed\n");
+            if (overlay_w != 0) {
+                for (int i = 0; i < wgt_idx; i++)
+                    bm_free_device(handle, wgt_mem[i]);
+            }
+
+            for (int i = 0; i < c; i++) {
+                bm_free_device(handle, left_img_mem[i]);
+            }
             return -1;
         }
 
         if (BM_SUCCESS != bm_malloc_device_byte(handle, &blend_img_mem[c], sizeof(unsigned char) * blend_img.channel_stride[c])) {
             printf("[BLEND ERROR] blend img malloc device mem failed\n");
+            if (overlay_w != 0) {
+                for (int i = 0; i < wgt_idx; i++)
+                    bm_free_device(handle, wgt_mem[i]);
+            }
+
+            for (int i = 0; i < c; i++) {
+                bm_free_device(handle, left_img_mem[i]);
+                bm_free_device(handle, right_img_mem[i]);
+            }
             return -1;
         }
 
         if (BM_SUCCESS != bm_memcpy_s2d(handle, left_img_mem[c], left_host_prt[c])) {
             printf("[BLEND ERROR] left img S2D failed\n");
             for (int i = 0; i < c; i++) {
+                if (overlay_w != 0) {
+                    for (int i = 0; i < wgt_idx; i++)
+                        bm_free_device(handle, wgt_mem[i]);
+                }
                 bm_free_device(handle, left_img_mem[i]);
                 bm_free_device(handle, right_img_mem[i]);
                 bm_free_device(handle, blend_img_mem[i]);
@@ -309,6 +340,10 @@ int test_tpu_2way_blending(bm_handle_t handle,
         if (BM_SUCCESS != bm_memcpy_s2d(handle, right_img_mem[c], right_host_ptr[c])) {
             printf("[BLEND ERROR] right img S2D failed\n");
             for (int i = 0; i < c; i++) {
+                if (overlay_w != 0) {
+                    for (int i = 0; i < wgt_idx; i++)
+                        bm_free_device(handle, wgt_mem[i]);
+                }
                 bm_free_device(handle, left_img_mem[i]);
                 bm_free_device(handle, right_img_mem[i]);
                 bm_free_device(handle, blend_img_mem[i]);
@@ -317,29 +352,26 @@ int test_tpu_2way_blending(bm_handle_t handle,
         }
     }
 
-
+    gettimeofday(&t1, NULL);
     ret = tpu_2way_blending(handle, &left_img, left_img_mem, &right_img, right_img_mem, &blend_img, blend_img_mem,
                             overlay_lx, overlay_rx, wgt_mem, wgt_mode);
     if (ret) {
         printf("[BLEND ERROR] tpu_2way_blending failed\n");
-        return -1;
+        ret = -1;
+        goto failed;
     }
+    gettimeofday(&t2, NULL);
+    printf("BLEND_2WAY TPU using time = %ld(us)\n", (long)TIME_COST_US(t1, t2));
 
-    unsigned char *blend_host_ptr[3] = {blend,
-                                        blend + blend_img.channel_stride[0],
-                                        blend + blend_img.channel_stride[0] + blend_img.channel_stride[1]};
     for (int c = 0; c < channel; c++) {
         if (BM_SUCCESS != bm_memcpy_d2s(handle, blend_host_ptr[c], blend_img_mem[c])) {
             printf("[BLEND ERROR] blend img D2S failed\n");
-            for (int i = 0; i < c; i++) {
-                bm_free_device(handle, left_img_mem[i]);
-                bm_free_device(handle, right_img_mem[i]);
-                bm_free_device(handle, blend_img_mem[i]);
-            }
-            return -1;
+            ret = -1;
+            goto failed;
         }
     }
 
+failed:
     for (int i = 0; i < channel; i++) {
         bm_free_device(handle, left_img_mem[i]);
         bm_free_device(handle, right_img_mem[i]);
@@ -363,6 +395,7 @@ static int test_blend_2way_random(bm_handle_t handle, int use_real_img,
                                   char *left_name, char *right_name,
                                   char *blend_name, char *wgt_name)
 {
+    struct timeval t1, t2;
     int channel = (format == PIXEL_FORMAT_YUV_400) ? 1 : 3;
 
     if(format == PIXEL_FORMAT_NV12 || format == PIXEL_FORMAT_NV21)
@@ -372,17 +405,24 @@ static int test_blend_2way_random(bm_handle_t handle, int use_real_img,
 
     int left_stride[3] = {0}, right_stride[3] = {0}, blend_stride[3] = {0};
 
+    printf("TEST INFO:\n");
+    printf("\timg_format:%d, wgt_mode %d\n", format, wgt_mode);
+    printf("\tleft_img_size:%d x %d, lstride %d\n", lwidth, lheight, lstride);
+    printf("\tright_img_size:%d x %d, rstide %d\n", rwidth, rheight, rstride);
+    printf("\toverly_lx %d, overlay_rx %d, overlay_w %d\n", overlay_lx, overlay_rx, (overlay_rx - overlay_lx + 1));
+    printf("\tblend_img_size:%d x %d, bstride %d\n", bwidth, bheight, bstride);
+
     switch (format)
     {
     case PIXEL_FORMAT_YUV_PLANAR_420:
         left_stride[0] = lstride;
-        left_stride[1] = left_stride[2] = BM_ALIGN(lstride/2, 2);
+        left_stride[1] = left_stride[2] = ALIGN(lstride/2, 2);
 
         right_stride[0] = rstride;
-        right_stride[1] = right_stride[2] = BM_ALIGN(rstride/2, 2);
+        right_stride[1] = right_stride[2] = ALIGN(rstride/2, 2);
 
         blend_stride[0] = bstride;
-        blend_stride[1] = blend_stride[2] = BM_ALIGN(bstride/2, 2);
+        blend_stride[1] = blend_stride[2] = ALIGN(bstride/2, 2);
         break;
     case PIXEL_FORMAT_NV12:
     case PIXEL_FORMAT_NV21:
@@ -405,10 +445,10 @@ static int test_blend_2way_random(bm_handle_t handle, int use_real_img,
     int wgt_size = overlay_w * bheight; // YUV SHARE MODE
 
     if (wgt_mode == WGT_UV_SHARE) {
-        if (format == PIXEL_FORMAT_NV12 || PIXEL_FORMAT_NV21)
-            wgt_size = overlay_w * bheight + BM_ALIGN(bheight / 2, 2) * overlay_w;
+        if (format == PIXEL_FORMAT_NV12 || format == PIXEL_FORMAT_NV21)
+            wgt_size = overlay_w * bheight + ALIGN(bheight / 2, 2) * overlay_w;
         else if (format == PIXEL_FORMAT_YUV_PLANAR_420)
-            wgt_size = overlay_w * bheight + BM_ALIGN(bheight / 2, 2) * BM_ALIGN(overlay_w / 2, 2);
+            wgt_size = overlay_w * bheight + ALIGN(bheight / 2, 2) * ALIGN(overlay_w / 2, 2);
     }
 
     unsigned char *left_input = (unsigned char*) malloc (left_img_size * sizeof(unsigned char));
@@ -437,10 +477,13 @@ static int test_blend_2way_random(bm_handle_t handle, int use_real_img,
     memset(tpu_blend_output, 0, blend_img_size * sizeof(unsigned char));
 
     /* calc ref */
+    gettimeofday(&t1, NULL);
     cpu_2way_blend(lwidth, lheight, left_stride, left_input,
                    rwidth, rheight, right_stride, right_input,
                    bwidth, bheight, blend_stride, cpu_blend_output,
                    overlay_lx, overlay_rx, wgt, (TPU_BLEND_WGT_MODE)wgt_mode, channel, format);
+    gettimeofday(&t2, NULL);
+    printf("BLEND_2WAY CPU using time = %ld(us)\n", (long)TIME_COST_US(t1, t2));
 
     int ret = test_tpu_2way_blending(handle, (PIXEL_FORMAT_E)format,
                                      lwidth, lheight, left_stride, left_input,
@@ -459,6 +502,8 @@ static int test_blend_2way_random(bm_handle_t handle, int use_real_img,
         ret = -1;
         goto failed;
     }
+
+    printf("tpu 2way blending cmp successful\n");
 
     if (use_real_img)
         write_bin(blend_name, tpu_blend_output, blend_img_size * sizeof(unsigned char));
@@ -499,10 +544,10 @@ void *test_thread_blend_2way(void *args)
                                          blend_args->blend_name,
                                          blend_args->wgt_name);
         if (ret) {
-            printf("----- TEST BLEND FAILED -----\n");
+            printf("----- loop %d, test_blend_2way_random failed -----\n", i);
             exit(-1);
         }
-        printf("----- TEST BLEND SUCCED -----\n");
+        printf("----- loop %d, test_blend_2way_random succed -----\n", i);
     }
 
     return (void*)0;
@@ -522,8 +567,6 @@ int main(int argc, char* args[])
     char *left_name = NULL, *right_name = NULL, *blend_name = NULL, *wgt_name = NULL;
 
     int lstride = 0, rstride = 0, bstride = 0;
-
-    int rand_offset = rand() % (((IMG_MAX_SIZE - 4 - 8) / 4) + 1);
 
     int lwidth = 8 + 4 * (rand() % (((IMG_MAX_SIZE - 4 - 8) / 4) + 1));
     int rwidth = 8 + 4 * (rand() % (((IMG_MAX_SIZE - 4 - 8) / 4) + 1));
@@ -548,9 +591,9 @@ int main(int argc, char* args[])
 
     int bwidth = lwidth + rwidth - overlap;
 
-    lstride = BM_ALIGN(lwidth, 16);
-    rstride = BM_ALIGN(rwidth, 16);
-    bstride = BM_ALIGN(bwidth, 16);
+    lstride = ALIGN(lwidth, 16);
+    rstride = ALIGN(rwidth, 16);
+    bstride = ALIGN(bwidth, 16);
 
     int format_num[5] = {PIXEL_FORMAT_RGB_888_PLANAR, PIXEL_FORMAT_YUV_PLANAR_420, PIXEL_FORMAT_YUV_400, PIXEL_FORMAT_NV12, PIXEL_FORMAT_NV21};
     int img_format = format_num[(rand() % 5)];
@@ -588,15 +631,6 @@ int main(int argc, char* args[])
     if (argc > 18) bheight = atoi(args[18]);
     if (argc > 19) bstride = atoi(args[19]);
     if (argc > 20) blend_name = args[20];
-
-    printf("TEST INFO:\n");
-    printf("\timg_format:%d, wgt_mode %d\n", img_format, wgt_mode);
-    printf("\tleft_img_size:%d x %d, lstride %d\n", lwidth, lheight, lstride);
-    printf("\tright_img_size:%d x %d, rstide %d\n", rwidth, rheight, rstride);
-    printf("\toverly_lx %d, overlay_rx %d, overlay_w %d\n", overlay_lx, overlay_rx, (overlay_rx - overlay_lx + 1));
-    printf("\tblend_img_size:%d x %d, bstride %d\n", bwidth, bheight, bstride);
-
-    /* param check */
 
     bm_handle_t handle;
     bm_status_t ret = bm_dev_request(&handle, 0);

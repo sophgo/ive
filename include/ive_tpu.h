@@ -1,5 +1,5 @@
-#ifndef __CVI_TPU_H__
-#define __CVI_TPU_H__
+#ifndef __IVE_TPU_H__
+#define __IVE_TPU_H__
 
 #include <cvi_common.h>
 #include <cvi_comm_video.h>
@@ -12,8 +12,6 @@ extern "C"
 {
 #endif
 #endif /* __cplusplus */
-
-#define BM_ALIGN(x, a)  (((x) + (a) - 1) / (a) * (a))
 
 typedef enum _TPU_THRESHOLD_TYPE {
     THRESHOLD_BINARY = 0,
@@ -62,7 +60,8 @@ int set_blend_Image_param(
     PIXEL_FORMAT_E img_format,
     int width,
     int *w_stride,
-    int height);
+    int height,
+    int dsize);
 
 bm_status_t tpu_2way_blending(
     bm_handle_t handle,
@@ -77,10 +76,36 @@ bm_status_t tpu_2way_blending(
     bm_device_mem_t *wgt_phy_mem,
     TPU_BLEND_WGT_MODE mode);
 
+
+enum MorphTypes{
+    MORPH_ERODE    = 0, //!< see #erode
+    MORPH_DILATE   = 1, //!< see #dilate
+};
+
+bm_status_t bm_cv_dilate(
+	bm_handle_t handle,
+	bm_device_mem_t src_mem,
+	bm_device_mem_t dst_mem,
+	PIXEL_FORMAT_E format,
+	int width,
+	int height,
+	int w_stride,
+	int kw, int kh);
+
+bm_status_t bm_cv_erode(
+	bm_handle_t handle,
+	bm_device_mem_t src_mem,
+	bm_device_mem_t dst_mem,
+	PIXEL_FORMAT_E format,
+	int width,
+	int height,
+	int w_stride,
+	int kw, int kh);
+
 #ifdef __cplusplus
 #if __cplusplus
 }
 #endif
 #endif /* __cplusplus */
 
-#endif // __CVI_TPU_H__
+#endif // __IVE_TPU_H__

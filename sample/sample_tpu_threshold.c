@@ -19,7 +19,6 @@ static int fill_img(unsigned char *input, int img_size)
 static void read_bin(const char* path, unsigned char* input_data, int size)
 {
     FILE *fp_src = fopen(path, "rb");
-    printf("input_data %s\n", path);
     if (fread((void *)input_data, 1, size, fp_src) < (unsigned int)size) {
         printf("file size is less than %d required bytes\n", size);
     };
@@ -37,48 +36,12 @@ static void write_bin(const char * path, unsigned char* input_data, int size)
     fclose(fp_dst);
 }
 
-static int get_image_size(int format, int width, int height){
-    int size = 0;
-    switch (format){
-        case PIXEL_FORMAT_YUV_PLANAR_420:
-            size = width * height + 2 * BM_ALIGN((height / 2), 2) * BM_ALIGN((width / 2), 2);
-            break;
-        case PIXEL_FORMAT_RGB_888_PLANAR:
-            size = width * height * 3;
-            break;
-        case PIXEL_FORMAT_YUV_400:
-            size = width * height;
-            break;
-        default:
-            printf("image format error \n");
-            break;
-    }
-    return size;
-}
-
-static int get_each_channel_size(int size[3], int format, int height, int width)
-{
-    size[0] = height * width;
-
-    if (format == PIXEL_FORMAT_RGB_888_PLANAR) {
-        size[1] = size[2] = size[0];
-    } else if (format == PIXEL_FORMAT_YUV_PLANAR_420) {
-        size[1] = BM_ALIGN(width / 2, 2) * BM_ALIGN(height / 2, 2);
-        size[2] = BM_ALIGN(width / 2, 2) * BM_ALIGN(height / 2, 2);
-    } else {
-        size[2] = size[1] = 0;
-    }
-
-    return 0;
-}
-
 static int test_threshold_tpu(bm_handle_t handle, int height, int width,
                               TPU_THRESHOLD_TYPE mode, unsigned int threshold,
                               unsigned int max_value, unsigned char *input_data,
                               unsigned char *output_data)
 {
     int ret = 0;
-    struct timeval t1, t2;
     bm_device_mem_t input_mem, output_mem;
 
     if (BM_SUCCESS != bm_malloc_device_byte(handle, &input_mem, width * height * sizeof(unsigned char))) {
@@ -88,6 +51,7 @@ static int test_threshold_tpu(bm_handle_t handle, int height, int width,
 
     if (BM_SUCCESS != bm_malloc_device_byte(handle, &output_mem, width * height * sizeof(unsigned char))) {
         printf("output img malloc device mem failed\n");
+        bm_free_device(handle, input_mem);
         return -1;
     }
 
@@ -100,11 +64,13 @@ static int test_threshold_tpu(bm_handle_t handle, int height, int width,
     ret = tpu_cv_threshold(handle, height, width, mode, threshold, max_value, &input_mem, &output_mem);
     if (ret) {
         printf("tpu cv threshold failed\n");
+        ret = -1;
         goto failed;
     }
 
     if (BM_SUCCESS != bm_memcpy_d2s(handle, output_data, output_mem)) {
         printf("output d2s failed\n");
+        ret = -1;
         goto failed;
     }
 
@@ -129,10 +95,10 @@ int main(int argc, char* args[])
     int use_real_img = 0;
     unsigned int threshold = 50;
     unsigned int max_value = 228;
-    int format = PIXEL_FORMAT_YUV_400; // Only Support PIXEL_FORMAT_YUV_400
+    // int format = PIXEL_FORMAT_YUV_400; // Only Support PIXEL_FORMAT_YUV_400
 
-    char *src_name;
-    char *dst_name;
+    char *src_name = NULL;
+    char *dst_name = NULL;
 
     if (argc == 2 && atoi(args[1]) == -1) {
         printf("%s use_real_img threshold_type height width src_name dst_name\n", args[0]);

@@ -13,7 +13,7 @@ set(TOOLCHAIN_TOPDIR "${TOOLCHAIN_ROOT_DIR}")
 set( TC_PATH "${TOOLCHAIN_ROOT_DIR}/bin/" )
 
 # The toolchain prefix for all toolchain executables
-set( CROSS_COMPILE aarch64-linux-gnu- )
+set( CROSS_COMPILE aarch64-none-linux-gnu- )
 set( ARCH arm64 )
 
 # specify the cross compiler. We force the compiler so that CMake doesn't

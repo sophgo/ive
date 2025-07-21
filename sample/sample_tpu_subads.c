@@ -41,7 +41,7 @@ static int get_image_size(int format, int width, int height){
     int size = 0;
     switch (format){
         case PIXEL_FORMAT_YUV_PLANAR_420:
-            size = width * height + 2 * BM_ALIGN((height / 2), 2) * BM_ALIGN((width / 2), 2);
+            size = width * height + 2 * ALIGN((height / 2), 2) * ALIGN((width / 2), 2);
             break;
         case PIXEL_FORMAT_RGB_888_PLANAR:
         case PIXEL_FORMAT_BGR_888_PLANAR:
@@ -65,8 +65,8 @@ static void get_each_channel_size(int size[3], int format , int height, int widt
     {
     case PIXEL_FORMAT_YUV_PLANAR_420:
         size[0] = height * width;
-        size[1] = BM_ALIGN(width / 2, 2) * BM_ALIGN(height / 2, 2);
-        size[2] = BM_ALIGN(width / 2, 2) * BM_ALIGN(height / 2, 2);
+        size[1] = ALIGN(width / 2, 2) * ALIGN(height / 2, 2);
+        size[2] = ALIGN(width / 2, 2) * ALIGN(height / 2, 2);
         break;
     case PIXEL_FORMAT_YUV_400:
         size[0] = height * width;
@@ -87,7 +87,6 @@ int test_subads_tpu(bm_handle_t handle, int height, int width, int format,
                     unsigned char *src1, unsigned char* src2, unsigned char *dst)
 {
     int ret = 0;
-    struct timeval t1, t2;
 
     int channel = (format == PIXEL_FORMAT_YUV_400) ? 1 : 3;
     int src1_size[3], src2_size[3], dst_size[3];
@@ -110,11 +109,17 @@ int test_subads_tpu(bm_handle_t handle, int height, int width, int format,
 
         if (BM_SUCCESS != bm_malloc_device_byte(handle, &src2_img_mem[c], sizeof(unsigned char) * src2_size[c])) {
             printf("src2 img malloc device mem failed\n");
+            for (int i = 0; i < c; i++)
+                bm_free_device(handle, src1_img_mem[i]);
             return -1;
         }
 
         if (BM_SUCCESS != bm_malloc_device_byte(handle, &dst_img_mem[c], sizeof(unsigned char) * dst_size[c])) {
             printf("dst img malloc device mem failed\n");
+            for (int i = 0; i < c; i++) {
+                bm_free_device(handle, src1_img_mem[i]);
+                bm_free_device(handle, src2_img_mem[i]);
+            }
             return -1;
         }
 
@@ -142,6 +147,11 @@ int test_subads_tpu(bm_handle_t handle, int height, int width, int format,
     ret = tpu_cv_subads(handle, height, width, (PIXEL_FORMAT_E)format, channel, src1_img_mem, src2_img_mem, dst_img_mem);
     if (ret) {
         printf("tpu subads failed\n");
+        for (int i = 0; i < channel; i++) {
+            bm_free_device(handle, src1_img_mem[i]);
+            bm_free_device(handle, src2_img_mem[i]);
+            bm_free_device(handle, dst_img_mem[i]);
+        }
         return -1;
     }
 
@@ -182,7 +192,7 @@ int main(int argc, char *args[])
     int format_num[3] = {2, 13, 15};
     int img_format = format_num[(rand() % 3)];
 
-    char *src1_name, *src2_name, *dst_name;
+    char *src1_name = NULL, *src2_name = NULL, *dst_name = NULL;
 
     if (argc == 2 && atoi(args[1]) == -1) {
         printf("%s use_real_img img_format width height src1_name src2_name dst_name\
@@ -238,7 +248,7 @@ int main(int argc, char *args[])
 
     if (use_real_img) {
         read_bin(src1_name, src1_data, img_size);
-        read_bin(src1_name, src2_data, img_size);
+        read_bin(src2_name, src2_data, img_size);
     } else {
         fill_img(src1_data, img_size);
         fill_img(src2_data, img_size);
@@ -253,6 +263,9 @@ int main(int argc, char *args[])
         bm_dev_free(handle);
         return -1;
     }
+
+    if (use_real_img)
+        write_bin(dst_name, dst_data_tpu, img_size);
 
     free(src1_data);
     free(src2_data);

@@ -72,41 +72,6 @@ static int array_cmp_u8(unsigned char *p_exp, unsigned char *p_got,
     return 0;
 }
 
-static int get_image_size(int format, int width, int height){
-    int size = 0;
-    switch (format){
-        case PIXEL_FORMAT_YUV_PLANAR_420:
-            size = width * height + 2 * BM_ALIGN((height / 2), 2) * BM_ALIGN((width / 2), 2);
-            break;
-        case PIXEL_FORMAT_RGB_888_PLANAR:
-            size = width * height * 3;
-            break;
-        case PIXEL_FORMAT_YUV_400:
-            size = width * height;
-            break;
-        default:
-            printf("image format error \n");
-            break;
-    }
-    return size;
-}
-
-static int get_each_channel_size(int size[3], int format, int height, int width)
-{
-    size[0] = height * width;
-
-    if (format == PIXEL_FORMAT_RGB_888_PLANAR) {
-        size[1] = size[2] = size[0];
-    } else if (format == PIXEL_FORMAT_YUV_PLANAR_420) {
-        size[1] = BM_ALIGN(width / 2, 2) * BM_ALIGN(height / 2, 2);
-        size[2] = BM_ALIGN(width / 2, 2) * BM_ALIGN(height / 2, 2);
-    } else {
-        size[2] = size[1] = 0;
-    }
-
-    return 0;
-}
-
 static int test_threshold_tpu(bm_handle_t handle, int height, int width,
                               TPU_THRESHOLD_TYPE mode, unsigned int threshold,
                               unsigned int max_value, unsigned char *input_data,
@@ -114,6 +79,7 @@ static int test_threshold_tpu(bm_handle_t handle, int height, int width,
 {
     int ret = 0;
     bm_device_mem_t input_mem, output_mem;
+    struct timeval t1, t2;
 
     if (BM_SUCCESS != bm_malloc_device_byte(handle, &input_mem, width * height * sizeof(unsigned char))) {
         printf("input img malloc device mem failed\n");
@@ -122,6 +88,7 @@ static int test_threshold_tpu(bm_handle_t handle, int height, int width,
 
     if (BM_SUCCESS != bm_malloc_device_byte(handle, &output_mem, width * height * sizeof(unsigned char))) {
         printf("output img malloc device mem failed\n");
+        bm_free_device(handle, input_mem);
         return -1;
     }
 
@@ -131,15 +98,19 @@ static int test_threshold_tpu(bm_handle_t handle, int height, int width,
         goto failed;
     }
 
+    gettimeofday(&t1, NULL);
     ret = tpu_cv_threshold(handle, height, width, mode, threshold, max_value, &input_mem, &output_mem);
     if (ret) {
         printf("tpu cv threshold failed\n");
+        ret = -1;
         goto failed;
     }
-    printf("THRESHOLD tpu using time %ld(us)\n", TIME_COST_US(t1, t2));
+    gettimeofday(&t2, NULL);
+    printf("THRESHOLD TPU using time = %ld(us)\n", (long)TIME_COST_US(t1, t2));
 
     if (BM_SUCCESS != bm_memcpy_d2s(handle, output_data, output_mem)) {
         printf("output d2s failed\n");
+        ret = -1;
         goto failed;
     }
 
@@ -155,6 +126,7 @@ static int test_threshold_random(bm_handle_t handle, int use_real_img,
                                  int threshold_type,
                                  char *src_name, char *dst_name)
 {
+    struct timeval t1, t2;
     unsigned int threshold = 50;
     unsigned int max_value = 228;
 
@@ -163,7 +135,7 @@ static int test_threshold_random(bm_handle_t handle, int use_real_img,
     printf("threshold_type %d\n", threshold_type);
     printf("threshold %d, max_value %d\n", threshold, max_value);
 
-    int format = PIXEL_FORMAT_YUV_400; // Only Support PIXEL_FORMAT_YUV_400
+    // int format = PIXEL_FORMAT_YUV_400; // Only Support PIXEL_FORMAT_YUV_400
     int img_size = height * width;
 
     unsigned char *input_data = (unsigned char*) malloc (img_size * sizeof(unsigned char));
@@ -178,8 +150,12 @@ static int test_threshold_random(bm_handle_t handle, int use_real_img,
     else
         fill_img(input_data, img_size);
 
+
+    gettimeofday(&t1, NULL);
     threshold_ref(input_data, output_cpu, height, width,
             (TPU_THRESHOLD_TYPE)threshold_type, threshold, max_value);
+    gettimeofday(&t2, NULL);
+    printf("THRESHOLD CPU using time = %ld(us)\n", (long)TIME_COST_US(t1, t2));
 
     int ret = test_threshold_tpu(handle, height, width,
             (TPU_THRESHOLD_TYPE) threshold_type, threshold, max_value, input_data, output_tpu);
@@ -237,13 +213,13 @@ int main(int argc, char* args[])
     srand(seed);
 
     bm_handle_t handle;
-    int height = 2 + rand() % 100;
-    int width = 2 + rand() % 100;
+    int height = 2 + rand() % 1920;
+    int width = 2 + rand() % 1080;
     int threshold_type = rand() % 5;
     int thread_num = 1, loop = 1, use_real_img = 0;
 
-    char *src_name;
-    char *dst_name;
+    char *src_name = NULL;
+    char *dst_name = NULL;
 
     printf("height %d, width %d threshold_type %d\n", height, width, threshold_type);
 

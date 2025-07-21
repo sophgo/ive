@@ -20,6 +20,8 @@ elif [[ "$SDK_VER" == "musl_riscv64" ]]; then
 elif [[ "$SDK_VER" == "glibc_riscv64" ]]; then
     TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-riscv64-linux.cmake
     KERNEL_HEADER_PATH="${KERNEL_PATH}"/build/"${PROJECT_FULLNAME}"/riscv/usr/
+elif [[ "$SDK_VER" == "musl" ]]; then
+    TOOLCHAIN_FILE=$IVE_ROOT/toolchain/arm-none-linux-musleabihf.cmake
 else
     echo "Wrong SDK_VER=$SDK_VER"
     exit 1
@@ -33,12 +35,22 @@ cmake -G Ninja $IVE_ROOT -DCVI_TARGET=soc \
                             -DENABLE_SYSTRACE=OFF \
                             -DCMAKE_BUILD_TYPE=SDKRelease \
                             -DKERNEL_HEADERS_ROOT=$KERNEL_HEADER_PATH \
-                            -DMLIR_SDK_ROOT=$TPU_SDK_INSTALL_PATH \
                             -DMIDDLEWARE_SDK_ROOT=$MW_PATH \
                             -DCMAKE_INSTALL_PREFIX=$IVE_SDK_INSTALL_PATH \
                             -DTOOLCHAIN_ROOT_DIR=$HOST_TOOL_PATH \
                             -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE \
                             -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON
+# cmake -G Ninja $IVE_ROOT -DCVI_TARGET=soc \
+#                             -DCVI_PLATFORM=$CHIP_ARCH \
+#                             -DENABLE_SYSTRACE=OFF \
+#                             -DCMAKE_BUILD_TYPE=SDKRelease \
+#                             -DKERNEL_HEADERS_ROOT=$KERNEL_HEADER_PATH \
+#                             -DMLIR_SDK_ROOT=$TPU_SDK_INSTALL_PATH \
+#                             -DMIDDLEWARE_SDK_ROOT=$MW_PATH \
+#                             -DCMAKE_INSTALL_PREFIX=$IVE_SDK_INSTALL_PATH \
+#                             -DTOOLCHAIN_ROOT_DIR=$HOST_TOOL_PATH \
+#                             -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE \
+#                             -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON
 
 ninja -j8 || exit 1
 ninja install || exit 1

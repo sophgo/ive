@@ -5,28 +5,59 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Options
 option(ENABLE_SYSTRACE "Use systrace" OFF)
 # Get current commit
-execute_process(COMMAND git show --oneline -s WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE CURRENT_COMMIT)
-execute_process(COMMAND git rev-parse --abbrev-ref HEAD WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE LATEST_BRANCH)
-string(STRIP ${LATEST_BRANCH} LATEST_BRANCH)
+execute_process(
+  COMMAND git show --oneline -s
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  OUTPUT_VARIABLE CURRENT_COMMIT
+  ERROR_VARIABLE GIT_ERROR
+  RESULT_VARIABLE GIT_RESULT)
+
+execute_process(
+  COMMAND git rev-parse --abbrev-ref HEAD
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  OUTPUT_VARIABLE LATEST_BRANCH
+  ERROR_VARIABLE GIT_BRANCH_ERROR
+  RESULT_VARIABLE GIT_BRANCH_RESULT)
+
+if(GIT_RESULT EQUAL 0 AND GIT_BRANCH_RESULT EQUAL 0)
+  string(STRIP ${LATEST_BRANCH} LATEST_BRANCH)
+else()
+  set(CURRENT_COMMIT "unknown")
+  set(LATEST_BRANCH "unknown")
+  message(WARNING "Not a git repository or git commands failed. Setting version info to 'unknown'")
+endif()
+
 message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 message("CMAKE_C_COMPILER" ${CMAKE_C_COMPILER} )
-message("tcpath" ${TC_PATH}${CROSS_COMPILE}gcc) 
+message("tcpath" ${TC_PATH}${CROSS_COMPILE}gcc)
 if ("${LATEST_BRANCH}" STREQUAL "master")
-  string(REPLACE " " ";" WORD_LIST ${CURRENT_COMMIT})
-  list(GET WORD_LIST 0 COMMITID)
-  set(LATEST_TAG "nightly-${COMMITID}")
+  if(NOT "${CURRENT_COMMIT}" STREQUAL "unknown")
+    string(REPLACE " " ";" WORD_LIST ${CURRENT_COMMIT})
+    list(GET WORD_LIST 0 COMMITID)
+    set(LATEST_TAG "nightly-${COMMITID}")
+  else()
+    set(LATEST_TAG "nightly-unknown")
+  endif()
 elseif("${LATEST_BRANCH}" STREQUAL "HEAD")
-  string(REPLACE " " ";" WORD_LIST ${CURRENT_COMMIT})
-  list(GET WORD_LIST 0 COMMITID)
-  set(LATEST_TAG "${COMMITID}")
+  if(NOT "${CURRENT_COMMIT}" STREQUAL "unknown")
+    string(REPLACE " " ";" WORD_LIST ${CURRENT_COMMIT})
+    list(GET WORD_LIST 0 COMMITID)
+    set(LATEST_TAG "${COMMITID}")
+  else()
+    set(LATEST_TAG "unknown")
+  endif()
+elseif("${LATEST_BRANCH}" STREQUAL "unknown")
+  set(LATEST_TAG "unknown")
 else()
   string(REGEX MATCH "([0-9]+)\\.([0-9]+)\\.([0-9]+)*[^(\\\n).]+" LATEST_TAG ${LATEST_BRANCH})
   if ("${LATEST_TAG}" STREQUAL "")
     set(LATEST_TAG "unknown")
   endif()
-  string(REPLACE " " ";" WORD_LIST ${CURRENT_COMMIT})
-  list(GET WORD_LIST 0 COMMITID)
-  set(LATEST_TAG "${LATEST_TAG}-${COMMITID}")
+  if(NOT "${CURRENT_COMMIT}" STREQUAL "unknown")
+    string(REPLACE " " ";" WORD_LIST ${CURRENT_COMMIT})
+    list(GET WORD_LIST 0 COMMITID)
+    set(LATEST_TAG "${LATEST_TAG}-${COMMITID}")
+  endif()
 endif()
 
 set(CMAKE_C_COMPILER ${TC_PATH}${CROSS_COMPILE}gcc)
@@ -77,32 +108,32 @@ else()
   set(GCC_STRIP_FLAG "")
 endif()
 
-# Check if tracer exists.
-if ("${TRACER_ROOT}" STREQUAL "")
-  set(TRACER_ROOT ${CMAKE_SOURCE_DIR}/3rdparty/tracer)
-  message("use tracerroot:" ${TRACER_ROOT})
-endif()
-if(EXISTS "${TRACER_ROOT}")
-  execute_process(COMMAND git remote -v
-                  WORKING_DIRECTORY ${TRACER_ROOT}
-                  OUTPUT_VARIABLE TRACER_REMOTE_URL)
-  if (NOT "${TRACER_REMOTE_URL}" MATCHES "10.34.33.3:8480" OR
-          "${TRACER_REMOTE_URL}" MATCHES "10.34.33.3:8422")
-    message(AUTHOR_WARNING "Warning, this tracer is not cloned from GitLab. "
-                           "May cause error while compiling or running.")
-  endif()
-  message("-- Found Tracer (directory: ${CMAKE_SOURCE_DIR}/3rdparty/tracer)")
-  include(cmake/tracer.cmake)
-else()
-  message(FATAL_ERROR "Tracer folder not found. Git clone to 3rdparty at "
-                      "http://10.34.33.3:8480/sys_app/tracer.")
-endif()
-if (ENABLE_SYSTRACE)
-  add_definitions(-DENABLE_TRACE)
-endif()
+# # Check if tracer exists.
+# if ("${TRACER_ROOT}" STREQUAL "")
+#   set(TRACER_ROOT ${CMAKE_SOURCE_DIR}/3rdparty/tracer)
+#   message("use tracerroot:" ${TRACER_ROOT})
+# endif()
+# if(EXISTS "${TRACER_ROOT}")
+#   execute_process(COMMAND git remote -v
+#                   WORKING_DIRECTORY ${TRACER_ROOT}
+#                   OUTPUT_VARIABLE TRACER_REMOTE_URL)
+#   if (NOT "${TRACER_REMOTE_URL}" MATCHES "10.34.33.3:8480" OR
+#           "${TRACER_REMOTE_URL}" MATCHES "10.34.33.3:8422")
+#     message(AUTHOR_WARNING "Warning, this tracer is not cloned from GitLab. "
+#                            "May cause error while compiling or running.")
+#   endif()
+#   message("-- Found Tracer (directory: ${CMAKE_SOURCE_DIR}/3rdparty/tracer)")
+#   include(cmake/tracer.cmake)
+# else()
+#   message(FATAL_ERROR "Tracer folder not found. Git clone to 3rdparty at "
+#                       "http://10.34.33.3:8480/sys_app/tracer.")
+# endif()
+# if (ENABLE_SYSTRACE)
+#   add_definitions(-DENABLE_TRACE)
+# endif()
 
 # Check if MLIR SDK exists.
-include(cmake/mlir.cmake)
+# include(cmake/mlir.cmake)
 
 # Check if middleware exists.
 include (cmake/middleware.cmake)
