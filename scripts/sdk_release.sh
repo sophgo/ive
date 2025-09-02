@@ -10,9 +10,9 @@ pushd $TMP_WORKING_DIR/build_sdk
 
 if [[ "$SDK_VER" == "uclibc" ]]; then
     TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-uclibc-linux.cmake
-elif [[ "$SDK_VER" == "64bit" ]]; then
+elif [[ "$SDK_VER" == "glibc_arm64" ]]; then
     TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-aarch64-linux.cmake
-elif [[ "$SDK_VER" == "32bit" ]]; then
+elif [[ "$SDK_VER" == "glibc_arm" ]]; then
     TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-gnueabihf-linux.cmake
 elif [[ "$SDK_VER" == "musl_riscv64" ]]; then
     KERNEL_HEADER_PATH="${KERNEL_PATH}"/build/"${PROJECT_FULLNAME}"/riscv/usr/
@@ -20,7 +20,7 @@ elif [[ "$SDK_VER" == "musl_riscv64" ]]; then
 elif [[ "$SDK_VER" == "glibc_riscv64" ]]; then
     TOOLCHAIN_FILE=$IVE_ROOT/toolchain/toolchain-riscv64-linux.cmake
     KERNEL_HEADER_PATH="${KERNEL_PATH}"/build/"${PROJECT_FULLNAME}"/riscv/usr/
-elif [[ "$SDK_VER" == "musl" ]]; then
+elif [[ "$SDK_VER" == "musl_arm" ]]; then
     TOOLCHAIN_FILE=$IVE_ROOT/toolchain/arm-none-linux-musleabihf.cmake
 else
     echo "Wrong SDK_VER=$SDK_VER"

@@ -23,6 +23,7 @@ set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/mars3_tpu/tpu_threshold_api.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mars3_tpu/tpu_two_way_blend_api.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mars3_tpu/tpu_morph_api.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/mars3_tpu/tpu_raw12_to_uint16_api.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mars3_tpu/tpu_cmodel.cpp
     # ${CMAKE_CURRENT_SOURCE_DIR}/kernel_generator.cpp
     # ${CMAKE_CURRENT_SOURCE_DIR}/table_manager.cpp

@@ -102,6 +102,13 @@ bm_status_t bm_cv_erode(
 	int w_stride,
 	int kw, int kh);
 
+bm_status_t tpu_raw12_to_uint16(
+    bm_handle_t handle,
+    bm_device_mem_t input_dev_mem,
+    bm_device_mem_t output_dev_mem,
+    int width,
+    int height);
+
 #ifdef __cplusplus
 #if __cplusplus
 }

@@ -7,6 +7,33 @@
 
 #include "ive_tpu.h"
 
+//raw12_to_uint16
+void fill_raw12(unsigned char* input, int len) {
+    for(int i = 0; i < len; i++) {
+        input[i] = rand() % 256;
+    }
+}
+
+void raw12_to_uint16_cpu(unsigned char *input_data, uint16_t *output_cpu, int w, int h) {
+    const size_t pixel_cnt = (size_t)w * (size_t)h;
+    const size_t group_cnt = pixel_cnt >> 1;
+
+    size_t s_idx = 0;
+    size_t d_idx = 0;
+
+    for (size_t g = 0; g < group_cnt; ++g) {
+        uint8_t b0 = input_data[s_idx++];
+        uint8_t b1 = input_data[s_idx++];
+        uint8_t b2 = input_data[s_idx++];
+
+        uint16_t p0 = ((uint16_t)b0 << 4) | ( b2 & 0x0F );
+        uint16_t p1 = ((uint16_t)b1 << 4) | ( b2 >> 4 );
+
+        output_cpu[d_idx++] = p0;
+        output_cpu[d_idx++] = p1;
+    }
+}
+//raw12_to_uint16
 int subads_ref(unsigned char *input1, unsigned char *input2, unsigned char *output, int img_size)
 {
     for (int i = 0; i < img_size; i++) output[i] = abs(input1[i] - input2[i]);
