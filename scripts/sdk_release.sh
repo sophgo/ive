@@ -22,6 +22,8 @@ elif [[ "$SDK_VER" == "glibc_riscv64" ]]; then
     KERNEL_HEADER_PATH="${KERNEL_PATH}"/build/"${PROJECT_FULLNAME}"/riscv/usr/
 elif [[ "$SDK_VER" == "musl_arm" ]]; then
     TOOLCHAIN_FILE=$IVE_ROOT/toolchain/arm-none-linux-musleabihf.cmake
+elif [[ "$SDK_VER" == "musl_arm64" ]]; then
+    TOOLCHAIN_FILE=$IVE_ROOT/toolchain/aarch64-none-linux-musl.cmake
 else
     echo "Wrong SDK_VER=$SDK_VER"
     exit 1
