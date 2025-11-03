@@ -7,6 +7,218 @@
 
 #include "ive_tpu.h"
 
+//remap
+typedef uint16_t bf16;
+
+static bf16 float_to_bfloat16(float f) {
+    uint32_t* p = (uint32_t*)&f;
+    return (bf16)((*p) >> 16);
+}
+
+static inline float bfloat16_to_float(uint16_t bf) {
+    union {
+        uint32_t i;
+        float f;
+    } converter;
+
+    converter.i = (uint32_t)bf << 16;
+
+    return converter.f;
+}
+
+static void prepare_coordinates(
+    float x, float y,
+    int src_width, int src_height,
+    int* x_int, bf16* x_frac,
+    int* y_int, bf16* y_frac) {
+
+    float x_clamped = x;
+    float y_clamped = y;
+
+    *x_int = (int)floorf(x_clamped);
+    *y_int = (int)floorf(y_clamped);
+
+    float x_frac_float = x_clamped - *x_int;
+    float y_frac_float = y_clamped - *y_int;
+
+    if (*x_int == src_width - 1) x_frac_float = 0.0f;
+    if (*y_int == src_height - 1) y_frac_float = 0.0f;
+
+    *x_frac = float_to_bfloat16(x_frac_float);
+    *y_frac = float_to_bfloat16(y_frac_float);
+}
+
+static unsigned char bilinear_interpolation_separated(
+    unsigned char* src,
+    int src_width,
+    int src_height,
+    int x_int,
+    bf16 x_frac,
+    int y_int,
+    bf16 y_frac,
+    int c) {
+    float dx = bfloat16_to_float(x_frac);
+    float dy = bfloat16_to_float(y_frac);
+
+    const int x0 = (x_int < 0) ? 0 : (x_int >= src_width) ? src_width - 1 : x_int;
+    const int y0 = (y_int < 0) ? 0 : (y_int >= src_height) ? src_height - 1 : y_int;
+
+    const int x1 = (x0 < src_width - 1) ? x0 + 1 : x0;
+    const int y1 = (y0 < src_height - 1) ? y0 + 1 : y0;
+
+    unsigned char* channel_base = src + c * src_width * src_height;
+    const unsigned char p00 = channel_base[y0 * src_width + x0];
+    const unsigned char p01 = channel_base[y0 * src_width + x1];
+    const unsigned char p10 = channel_base[y1 * src_width + x0];
+    const unsigned char p11 = channel_base[y1 * src_width + x1];
+
+    const float w00 = (1.0f - dx) * (1.0f - dy);
+    const float w01 = dx * (1.0f - dy);
+    const float w10 = (1.0f - dx) * dy;
+    const float w11 = dx * dy;
+
+    const float val = p00 * w00 + p01 * w01 + p10 * w10 + p11 * w11;
+
+    float result_f = val + 0.5f;
+    if (result_f < 0.0f) result_f = 0.0f;
+    if (result_f > 255.0f) result_f = 255.0f;
+
+    return (unsigned char)result_f;
+}
+
+void remap_cpu_ref(unsigned char *input, unsigned char *output, float *mapx, float *mapy, int input_height,
+                   int input_width, int output_height, int output_width, int format) {
+    for (int y = 0; y < output_height; ++y) {
+        for (int x = 0; x < output_width; ++x) {
+            const int map_idx = y * output_width + x;
+            const float src_x = mapx[map_idx];
+            const float src_y = mapy[map_idx];
+
+            if (src_x < 0 || src_x >= input_width || src_y < 0 || src_y >= input_height) {
+                output[map_idx] = 0;
+            } else {
+                int x_int;
+                bf16 x_frac;
+                int y_int;
+                bf16 y_frac;
+
+                prepare_coordinates(src_x, src_y, input_width, input_height,
+                                    &x_int, &x_frac, &y_int, &y_frac);
+
+                output[map_idx] = bilinear_interpolation_separated(
+                    input, input_width, input_height,
+                    x_int, x_frac, y_int, y_frac, 0);
+            }
+        }
+    }
+    if(format == PIXEL_FORMAT_YUV_PLANAR_420) {
+        const int uv_width = output_width / 2;
+        const int uv_height = output_height / 2;
+        const int uv_size = uv_width * uv_height;
+
+        int* uv_x_int = (int*)malloc(uv_size * sizeof(int));
+        bf16* uv_x_frac = (bf16*)malloc(uv_size * sizeof(bf16));
+        int* uv_y_int = (int*)malloc(uv_size * sizeof(int));
+        bf16* uv_y_frac = (bf16*)malloc(uv_size * sizeof(bf16));
+
+        if (!uv_x_int || !uv_x_frac || !uv_y_int || !uv_y_frac) {
+            free(uv_x_int);
+            free(uv_x_frac);
+            free(uv_y_int);
+            free(uv_y_frac);
+            return;
+        }
+
+        for (int y = 0; y < uv_height; ++y) {
+            for (int x = 0; x < uv_width; ++x) {
+                const int uv_idx = y * uv_width + x;
+                const int y_map_idx = (y * 2) * output_width + (x * 2);
+
+                const float uv_src_x = mapx[y_map_idx] / 2.0f;
+                const float uv_src_y = mapy[y_map_idx] / 2.0f;
+
+                if (uv_src_x < 0 || uv_src_x >= input_width/2 ||
+                    uv_src_y < 0 || uv_src_y >= input_height/2) {
+                    uv_x_int[uv_idx] = -1;
+                } else {
+                    prepare_coordinates(uv_src_x, uv_src_y, input_width/2, input_height/2,
+                                       &uv_x_int[uv_idx], &uv_x_frac[uv_idx],
+                                       &uv_y_int[uv_idx], &uv_y_frac[uv_idx]);
+                }
+            }
+        }
+
+        unsigned char *u_output = output + output_width * output_height;
+        unsigned char *v_output = u_output + uv_size;
+
+        const int uv_input_offset = input_width * input_height;
+        const int uv_input_width = input_width / 2;
+        const int uv_input_height = input_height / 2;
+
+        for (int y = 0; y < uv_height; ++y) {
+            for (int x = 0; x < uv_width; ++x) {
+                const int uv_idx = y * uv_width + x;
+
+                if (uv_x_int[uv_idx] == -1) {
+                    u_output[uv_idx] = 0;
+                } else {
+                    const int x_int = uv_x_int[uv_idx];
+                    const bf16 x_frac = uv_x_frac[uv_idx];
+                    const int y_int = uv_y_int[uv_idx];
+                    const bf16 y_frac = uv_y_frac[uv_idx];
+
+                    u_output[uv_idx] = bilinear_interpolation_separated(
+                        input + uv_input_offset,
+                        uv_input_width, uv_input_height,
+                        x_int, x_frac, y_int, y_frac, 0);
+                }
+            }
+        }
+
+        for (int y = 0; y < uv_height; ++y) {
+            for (int x = 0; x < uv_width; ++x) {
+                const int uv_idx = y * uv_width + x;
+
+                if (uv_x_int[uv_idx] == -1) {
+                    v_output[uv_idx] = 0;
+                } else {
+                    const int x_int = uv_x_int[uv_idx];
+                    const bf16 x_frac = uv_x_frac[uv_idx];
+                    const int y_int = uv_y_int[uv_idx];
+                    const bf16 y_frac = uv_y_frac[uv_idx];
+
+                    v_output[uv_idx] = bilinear_interpolation_separated(
+                        input + uv_input_offset + uv_input_width * uv_input_height,
+                        uv_input_width, uv_input_height,
+                        x_int, x_frac, y_int, y_frac, 0);
+                }
+            }
+        }
+
+        free(uv_x_int);
+        free(uv_x_frac);
+        free(uv_y_int);
+        free(uv_y_frac);
+    }
+}
+
+void fill_map(float* map_x, float* map_y, int input_width, int input_height) {
+    for (int y = 0; y < input_height; y++) {
+        for (int x = 0; x < input_width; x++) {
+            map_x[y * input_width + x] = input_width - x - 1;
+            map_y[y * input_width + x] = y;
+        }
+    }
+}
+
+void fill_image(unsigned char *input, int input_width, int input_height, float channel) {
+    int len = input_height * input_width * channel;
+    for(int i = 0; i < len; i++) {
+        input[i] = rand() % 256;
+    }
+}
+//remap
+
 //raw12_to_uint16
 void fill_raw12(unsigned char* input, int len) {
     for(int i = 0; i < len; i++) {

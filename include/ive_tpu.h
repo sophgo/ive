@@ -109,6 +109,18 @@ bm_status_t tpu_raw12_to_uint16(
     int width,
     int height);
 
+bm_status_t tpu_remap(
+    bm_handle_t handle,
+    bm_device_mem_t input_addr[3],
+    bm_device_mem_t output_addr[3],
+    bm_device_mem_t mapx_data_global_addr,
+    bm_device_mem_t mapy_data_global_addr,
+    int input_width,
+    int input_height,
+    int output_width,
+    int output_height,
+    PIXEL_FORMAT_E format);
+
 #ifdef __cplusplus
 #if __cplusplus
 }

@@ -80,4 +80,4 @@ buildninstall_test(sample_tpu_blend_2way)
 buildninstall_test(sample_tpu_dilate)
 buildninstall_test(sample_tpu_erode)
 buildninstall_test(sample_tpu_raw12_to_uint16)
-
+buildninstall_test(sample_tpu_remap)

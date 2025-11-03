@@ -111,3 +111,14 @@ $ninja install
 |Chip  | Flags |
 |------|-------|
 |cv1835|WORKAROUND_SCALAR_4096_ALIGN_BUG|
+
+# License
+
+Project license: BSD 3-Clause (applies to code developed by Sophgo Technologies Inc.)
+See LICENSE at repository root.
+
+./3rdparty and ./gst-plugin direcotries contain:
+1. The MIT License
+2. the GNU Library General Public License
+These files remain under their original licenses. We keep their original headers and attributions.
+

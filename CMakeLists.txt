@@ -2,6 +2,51 @@ cmake_minimum_required(VERSION 3.2.2)
 project(ive)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Create target directory for TPU kernel soft links first
+set(TPU_KERNEL_LINK_TARGET_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/tpu_kernel_module")
+if(NOT EXISTS "${TPU_KERNEL_LINK_TARGET_ROOT}")
+    file(MAKE_DIRECTORY "${TPU_KERNEL_LINK_TARGET_ROOT}")
+    message(STATUS "Created tpu_kernel_module directory under 3rdparty: ${TPU_KERNEL_LINK_TARGET_ROOT}")
+else()
+    message(STATUS "tpu_kernel_module directory under 3rdparty already exists: ${TPU_KERNEL_LINK_TARGET_ROOT}")
+endif()
+
+# Configure parent directory of TPU kernel source (contains subdirectories to be linked)
+set(TPU_KERNEL_LIB_PARENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../libsophon/tpu-kernel/lib")
+
+# Check if source parent directory exists; abort subsequent steps if not
+if(NOT EXISTS "${TPU_KERNEL_LIB_PARENT_DIR}")
+    message(WARNING "Source parent directory for soft links does not exist; cannot proceed: ${TPU_KERNEL_LIB_PARENT_DIR}")
+else()
+    # Get all subdirectories under the source parent directory (filter out files, only keep directories)
+    file(GLOB SUBDIRS RELATIVE "${TPU_KERNEL_LIB_PARENT_DIR}" "${TPU_KERNEL_LIB_PARENT_DIR}/*")
+    foreach(SUBDIR ${SUBDIRS})
+        set(SRC_SUB_DIR "${TPU_KERNEL_LIB_PARENT_DIR}/${SUBDIR}")
+        if(IS_DIRECTORY "${SRC_SUB_DIR}")
+            # Define path for the target soft link (same name as the source subdirectory)
+            set(CURRENT_LINK "${TPU_KERNEL_LINK_TARGET_ROOT}/${SUBDIR}")
+            execute_process(
+                COMMAND ln -sf "${SRC_SUB_DIR}" "${CURRENT_LINK}"
+                RESULT_VARIABLE LINK_RESULT
+                ERROR_VARIABLE LINK_ERROR
+            )
+
+            # Output result of soft link creation
+            if(LINK_RESULT EQUAL 0)
+                message(STATUS "Successfully created soft link: ${CURRENT_LINK} -> ${SRC_SUB_DIR}")
+            else()
+                message(WARNING "Failed to create soft link (subdirectory: ${SUBDIR}): ${LINK_ERROR}")
+            endif()
+        endif()
+    endforeach()
+
+    # Check if any subdirectories were processed; warn if none
+    list(LENGTH SUBDIRS SUBDIR_COUNT)
+    if(SUBDIR_COUNT EQUAL 0)
+        message(WARNING "No subdirectories found under source parent directory; no soft links to create: ${TPU_KERNEL_LIB_PARENT_DIR}")
+    endif()
+endif()
+
 # Options
 option(ENABLE_SYSTRACE "Use systrace" OFF)
 # Get current commit
